@@ -30,6 +30,9 @@ services:
       CLODIA_BASE_EMAIL: ${CLODIA_BASE_EMAIL:-}
       GIT_REPO: ${GIT_REPO:-r-clodia/clodia-logic}
       GIT_BRANCH: ${GIT_BRANCH:-main}
+      # Solo se il sorgente è un repo privato (mirror enterprise o pre-release).
+      # Per i repo pubblici lascialo vuoto.
+      GIT_TOKEN: ${GIT_TOKEN:-}
       SERVER_HOST: "0.0.0.0"
     volumes:
       - ./entrypoint.sh:/entrypoint.sh:ro
