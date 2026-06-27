@@ -1,0 +1,5 @@
+.env
+repos/
+clodia-data/
+*.bak
+.DS_Store
