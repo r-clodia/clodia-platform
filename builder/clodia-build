@@ -196,8 +196,12 @@ def cmd_up(bp_path: Path, target_dir: Path | None, start: bool) -> None:
         return
     services = ["agent-server", "clodia-tools", "webui"] + (["pwa"] if pwa else [])
     print(f"▸ build+avvio: {' '.join(services)} (può richiedere minuti)")
-    # catena immagini: base → bundle → app (host vergine: nessuna preesiste)
-    sh(["docker", "compose", "--profile", "build-only", "build", "base", "bundle"],
+    # catena immagini: base → bundle → app (host vergine: nessuna preesiste).
+    # Build SEQUENZIALE: compose v2 builda in parallelo e bundle fallirebbe
+    # cercando l'immagine base non ancora prodotta.
+    sh(["docker", "compose", "--profile", "build-only", "build", "base"],
+       cwd=target, timeout=3600)
+    sh(["docker", "compose", "--profile", "build-only", "build", "bundle"],
        cwd=target, timeout=3600)
     sh(["docker", "compose", "build", *services], cwd=target, timeout=3600)
     sh(["docker", "compose", "up", "-d", *services], cwd=target)
@@ -313,7 +317,7 @@ def cmd_down(bp_path: Path) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(prog="clodia-build")
-    ap.add_argument("--version", action="version", version="clodia-build 0.2.1")
+    ap.add_argument("--version", action="version", version="clodia-build 0.2.2")
     sub = ap.add_subparsers(dest="cmd", required=True)
     up = sub.add_parser("up", help="terraforma e avvia l'edizione")
     up.add_argument("blueprint", type=Path)
