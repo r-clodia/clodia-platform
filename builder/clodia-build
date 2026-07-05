@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+"""clodia-build — terraforma un'edizione Clodia Agency da un blueprint.
+
+Uso (sull'host di destinazione, es. il minipc):
+
+    clodia-build up <blueprint.yaml> [--target-dir DIR] [--no-start]
+    clodia-build finalize <blueprint.yaml>       # post-claim: pack + job
+    clodia-build down <blueprint.yaml>           # ferma lo stack
+
+`up` = fase di TERRAFORMAZIONE: genera il progetto (compose per-istanza,
+.env, datadir con profile.yaml e native-seeds), clona i repo runtime da
+GitHub e avvia lo stack. Al termine stampa la checklist post-install
+(claim del primo admin dal browser, collegamento provider, backup).
+
+`finalize` = dopo il claim: importa i pack del blueprint via API e crea i
+job dichiarati (richiede istanza reclamata e — per i job — provider
+collegato).
+
+Il blueprint NON contiene mai segreti (Prima Legge): credenziali provider,
+passphrase backup e chiavi arrivano solo post-install via UI/vault.
+
+Spec: topic clodia-modular-distro, spec v0.3 (§4b decisioni di
+terraformazione) + sprint-plan Sprint 2.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import shutil
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:
+    sys.exit("clodia-build richiede PyYAML (pip install pyyaml)")
+
+TEMPLATES = Path(__file__).resolve().parent / "templates"
+NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,30}$")
+RUNTIME_REPOS = {
+    "clodia-tools": "https://github.com/r-clodia/clodia-tools",
+    "clodia-web": "https://github.com/r-clodia/clodia-web",
+    "clodia-pwa": "https://github.com/r-clodia/clodia-pwa",
+}
+NATIVE_SEEDS_KNOWN = {"clodia", "ophelia", "mercuria", "wainston"}
+DEFAULT_PORTS = {"agent_server": 8842, "tools": 8849, "webui": 8843, "pwa": 8873}
+
+
+def die(msg: str) -> None:
+    sys.exit(f"clodia-build: ERRORE — {msg}")
+
+
+def load_blueprint(path: Path) -> dict:
+    try:
+        bp = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception as e:
+        die(f"blueprint illeggibile: {e}")
+    if not isinstance(bp, dict):
+        die("il blueprint deve essere un mapping YAML")
+    return bp
+
+
+def validate(bp: dict) -> None:
+    """Validazioni bloccanti della terraformazione (spec v0.3)."""
+    name = str(bp.get("name") or "")
+    if not NAME_RE.fullmatch(name):
+        die(f"name '{name}' non valido (minuscole, cifre, '-', 2-31 char)")
+    providers = bp.get("providers") or []
+    if not isinstance(providers, list) or len(providers) < 1:
+        die("providers: almeno UN provider è obbligatorio (§4b.5)")
+    feats = ((bp.get("profile") or {}).get("features")) or {}
+    topics = feats.get("topics", "full")
+    if topics is False:
+        topics = "off"
+    if topics != "off":
+        storage = str(bp.get("topic_storage") or "")
+        if not storage:
+            die("topic_storage obbligatorio quando topics != off (§4b.7); default: local-fs")
+        if storage != "local-fs":
+            die(f"topic_storage '{storage}' non ancora supportato dal builder (solo local-fs)")
+    for s in bp.get("native_seeds") or []:
+        if s not in NATIVE_SEEDS_KNOWN:
+            die(f"native_seed sconosciuto: '{s}' (noti: {sorted(NATIVE_SEEDS_KNOWN)})")
+    secretish = re.compile(r"(?i)(api[-_]?key|token|secret|passphrase|password)")
+    flat = json.dumps(bp)
+    if secretish.search(flat):
+        die("il blueprint sembra contenere segreti: rimuovili (le credenziali "
+            "si depositano post-install via UI/vault)")
+
+
+def sh(cmd: list[str], cwd: Path | None = None, timeout: int = 1800) -> None:
+    r = subprocess.run(cmd, cwd=cwd, timeout=timeout)
+    if r.returncode != 0:
+        die(f"comando fallito ({r.returncode}): {' '.join(cmd)}")
+
+
+def build_profile(bp: dict) -> dict:
+    """profile.yaml dell'istanza dal blueprint (runtime contract)."""
+    prof = dict(bp.get("profile") or {})
+    prof.setdefault("edition", bp["name"])
+    # skill_packs: assente nel blueprint = NESSUN pack esterno (solo base-pack).
+    # Questo è il default delle EDIZIONI; il profilo full storico resta per le
+    # istanze senza profile.yaml.
+    prof["skill_packs"] = list(bp.get("skill_packs") or [])
+    if bp.get("rag"):
+        prof.setdefault("rag", {})
+        if bp["rag"].get("collection"):
+            prof["rag"]["collection"] = bp["rag"]["collection"]
+    integ = bp.get("integrations") or {}
+    prof.setdefault("integrations", {})
+    prof["integrations"].setdefault("allowed", list(integ.get("allowed") or []))
+    prof["integrations"]["allow_manual_mcp"] = bool(integ.get("allow_manual_mcp"))
+    return prof
+
+
+def cmd_up(bp_path: Path, target_dir: Path | None, start: bool) -> None:
+    bp = load_blueprint(bp_path)
+    validate(bp)
+    name = bp["name"]
+    project = f"clodia-{name}"
+    target = target_dir or Path.home() / project
+    datadir = Path(str(bp.get("datadir") or (Path.home() / f"{project}-data")))
+    ports = {**DEFAULT_PORTS, **(bp.get("ports") or {})}
+    pwa = bool(bp.get("pwa"))
+
+    print(f"▸ terraformazione '{name}' → {target} (datadir {datadir})")
+    target.mkdir(parents=True, exist_ok=True)
+    (target / ".vault-mask").mkdir(exist_ok=True)
+
+    compose = (TEMPLATES / "docker-compose.yml.tpl").read_text(encoding="utf-8")
+    if pwa:
+        compose = compose.rstrip() + "\n" + (
+            TEMPLATES / "pwa-service.yml.fragment").read_text(encoding="utf-8")
+    (target / "docker-compose.yml").write_text(compose, encoding="utf-8")
+    shutil.copy2(TEMPLATES / "entrypoint.sh", target / "entrypoint.sh")
+    if (target / "docker").exists():
+        shutil.rmtree(target / "docker")
+    shutil.copytree(TEMPLATES / "docker", target / "docker")
+
+    env = [
+        f"CLODIA_DATA={datadir}",
+        f"CLODIA_PROJECT={project}",
+        f"AGENT_SERVER_PORT={ports['agent_server']}",
+        f"TOOLS_PORT={ports['tools']}",
+        f"WEBUI_PORT={ports['webui']}",
+        f"PWA_PORT={ports['pwa']}",
+    ]
+    (target / ".env").write_text("\n".join(env) + "\n", encoding="utf-8")
+
+    repos = target / "repos"
+    repos.mkdir(exist_ok=True)
+    wanted = ["clodia-tools", "clodia-web"] + (["clodia-pwa"] if pwa else [])
+    for r in wanted:
+        dst = repos / r
+        if (dst / ".git").exists():
+            sh(["git", "-C", str(dst), "pull", "-q", "origin", "main"])
+        else:
+            sh(["git", "clone", "-q", "--depth", "1", RUNTIME_REPOS[r], str(dst)])
+
+    datadir.mkdir(parents=True, exist_ok=True)
+    (datadir / "profile.yaml").write_text(
+        yaml.safe_dump(build_profile(bp), allow_unicode=True, sort_keys=False),
+        encoding="utf-8")
+    seeds = bp.get("native_seeds")
+    if seeds:
+        (datadir / "native-seeds").write_text("\n".join(seeds) + "\n", encoding="utf-8")
+
+    if not start:
+        print("▸ --no-start: progetto generato, stack non avviato")
+        return
+    services = ["agent-server", "clodia-tools", "webui"] + (["pwa"] if pwa else [])
+    print(f"▸ build+avvio: {' '.join(services)} (può richiedere minuti)")
+    sh(["docker", "compose", "build", *services], cwd=target, timeout=3600)
+    sh(["docker", "compose", "up", "-d", *services], cwd=target)
+
+    base = f"http://localhost:{ports['agent_server']}"
+    for _ in range(60):
+        try:
+            with urllib.request.urlopen(f"{base}/health", timeout=3) as r:
+                info = json.loads(r.read())
+                print(f"▸ agent-server OK: v{info.get('version')}")
+                break
+        except Exception:
+            time.sleep(5)
+    else:
+        die("agent-server non risponde su /health dopo 5 minuti")
+
+    print(f"""
+✅ Edizione '{name}' terraformata.
+
+CHECKLIST POST-INSTALL (admin):
+ 1. Claim del primo admin: apri la webui (HTTPS!) → popup "Nuovo agente" → human
+ 2. Collega ALMENO un provider dichiarato: {bp.get('providers')}
+ 3. Configura il backup (Settings → repository restic + passphrase, con escrow offline)
+ 4. Esegui: clodia-build finalize {bp_path.name}   (importa pack e crea i job)
+Webui locale: http://localhost:{ports['webui']}  (esporre via reverse proxy/tailscale HTTPS)
+""")
+
+
+def _api(base: str, method: str, path: str, payload: dict | None = None) -> tuple[int, dict]:
+    req = urllib.request.Request(base + path, method=method)
+    data = None
+    if payload is not None:
+        req.add_header("Content-Type", "application/json")
+        data = json.dumps(payload).encode()
+    try:
+        with urllib.request.urlopen(req, data=data, timeout=120) as r:
+            return r.status, json.loads(r.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        try:
+            return e.code, json.loads(e.read() or b"{}")
+        except Exception:
+            return e.code, {}
+
+
+def cmd_finalize(bp_path: Path) -> None:
+    bp = load_blueprint(bp_path)
+    validate(bp)
+    ports = {**DEFAULT_PORTS, **(bp.get("ports") or {})}
+    base = f"http://localhost:{ports['agent_server']}"
+    st, _ = _api(base, "GET", "/clodia/jobs")
+    if st == 423:
+        die("istanza non ancora reclamata: fai il claim dal browser, poi riesegui finalize")
+    for spec in bp.get("packs") or []:
+        src = spec.get("source") or ""
+        st, res = _api(base, "POST", "/clodia/packs/import-url", {"url": src})
+        tag = res.get("pack") or res.get("plugin") or "?"
+        print(f"▸ pack {src} → HTTP {st} ({tag})")
+    for job in bp.get("jobs") or []:
+        st, res = _api(base, "POST", "/clodia/jobs", {
+            "name": job.get("name") or "job",
+            "cron_expr": job.get("cron") or job.get("cron_expr"),
+            "agent": job.get("agent") or "clodia",
+            "prompt": job.get("prompt") or "",
+        })
+        detail = res.get("detail") or res.get("name") or ""
+        print(f"▸ job '{job.get('name')}' → HTTP {st} {detail}")
+    print("✅ finalize completato (verifica eventuali HTTP != 200 sopra)")
+
+
+def cmd_down(bp_path: Path) -> None:
+    bp = load_blueprint(bp_path)
+    target = Path.home() / f"clodia-{bp.get('name')}"
+    sh(["docker", "compose", "down"], cwd=target)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(prog="clodia-build")
+    ap.add_argument("--version", action="version", version="clodia-build 0.1.0")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    up = sub.add_parser("up", help="terraforma e avvia l'edizione")
+    up.add_argument("blueprint", type=Path)
+    up.add_argument("--target-dir", type=Path, default=None)
+    up.add_argument("--no-start", action="store_true")
+    fin = sub.add_parser("finalize", help="post-claim: importa pack e crea job")
+    fin.add_argument("blueprint", type=Path)
+    dn = sub.add_parser("down", help="ferma lo stack dell'edizione")
+    dn.add_argument("blueprint", type=Path)
+    a = ap.parse_args()
+    if a.cmd == "up":
+        cmd_up(a.blueprint, a.target_dir, not a.no_start)
+    elif a.cmd == "finalize":
+        cmd_finalize(a.blueprint)
+    elif a.cmd == "down":
+        cmd_down(a.blueprint)
+
+
+if __name__ == "__main__":
+    main()
