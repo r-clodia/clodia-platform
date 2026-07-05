@@ -13,6 +13,7 @@ profile:
   branding:
     name: "Pilot Agency"
     accent: "#1a5fb4"
+    logo: ./pilot-logo.png
 native_seeds: [clodia]
 skill_packs: []
 packs:
@@ -20,6 +21,8 @@ packs:
     pack: demo-pack
 providers: [anthropic-api]
 pwa: false
+helpdesk:
+  enabled: false      # niente popup: l'edizione non imbarca wainston
 integrations:
   allowed: [demo-tool]
   connectors: [mailboxes]
