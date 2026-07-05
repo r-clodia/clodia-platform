@@ -114,6 +114,8 @@ def build_profile(bp: dict) -> dict:
     prof.setdefault("integrations", {})
     prof["integrations"].setdefault("allowed", list(integ.get("allowed") or []))
     prof["integrations"]["allow_manual_mcp"] = bool(integ.get("allow_manual_mcp"))
+    if integ.get("connectors") is not None:
+        prof["integrations"]["connectors"] = list(integ.get("connectors") or [])
     return prof
 
 
@@ -217,6 +219,44 @@ def _api(base: str, method: str, path: str, payload: dict | None = None) -> tupl
             return e.code, {}
 
 
+def _post_multipart(url: str, filename: str, data: bytes) -> tuple[int, dict]:
+    boundary = "----clodiabuild"
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; "
+            f"name=\"file\"; filename=\"{filename}\"\r\n"
+            "Content-Type: application/zip\r\n\r\n").encode() + data + \
+           f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+    try:
+        with urllib.request.urlopen(req, timeout=300) as r:
+            return r.status, json.loads(r.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        try:
+            return e.code, json.loads(e.read() or b"{}")
+        except Exception:
+            return e.code, {}
+
+
+def _import_pack(base: str, src: str, bp_dir: Path) -> tuple[int, dict]:
+    """Importa un pack: URL http(s) → import-url; path locale (dir o .zip,
+    relativo al blueprint) → zip + upload multipart (gap-2: i pack proprietari
+    del cliente non devono essere pubblicati per essere installati)."""
+    if src.startswith("http://") or src.startswith("https://"):
+        return _api(base, "POST", "/clodia/packs/import-url", {"url": src})
+    path = (bp_dir / src).resolve() if not Path(src).is_absolute() else Path(src)
+    if path.is_dir():
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            zp = shutil.make_archive(str(Path(tmp) / "pack"), "zip",
+                                     root_dir=str(path))
+            data = Path(zp).read_bytes()
+        return _post_multipart(base + "/clodia/packs/import", path.name + ".zip", data)
+    if path.is_file() and path.suffix == ".zip":
+        return _post_multipart(base + "/clodia/packs/import", path.name,
+                               path.read_bytes())
+    return 0, {"error": f"source non trovato: {src}"}
+
+
 def cmd_finalize(bp_path: Path) -> None:
     bp = load_blueprint(bp_path)
     validate(bp)
@@ -227,8 +267,8 @@ def cmd_finalize(bp_path: Path) -> None:
         die("istanza non ancora reclamata: fai il claim dal browser, poi riesegui finalize")
     for spec in bp.get("packs") or []:
         src = spec.get("source") or ""
-        st, res = _api(base, "POST", "/clodia/packs/import-url", {"url": src})
-        tag = res.get("pack") or res.get("plugin") or "?"
+        st, res = _import_pack(base, src, bp_path.resolve().parent)
+        tag = res.get("pack") or res.get("plugin") or res.get("error") or "?"
         print(f"▸ pack {src} → HTTP {st} ({tag})")
     for job in bp.get("jobs") or []:
         st, res = _api(base, "POST", "/clodia/jobs", {
