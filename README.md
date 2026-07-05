@@ -9,7 +9,7 @@ MCP, gestione credenziali in un keystore/vault, identità degli agenti con PKI, 
 un modello di permessi per-agente. Pensata per chi vuole l'automazione agentica
 **senza** mandare i propri dati a una SaaS di terzi.
 
-> **Licenza:** [Apache-2.0](LICENSE). Self-host completo: i tuoi dati restano sulla tua macchina.
+> **Licenza:** [AGPL v3 (dual licensing: vedi LICENSING.md)](LICENSE). Self-host completo: i tuoi dati restano sulla tua macchina.
 
 ---
 
