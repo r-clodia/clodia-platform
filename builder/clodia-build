@@ -102,6 +102,11 @@ def build_profile(bp: dict) -> dict:
     """profile.yaml dell'istanza dal blueprint (runtime contract)."""
     prof = dict(bp.get("profile") or {})
     prof.setdefault("edition", bp["name"])
+    # Provider e PWA dell'edizione (difetti demo 6 lug): il runtime filtra
+    # /api/providers e la sezione PWA di Settings dal profilo.
+    prof["providers"] = list(bp.get("providers") or [])
+    prof.setdefault("features", {})
+    prof["features"]["pwa"] = bool(bp.get("pwa"))
     # skill_packs: assente nel blueprint = NESSUN pack esterno (solo base-pack).
     # Questo è il default delle EDIZIONI; il profilo full storico resta per le
     # istanze senza profile.yaml.

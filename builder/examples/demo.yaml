@@ -1,0 +1,30 @@
+# Edizione DEMO su marte (porte 8842/8849/8843 → tailscale https 8843).
+# Config = acme-min (design review 6 lug) con branding demo e provider anthropic
+# (così l'admin può collegare una key reale e provare i job).
+name: demo
+profile:
+  edition: acme-min-demo
+  features:
+    jobs: true
+    topics: "off"
+    rag: "off"
+    integrations: fixed
+    channels: false
+  branding:
+    name: "Pilot Agency"
+    accent: "#1a5fb4"
+native_seeds: [clodia]
+skill_packs: []
+packs:
+  - source: ./demo-pack
+    pack: demo-pack
+providers: [anthropic-api]
+pwa: false
+integrations:
+  allowed: [demo-tool]
+  connectors: [mailboxes]
+  allow_manual_mcp: false
+ports:
+  agent_server: 8842
+  tools: 8849
+  webui: 8843
