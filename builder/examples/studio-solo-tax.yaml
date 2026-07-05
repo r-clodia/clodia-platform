@@ -31,3 +31,11 @@ ports:
   tools: 8949
   webui: 8943
 datadir: ~/clodia-studio-data
+vocabulary:                      # white-label cosmetico (UI + voce agenti)
+  topic:       { singolare: pratica, plurale: pratiche }
+  agent:       { singolare: assistente AI, plurale: assistenti AI }
+  provider:    { singolare: motore AI, plurale: motori AI }
+  integration: { singolare: collegamento, plurale: collegamenti }
+  job:         { singolare: "attività programmata", plurale: "attività programmate" }
+  summary:     riepilogo
+  nuovo_topic: "+ Nuova pratica"

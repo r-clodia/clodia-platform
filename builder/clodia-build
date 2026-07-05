@@ -107,6 +107,8 @@ def build_profile(bp: dict) -> dict:
     prof["providers"] = list(bp.get("providers") or [])
     prof.setdefault("features", {})
     prof["features"]["pwa"] = bool(bp.get("pwa"))
+    if bp.get("vocabulary"):
+        prof["vocabulary"] = dict(bp["vocabulary"])
     if bp.get("topics_single"):
         prof["topics_single"] = dict(bp["topics_single"])
     hd = bp.get("helpdesk") or {}
@@ -319,7 +321,7 @@ def cmd_down(bp_path: Path) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(prog="clodia-build")
-    ap.add_argument("--version", action="version", version="clodia-build 0.2.3")
+    ap.add_argument("--version", action="version", version="clodia-build 0.3.0")
     sub = ap.add_subparsers(dest="cmd", required=True)
     up = sub.add_parser("up", help="terraforma e avvia l'edizione")
     up.add_argument("blueprint", type=Path)
