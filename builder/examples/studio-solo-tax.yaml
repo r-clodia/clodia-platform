@@ -5,7 +5,7 @@ profile:
   edition: studio-solo-tax
   features:
     jobs: false
-    topics: single
+    topics: full   # un topic per cliente/pratica dello studio
     rag: "off"
     integrations: fixed
     channels: false
@@ -26,9 +26,6 @@ integrations:
   allowed: [normattiva]
   connectors: []
   allow_manual_mcp: false
-topics_single:
-  name: studio
-  tier: SEAL-2                    # documenti fiscali del cliente
 ports:
   agent_server: 8942
   tools: 8949
