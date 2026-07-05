@@ -1,0 +1,10 @@
+
+  pwa:
+    build: { context: ./repos/clodia-pwa, dockerfile: Dockerfile }
+    image: ${CLODIA_PROJECT}-pwa
+    ports:
+      - "${PWA_PORT:-5173}:5173"
+    environment:
+      PORT: "5173"
+      API_TARGET: "http://agent-server:7842"
+    restart: unless-stopped
