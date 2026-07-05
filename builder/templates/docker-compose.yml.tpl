@@ -12,14 +12,20 @@ services:
     command: ["true"]
 
   bundle:
-    build: { context: ., dockerfile: docker/bundle.Dockerfile }
+    build:
+      context: .
+      dockerfile: docker/bundle.Dockerfile
+      args: { BASE_IMAGE: "${CLODIA_PROJECT}-base" }
     image: ${CLODIA_PROJECT}-bundle
     profiles: ["build-only"]
     command: ["true"]
 
   # ── Servizi ────────────────────────────────────────────────────────────────
   agent-server:
-    build: { context: ., dockerfile: docker/agent-server.Dockerfile }
+    build:
+      context: .
+      dockerfile: docker/agent-server.Dockerfile
+      args: { BUNDLE_IMAGE: "${CLODIA_PROJECT}-bundle" }
     image: ${CLODIA_PROJECT}-agent-server
     command: ["sh", "-c", "cd /clodia && python3 -m server.main"]
     ports:

@@ -1,4 +1,5 @@
-FROM clodia-personal-bundle
+ARG BUNDLE_IMAGE=clodia-personal-bundle
+FROM ${BUNDLE_IMAGE}
 
 # Le dipendenze Python vengono installate dall'entrypoint dopo il git pull.
 # Qui installiamo solo quelle note al momento del build per velocizzare i restart.
