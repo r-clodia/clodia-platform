@@ -107,6 +107,10 @@ def build_profile(bp: dict) -> dict:
     prof["providers"] = list(bp.get("providers") or [])
     prof.setdefault("features", {})
     prof["features"]["pwa"] = bool(bp.get("pwa"))
+    hd = bp.get("helpdesk") or {}
+    prof["features"]["helpdesk"] = bool(hd.get("enabled", True))
+    if hd.get("agent"):
+        prof["helpdesk"] = {"agent": str(hd["agent"])}
     # skill_packs: assente nel blueprint = NESSUN pack esterno (solo base-pack).
     # Questo è il default delle EDIZIONI; il profilo full storico resta per le
     # istanze senza profile.yaml.
@@ -126,6 +130,7 @@ def build_profile(bp: dict) -> dict:
 
 def cmd_up(bp_path: Path, target_dir: Path | None, start: bool) -> None:
     bp = load_blueprint(bp_path)
+    bp_dir = bp_path.resolve().parent
     validate(bp)
     name = bp["name"]
     project = f"clodia-{name}"
@@ -169,6 +174,16 @@ def cmd_up(bp_path: Path, target_dir: Path | None, start: bool) -> None:
             sh(["git", "clone", "-q", "--depth", "1", RUNTIME_REPOS[r], str(dst)])
 
     datadir.mkdir(parents=True, exist_ok=True)
+    # Branding logo: path locale nel blueprint → copiato in datadir/branding/
+    logo_src = ((bp.get("profile") or {}).get("branding") or {}).get("logo")
+    if logo_src:
+        lp = (bp_dir / logo_src) if not Path(logo_src).is_absolute() else Path(logo_src)
+        if not lp.is_file():
+            die(f"branding.logo non trovato: {logo_src}")
+        (datadir / "branding").mkdir(exist_ok=True)
+        dst = datadir / "branding" / lp.name
+        shutil.copy2(lp, dst)
+        bp.setdefault("profile", {}).setdefault("branding", {})["logo"] = f"branding/{lp.name}"
     (datadir / "profile.yaml").write_text(
         yaml.safe_dump(build_profile(bp), allow_unicode=True, sort_keys=False),
         encoding="utf-8")
@@ -295,7 +310,7 @@ def cmd_down(bp_path: Path) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(prog="clodia-build")
-    ap.add_argument("--version", action="version", version="clodia-build 0.1.0")
+    ap.add_argument("--version", action="version", version="clodia-build 0.2.0")
     sub = ap.add_subparsers(dest="cmd", required=True)
     up = sub.add_parser("up", help="terraforma e avvia l'edizione")
     up.add_argument("blueprint", type=Path)
