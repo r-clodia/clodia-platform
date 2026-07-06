@@ -1,29 +1,31 @@
-# Edizione "Studio AI — Solo tax" (offerta Tomato per commercialista singolo).
-# NIENTE segreti qui: provider key post-install.
 name: studio
 profile:
   edition: studio-solo-tax
   features:
     jobs: false
-    topics: full   # un topic per cliente/pratica dello studio
-    rag: "off"
+    topics: full
+    rag: 'off'
     integrations: fixed
     channels: false
   branding:
-    name: "Studio Commercialista"
-    accent: "#0a7d4f"
-native_seeds: [clodia]            # trusted-core (identità PKI per chat/topic)
-skill_packs: []                   # solo base-pack
+    name: Studio Commercialista
+    accent: '#0a7d4f'
+native_seeds:
+- clodia
+skill_packs: []
 packs:
-  - source: <path-locale-del-pack>/studio-commercialista
-    pack: studio-commercialista   # → plugin (3 skill + normattiva) + seed commercialista
-providers: [aws-region-eu, anthropic-api]
+- source: <path-locale-del-pack>/studio-commercialista
+  pack: studio-commercialista
+providers:
+- aws-region-eu
+- anthropic-api
 pwa: false
 helpdesk:
   enabled: false
 topic_storage: local-fs
 integrations:
-  allowed: [normattiva]
+  allowed:
+  - normattiva
   connectors: []
   allow_manual_mcp: false
 ports:
@@ -31,13 +33,43 @@ ports:
   tools: 8949
   webui: 8943
 datadir: ~/clodia-studio-data
-vocabulary:                      # white-label cosmetico (UI + voce agenti)
-  topic:       { singolare: pratica, plurale: pratiche }
-  agent:       { singolare: assistente AI, plurale: assistenti AI }
-  provider:    { singolare: motore AI, plurale: motori AI }
-  integration: { singolare: collegamento, plurale: collegamenti }
-  job:         { singolare: "attività programmata", plurale: "attività programmate" }
-  summary:     riepilogo
-  nuovo_topic: "+ Nuova pratica"
-topics_defaults:                 # partecipanti automatici delle nuove pratiche
-  participants: [commercialista]
+vocabulary:
+  topic:
+    singolare: pratica
+    plurale: pratiche
+  agent:
+    singolare: assistente AI
+    plurale: assistenti AI
+  provider:
+    singolare: motore AI
+    plurale: motori AI
+  integration:
+    singolare: collegamento
+    plurale: collegamenti
+  job:
+    singolare: attività programmata
+    plurale: attività programmate
+  summary: riepilogo
+  nuovo_topic: + Nuova pratica
+topics_defaults:
+  participants:
+  - commercialista
+  types:
+  - key: bilancio
+    label: bilancio / assetti
+  - key: dichiarazione
+    label: dichiarazione (redditi, IVA, 770)
+  - key: adempimento
+    label: adempimento ricorrente
+  - key: costituzione
+    label: costituzione / modifiche societarie
+  - key: consulenza
+    label: consulenza
+  - key: contenzioso
+    label: contenzioso
+  - key: bando
+    label: bando / finanza agevolata
+  - key: antiriciclaggio
+    label: antiriciclaggio (AML)
+  - key: cliente
+    label: dossier cliente
