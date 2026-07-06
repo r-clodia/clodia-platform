@@ -40,4 +40,4 @@ vocabulary:                      # white-label cosmetico (UI + voce agenti)
   summary:     riepilogo
   nuovo_topic: "+ Nuova pratica"
 topics_defaults:                 # partecipanti automatici delle nuove pratiche
-  participants: [clodia, commercialista]
+  participants: [commercialista]
