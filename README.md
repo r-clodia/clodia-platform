@@ -64,3 +64,7 @@ al tuo contesto — o ti serve supporto su governance e compliance dell'AI —
 ---
 
 <sub>Progetto open-source. Contributi benvenuti — vedi `CONTRIBUTING.md` (in arrivo).</sub>
+
+## License & Copyright
+
+Copyright (C) 2026 Davide Carboni.
