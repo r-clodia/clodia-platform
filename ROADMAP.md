@@ -45,6 +45,30 @@ sicurezza (Prima Legge).
 | Multi-admin | Più approvatori umani — dipende da **bootstrap-admin-auth**. | ⏳ |
 | Scope-binding | Legare il grant alla classe di op approvata (niente assegno in bianco nella finestra). Rimandato per scelta (nessuna frizione aggiunta). | ⏳ |
 
+### M-authz — RBAC unica per agenti e umani *(lato umano di M-sudo)*
+
+Nato da una seconda Broken Access Control: gli endpoint REST della webui
+(create agent, packs, providers, workflows, plugins/MCP…) non facevano alcun
+check admin — un umano non-admin (o anche una richiesta anonima nel tailnet)
+poteva terraformare la piattaforma. Fix: il **gateway diventa il PDP unico** per
+agenti E umani.
+
+| Fase | Contenuto | Stato |
+|------|-----------|-------|
+| Gateway PDP umano | claim firmati `on_behalf`+`human_role`; `call_tool`/`list_tools` autorizzano sul RUOLO umano (super-only → admin) invece che sul carrier-agent; facade `/internal/tool` (autorizza+esegue) e `/internal/authorize` (solo decisione) che riusano authz+dispatch di `call_tool` | ✅ |
+| Enforcement endpoint | `gateway_pdp.require_authz` sugli endpoint privilegiati agent-server: packs (import/import-url/delete), providers (pause/resume/key/login/disconnect), agents (create/reload), workflows (start/cancel/delete), plugins (import/import-url/delete = MCP). Decisione al gateway, esecuzione locale (preserva l'orchestrazione degli endpoint) | ✅ |
+| Verificato | admin→consentito, non-admin→negato, anonimo→401, letture invariate, admin NON lockato (webui allega il token, nessuna modifica FE) | ✅ |
+| Convergenza "pura A" | far sparire il path REST duplicato spostando l'esecuzione sui tool gateway dove non c'è divergenza di orchestrazione | ⏳ |
+| Copertura residua | audit degli altri router mutanti minori (profile, connectors[già admin], settings) | ⏳ |
+
+> Nota di scope: consegnato il **PDP unico** (una sola RBAC decide per agenti e
+> umani) con enforcement su tutti gli endpoint privilegiati noti. La "purezza A"
+> piena (ogni azione UI = un unico tool gateway anche per l'esecuzione) è
+> incrementale: alcuni endpoint agent-server fanno orchestrazione extra (es.
+> guardia base-pack) che il tool gateway grezzo non replica — spostarli va fatto
+> senza regressioni. **workflows start/cancel/delete** resi admin-only: decisione
+> di policy rivedibile.
+
 ### Sicurezza dei pack — blocco ancora da fare
 
 | # | Milestone | Contenuto | Stato |
