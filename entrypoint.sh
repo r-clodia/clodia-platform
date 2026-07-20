@@ -103,6 +103,21 @@ if [ -f "$AS_DIR/server/colony/pki.py" ]; then
     for d in /datadir/secrets /datadir/clodia-vault; do
         [ -d "$d" ] && chmod 700 "$d" 2>/dev/null || true
     done
+    # /proc-full (M3+): il subprocess agente (non-root) deve vedere SOLO il proprio
+    # spawn. `/datadir` e `/datadir/spawns` traversabili (711, niente listing/read);
+    # ogni altra voce root-only (700). I singoli spawn sono già 700 di proprietà del
+    # loro uid (chown in session.py). L'orchestrator/gateway sono root → ignorano i
+    # permessi. Idempotente. Vuoto CLODIA_AGENT_SANDBOX_UID = OFF → lockdown saltato.
+    if [ -n "${CLODIA_AGENT_SANDBOX_UID:-}" ] && [ -d /datadir ]; then
+        chmod 711 /datadir 2>/dev/null || true
+        for e in /datadir/* /datadir/.[!.]*; do
+            [ -e "$e" ] || continue
+            case "$e" in
+                /datadir/spawns) chmod 711 "$e" 2>/dev/null || true ;;
+                *) chmod 700 "$e" 2>/dev/null || true ;;
+            esac
+        done
+    fi
 fi
 
 echo "[entrypoint] Avvio: $*"
