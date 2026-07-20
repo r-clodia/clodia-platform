@@ -84,14 +84,16 @@ sandbox**, altrimenti l'agente perde la capability.
 ### ⚠️ Gap (nessun verbo → oggi solo via fs/bash)
 | Capability | Nota | Azione |
 |---|---|---|
-| **`fs.list_dir`** | tool-fs generico: è un escape-hatch | scoparlo al **solo spawn** o rimuoverlo (i file dei topic si leggono con `topic.*`) |
+| ~~**`fs.list_dir`**~~ | ✅ già contenuto: radicato in `/clodia` (non `/datadir`), path-checked su `allowed_paths`, nessun bypass super → **non** raggiunge `secrets`/vault. Sotto sandbox diventa irrilevante | nessuna azione |
 | **CRM / dati** (`contacts.db`, `data/aziende.yaml`) | nessun verbo `contacts.*`/`data.*` | wrappare come tool gateway (read-only, RBAC) |
 | **Tool non ancora wrappati**: `markdown_pdf`, `slide_renderer`, `web_render`, `search`, `image_caption`, `linkedin`, `aruba_fattura`, `firma_client`, `sedia_client`, `aws_invoicing` | oggi **vietati via bash** (denylist) e **senza equivalente MCP** → buco transitorio già noto (F1.5) | wrapping MCP incrementale per frequenza d'uso |
 | **`claude-home`/`codex-home`** | contengono l'auth del provider per far girare l'SDK | **iniettare effimeri** per-sessione nel sandbox, non montare dalla datadir |
 
 ## Prossimi passi
 
-1. Chiudere i gap dell'audit (wrapping dei tool mancanti + `fs.list_dir` scoping + CRM verb).
-2. **M3** — sandbox launcher: il subprocess parte con bind-mount del solo spawn + token + egress-gateway.
-3. Minter isolato + volume split (`secrets`/vault fuori dalla portata del runtime).
-4. Collasso del path REST UI duplicato → webapp/PWA come client puri del gateway.
+1. ✅ **Hardening M-sudo** (fatto 2026-07-20): rimosso il fallback legacy non-firmato in `sudo.active()` → scrivere a mano lo store dei grant non concede più sudo (serve capability firmata dalla CA). Difesa in profondità verso la sandbox.
+2. ✅ **`fs.list_dir`** (verificato): già contenuto (root `/clodia`, path-check) → nessuna azione.
+3. Wrapping dei tool mancanti (CRM/dati + `markdown_pdf`/`slide_renderer`/`web_render`/…) — completa la copertura per il modello `/proc`-only.
+4. **M3** — sandbox launcher: il subprocess parte con bind-mount del solo spawn + token + egress-gateway; home SDK iniettate effimere.
+5. Minter isolato + volume split (`secrets`/vault fuori dalla portata del runtime).
+6. Collasso del path REST UI duplicato → webapp/PWA come client puri del gateway.
