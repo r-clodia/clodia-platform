@@ -11,6 +11,51 @@ Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionament
 
 ---
 
+## [6.3] — 2026-07-20
+
+Release di **sicurezza & governance**: l'RBAC passa da *convenzione* a *confine
+reale*, dal gateway come unico punto di autorizzazione (umani e agenti, UI e
+agentico) fino al contenimento del runtime degli agenti. ~74 commit sui quattro
+moduli. La sicurezza-pack (security-auditor + install-pack) è rinviata a v6.4.
+
+### 🔐 M-sudo — least-privilege + escalation
+- Rimosso il bypass "super" sull'accesso ai topic; **compartimentazione** `topic.*` (fix confused-deputy).
+- `add/remove_participant` = azione **sudo** (chiude auto-invito cross-topic).
+- Propagazione del **principal umano** del turno al gateway (Claude SDK).
+- Gruppo **sudoer** + grant admin; flusso **request → popup owner → approva**.
+- Grant sudo = **capability-token firmata dalla CA** (`ccap1`), revocabile; verifica firma+scadenza+jti a ogni op; rimosso il fallback non-firmato.
+
+### 🛂 M-authz — RBAC unica per agenti e umani ⚠️
+- Il **gateway diventa il PDP unico**: claim firmati `on_behalf`/`human_role`, facade `/internal/tool`+`/internal/authorize`; RBAC identica per agente/umano e UI/agentico.
+- Enforcement su **tutti** gli endpoint privilegiati REST (packs/providers/agents/workflows/plugins) — chiusa la Broken Access Control (un non-admin/anonimo poteva terraformare).
+- `/tools/*` (integrations/credenziali/backup) → **admin-only** (chiuso il buco della rimozione MCP).
+- **topic status/archive → owner-only**; **jobs con owner** e azioni owner-only.
+
+### 🧱 M3 — contenimento del runtime (perms-based)
+- Il subprocess dell'agente gira **non-root** (wrapper `setpriv`): il suo bash NON legge i segreti root-only (ca.key/identity.key/vault).
+- **uid unico per-spawn** (isola l'istanza) + **gid per-seed** (famiglia); scratch `700`.
+- `secrets/` e `clodia-vault/` → **700** (root-only). Sandbox **ON di default** sui cloni.
+
+### 📦 Struttura pack + seed (M0–M2)
+- **base-pack** come pack vero, **non rimuovibile**; seed nativi + costituzioni come preamboli.
+- Placeholder pack di terzi + **licenze/DPA** (API + badge FE).
+- **janitor** → navigator WebUI (`goto`); **sysadmin** → remit ristretto; tool **`logs.tail`**.
+
+### 🖥️ UI
+- Gating dei widget privilegiati **per ruolo** (defense-in-depth): sezioni sidebar, rimuovi-MCP, import/delete pack, provider, nuovo agente, azioni job/topic per-owner.
+- Fix sidebar (collasso/troncamento), colonna destra topic full-height+ridimensionabile, "sta scrivendo" nel widget, etichetta versione, toggle archiviati.
+
+### 🩹 Fix
+- Provider `aws-region-eu`: default **Sonnet** corretto (`eu.anthropic.claude-sonnet-4-6`).
+- **Clearance** clodia/ophelia (erano assenti → bloccate): tetto SEAL-3 + **effettiva = min(tetto agente, SEAL provider)** — dinamica sul provider.
+- **clodia non si intrufola più nei DM** (i DM non prendono i partecipanti di default).
+- **Igiene output** (costituzione, principio 5): nessun ragionamento/istruzioni nel corpo del messaggio.
+
+### 📄 Docs
+CHANGELOG centrale, ROADMAP, `architecture.md` (invariante gateway PDP/PEP + perimetri + audit tool), `m3-sandbox.md`.
+
+---
+
 ## [6.2] — 2026-07-18
 
 Release ricostruita dai ~212 commit `v6.1..v6.2` sui quattro moduli e sintetizzata come singolo prodotto.

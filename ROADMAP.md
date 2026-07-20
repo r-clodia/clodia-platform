@@ -9,8 +9,11 @@ stato di ogni milestone. Il lavoro già rilasciato vive nel CHANGELOG; qui c'è
 solo ciò che è *in corso* o *da fare*. Convenzione stato: ✅ fatto · 🚧 in corso ·
 ⏳ da fare.
 
-> Stato repo alla stesura: tutti e quattro i moduli sono a **v6.2**. La **v6.3**
-> non è ancora rilasciata (nessun tag). Ultima verifica: 2026-07-20.
+> Stato: **v6.3 rilasciata** il 2026-07-20 (tag coordinato sui quattro moduli) —
+> release di sicurezza & governance (M-sudo, M-authz, contenimento runtime M3,
+> struttura pack M0–M2 + fix). Vedi [CHANGELOG.md](CHANGELOG.md).
+> **Prossimo obiettivo: v6.4** — sicurezza-pack (security-auditor + install-pack)
+> + rifiniture M3 (minter isolato / `/proc` pieno).
 
 ---
 
@@ -72,14 +75,16 @@ agenti E umani.
 > senza regressioni. **workflows start/cancel/delete** resi admin-only: decisione
 > di policy rivedibile.
 
-### Sicurezza dei pack — blocco ancora da fare
+---
+
+## v6.4 — Sicurezza dei pack (prossima)
 
 | # | Milestone | Contenuto | Stato |
 |---|-----------|-----------|-------|
-| **M3** | sandbox-runner | Runner sandboxed sull'host per l'auditor (decisione **runc vs gVisor** — a discrezione di Clodia). | ⏳ |
-| **M4** | security-auditor | Nuovo **agent-seed `security-auditor`** in sandbox: **nessun** tool read/write, rete **solo** verso fonti whitelisted. Fa code-review / security-review di skill e MCP di un pack. | ⏳ |
-| **M5** | install pack sicuro | Flusso di installazione: **gate bloccante** dell'auditor + **override owner** + **chat interattiva** col sysadmin. I pack possono portare **provider** di inferenza (con adapter-code, auditato). | ⏳ |
-| **M6** | release | Rilascio + **tag v6.3** coordinato sui quattro moduli + sezione CHANGELOG. | ⏳ |
+| **M3+** | contenimento runtime | Core **fatto in v6.3** (subprocess non-root, uid per-spawn/gid per-seed, segreti root-only). Restano: **minter isolato** (le chiavi fuori dal container agenti) e **`/proc` pieno** (datadir root-only tranne lo spawn). | 🚧 |
+| **M4** | security-auditor | Nuovo **agent-seed `security-auditor`** sandboxed: **nessun** tool read/write, rete **solo** verso fonti whitelisted. Code-review / security-review di skill e MCP di un pack. | ⏳ |
+| **M5** | install pack sicuro | Flusso: **gate bloccante** dell'auditor + **override owner** + **chat interattiva** col sysadmin. I pack possono portare **provider** (adapter-code, auditato). | ⏳ |
+| **M6** | release | Rilascio + **tag v6.4** coordinato + sezione CHANGELOG. | ⏳ |
 
 ---
 
