@@ -98,6 +98,11 @@ if [ -f "$AS_DIR/server/colony/pki.py" ]; then
     ( cd "$AS_DIR" && CLODIA_DATA=/datadir python3 -m server.colony.pki init-ca 2>/dev/null \
         && CLODIA_DATA=/datadir python3 -m server.colony.pki issue-all 2>/dev/null ) \
         || echo "[entrypoint] WARN: bootstrap PKI saltato"
+    # Hardening perms (M3): segreti e vault leggibili SOLO da root. Il subprocess
+    # dell'agente gira non-root (sandbox) → non li legge. Idempotente.
+    for d in /datadir/secrets /datadir/clodia-vault; do
+        [ -d "$d" ] && chmod 700 "$d" 2>/dev/null || true
+    done
 fi
 
 echo "[entrypoint] Avvio: $*"

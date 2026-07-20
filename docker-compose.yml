@@ -34,6 +34,12 @@ services:
       # Per i repo pubblici lascialo vuoto.
       GIT_TOKEN: ${GIT_TOKEN:-}
       SERVER_HOST: "0.0.0.0"
+      # Contenimento runtime (M3): il subprocess dell'agente gira NON-root, con
+      # uid unico per-spawn (base del pool) e gid per-seed → non legge i segreti
+      # root-only. ON di default (secure by default), overridabile. Il gateway
+      # ignora queste var. Vuoto in UID = OFF.
+      CLODIA_AGENT_SANDBOX_UID: "${CLODIA_AGENT_SANDBOX_UID:-60000}"
+      CLODIA_AGENT_SANDBOX_KINDS: "${CLODIA_AGENT_SANDBOX_KINDS:-*}"
     volumes:
       - ./entrypoint.sh:/entrypoint.sh:ro
       - ${CLODIA_DATA}:/datadir
