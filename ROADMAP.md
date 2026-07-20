@@ -60,6 +60,8 @@ agenti E umani.
 | Verificato | admin→consentito, non-admin→negato, anonimo→401, letture invariate, admin NON lockato (webui allega il token, nessuna modifica FE) | ✅ |
 | Convergenza "pura A" | far sparire il path REST duplicato spostando l'esecuzione sui tool gateway dove non c'è divergenza di orchestrazione | ⏳ |
 | Copertura residua | audit degli altri router mutanti minori (profile, connectors[già admin], settings) | ⏳ |
+| Integrations admin-only | `/tools/*` (gestione MCP/credenziali/backup) era aperto se `CLODIA_TOOLS_UI_TOKEN` assente → un non-admin ha rimosso l'MCP 'sedia'; ora richiede admin (ckt1 + ruolo) | ✅ |
+| Topic owner-only | cambio stato/archiviazione di un topic ristretto all'**owner** (o admin) — prima un partecipante non-owner poteva; sibling `set_participant` webui-side ancora da gatare | ✅ |
 
 > Nota di scope: consegnato il **PDP unico** (una sola RBAC decide per agenti e
 > umani) con enforcement su tutti gli endpoint privilegiati noti. La "purezza A"
