@@ -11,6 +11,27 @@ Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionament
 
 ---
 
+## [6.4-rc0] — 2026-07-21
+
+**Release candidate.** Runtime **keyless** + gateway **trust-anchor** + document
+store per-seed. Il contenimento M3++ (volume-split) è **validato end-to-end su
+testbed** (`clodia-test`); la migrazione in produzione (personal) è il passo
+successivo. Tag RC come punto di ripristino prima della migrazione.
+
+### 🔑 Runtime keyless + gateway trust-anchor
+- **Minting** dei token di sessione (`ckt1`) e delle capability (`ccap1`) spostato nel **gateway** (`/internal/mint`), autenticato dal **secret di bootstrap** `CLODIA_ORCHESTRATOR_SECRET` (non ckt1: sarebbe circolare). L'orchestrator **delega** con cache per-identità e fallback locale (rollout reversibile via flag).
+- **Issuance** certificati (enrollment umani/agenti) e **PKI bootstrap** (`init-ca` + `issue-all`) spostati nel gateway, unico detentore di CA key e identity key. `entrypoint`: in modalità keyless agent-server **salta** la PKI bootstrap (evita CA divergente nel volume runtime).
+- `child_env` degli spawn: **strip** di `CLODIA_ORCHESTRATOR_SECRET` e `GIT_TOKEN` (un agent via bash non li legge).
+
+### 📦 Contenimento M3++ — volume-split ⚠️
+- Topologia **two-dir**: `runtime` (condiviso agent-server↔gateway) vs `sensitive` (solo-gateway: `topics`/`secrets`/`clodia-vault`). agent-server **non monta più** i dati sensibili → bash dell'agente contenuta a livello filesystem. `pki/` (certi pubblici) resta in runtime. Validato su testbed; **personal pending**.
+
+### 🗂️ Document store per-seed + trasferimento file
+- `memory.put_document`/`read_document`/`get_document`/`list_documents`/`delete_document`: libreria **persistente per-seed** (`agents/<seed>/files/`, cap 25MB), caricata **on-demand**.
+- `topic.read_file`/`write_file` **rifiutano** payload binari >128KB e indirizzano a `topic.fetch`/`topic.put` (byte via scratch, fuori dal modello). Nuovo **principio 6** in costituzione.
+
+---
+
 ## [6.3] — 2026-07-20
 
 Release di **sicurezza & governance**: l'RBAC passa da *convenzione* a *confine
