@@ -94,10 +94,18 @@ if [ -f "$AS_DIR/server/colony/pki.py" ]; then
         echo "[entrypoint] datadir non inizializzato -> init-datadir"
         bash /clodia/docker/init-datadir.sh /datadir || echo "[entrypoint] WARN: init-datadir fallito"
     fi
-    echo "[entrypoint] bootstrap PKI (idempotente)..."
-    ( cd "$AS_DIR" && CLODIA_DATA=/datadir python3 -m server.colony.pki init-ca 2>/dev/null \
-        && CLODIA_DATA=/datadir python3 -m server.colony.pki issue-all 2>/dev/null ) \
-        || echo "[entrypoint] WARN: bootstrap PKI saltato"
+    if [ -n "${CLODIA_ORCHESTRATOR_SECRET:-}" ]; then
+        # Runtime KEYLESS (M3++): le chiavi private vivono nel gateway, non qui.
+        # La bootstrap PKI (init-ca/issue-all) è responsabilità del trust-anchor
+        # (il gateway la fa nel suo lifespan). Qui la saltiamo per non forgiare
+        # una CA divergente nel volume runtime.
+        echo "[entrypoint] runtime keyless -> PKI bootstrap delegata al gateway (skip)"
+    else
+        echo "[entrypoint] bootstrap PKI (idempotente)..."
+        ( cd "$AS_DIR" && CLODIA_DATA=/datadir python3 -m server.colony.pki init-ca 2>/dev/null \
+            && CLODIA_DATA=/datadir python3 -m server.colony.pki issue-all 2>/dev/null ) \
+            || echo "[entrypoint] WARN: bootstrap PKI saltato"
+    fi
     # Hardening perms (M3): segreti e vault leggibili SOLO da root. Il subprocess
     # dell'agente gira non-root (sandbox) → non li legge. Idempotente.
     for d in /datadir/secrets /datadir/clodia-vault; do
