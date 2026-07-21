@@ -77,11 +77,22 @@ agenti E umani.
 
 ---
 
-## v6.4 — Sicurezza dei pack (prossima)
+## v6.4 — Runtime senza stato + sicurezza dei pack (prossima)
+
+**Modello target del runtime** (deciso 2026-07-21): l'**agent-server** non monta
+più `/datadir`; monta **solo un volume effimero** per gli spawn. `/datadir`
+(persistente) lo monta il **gateway**. Gli **agent seed** sono **solo contenuto
+di pack** (niente creazione a runtime — già enforced in v6.3.1-fix): quindi non
+esiste def di agente user-generated da persistere. L'orchestrator, per creare uno
+spawn, **fetcha il seed dal gateway** e lo materializza nel volume effimero; le
+**memorie** dei seed persistono in `/datadir` e si leggono/scrivono via `memory.*`.
+Risultato: agent-server = **runtime senza stato**, gateway = **unico data-plane**,
+chiavi **fisicamente assenti** dal container degli agenti (minting al gateway).
 
 | # | Milestone | Contenuto | Stato |
 |---|-----------|-----------|-------|
-| **M3+** | contenimento runtime | Core **fatto in v6.3** (subprocess non-root, uid per-spawn/gid per-seed, segreti root-only). Restano: **minter isolato** (le chiavi fuori dal container agenti) e **`/proc` pieno** (datadir root-only tranne lo spawn). | 🚧 |
+| **seed-only-via-pack** | fondazione | `create_agent` ammette solo `type=human`; agenti AI solo via import di pack. UI "+ Nuovo utente". | ✅ (fatto) |
+| **M3++** | runtime senza stato | agent-server monta **solo** volume effimero spawn; `/datadir` solo-gateway; **minting spostato al gateway** (chiavi fuori dal container agenti); orchestrator **fetcha il seed dal gateway**; memorie via `memory.*`. Niente container-per-spawn (latenza). | ⏳ |
 | **M4** | security-auditor | Nuovo **agent-seed `security-auditor`** sandboxed: **nessun** tool read/write, rete **solo** verso fonti whitelisted. Code-review / security-review di skill e MCP di un pack. | ⏳ |
 | **M5** | install pack sicuro | Flusso: **gate bloccante** dell'auditor + **override owner** + **chat interattiva** col sysadmin. I pack possono portare **provider** (adapter-code, auditato). | ⏳ |
 | **M6** | release | Rilascio + **tag v6.4** coordinato + sezione CHANGELOG. | ⏳ |
