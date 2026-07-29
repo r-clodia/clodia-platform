@@ -43,6 +43,7 @@ services:
       # Router semantico — tuning soglie (issue clodia-logic#150)
       RESPONDER_ROUTING_THRESHOLD: "${RESPONDER_ROUTING_THRESHOLD:-0.75}"
       RESPONDER_ROUTING_MARGIN: "${RESPONDER_ROUTING_MARGIN:-0.04}"
+      RESPONDER_FALLBACK_SOFT_RATIO: "${RESPONDER_FALLBACK_SOFT_RATIO:-0.87}"
     volumes:
       - ./entrypoint.sh:/entrypoint.sh:ro
       - ${CLODIA_DATA}:/datadir
