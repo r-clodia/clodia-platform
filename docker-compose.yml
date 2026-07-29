@@ -40,6 +40,9 @@ services:
       # ignora queste var. Vuoto in UID = OFF.
       CLODIA_AGENT_SANDBOX_UID: "${CLODIA_AGENT_SANDBOX_UID:-60000}"
       CLODIA_AGENT_SANDBOX_KINDS: "${CLODIA_AGENT_SANDBOX_KINDS:-*}"
+      # Router semantico — tuning soglie (issue clodia-logic#150)
+      RESPONDER_ROUTING_THRESHOLD: "${RESPONDER_ROUTING_THRESHOLD:-0.75}"
+      RESPONDER_ROUTING_MARGIN: "${RESPONDER_ROUTING_MARGIN:-0.04}"
     volumes:
       - ./entrypoint.sh:/entrypoint.sh:ro
       - ${CLODIA_DATA}:/datadir
