@@ -11,6 +11,85 @@ Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionament
 
 ---
 
+## [7.0] — 2026-07-29
+
+Primo **major** dopo la linea 6.x. Il salto è trainato dalla **ristrutturazione
+dei topic (meta v2)** e dal **modello Drive come storage live** — entrambi
+**breaking** sul formato/contratto dei topic, con migrazione dati inclusa.
+Consolida inoltre il ciclo di **governance** (M-gate + deleghe + Chat Hooks),
+il **routing multi-agente**, la **gestione dei pack** (update da GitHub, diete e
+capability per ruolo) e la nuova identità **Clodia Colony**. Include il
+contenimento keyless/M3++ già in rc0, ora in produzione (personal).
+
+### 🗂️ Topic meta v2 ⚠️ (trigger major)
+- Schema `meta.json` **v2**: `schema_version`, `status` e `deadline` espliciti e
+  normalizzati; vocabolario status coerente su backend/UI. Migrazione con
+  **backup** pre-flight; `minutes/` non più negli snapshot (spostate in
+  `.migrated-from-v1/`, recuperabili). Migrati 153 topic in produzione, 0 errori.
+- **Read-path tollerante**: un `meta` legacy non conforme viene **coerciato**
+  (status→`active`, deadline→`null`), mai un errore — un topic non diventa più
+  invisibile/non-apribile. La validazione stretta resta ai soli endpoint di
+  scrittura `set_status`/`set_deadline`.
+- `files/AGENTS.md` come **boot-instructions** del topic, iniettato però come
+  materiale **non autorevole** (framing anti prompt-injection) e con **cap** di
+  dimensione. Controlli status/deadline (owner-only) nella sidebar del topic.
+
+### 📁 Drive = source of truth del topic ⚠️
+- Collegare un topic a una cartella Drive rende **Drive la fonte**: nessun
+  upload dei file locali, navigazione diretta del remoto; l'editing di un agente
+  passa da uno **scratch** (download→modifica→re-upload), mai dal topic-fs.
+  Rimosso l'apparato di migrazione/clear (era la causa di un loop di upload che
+  saturava il gateway). Guardia anti-nascondimento + cap SEAL. `remote_disable`
+  materializza Drive→locale.
+- `topic.read_file`/`write_file` rifiutano binari >128KB → `topic.fetch`/`put`.
+- ZIP **download-all** dei file di un topic (streaming, cap 500MB).
+
+### 🔐 Governance: M-gate + deleghe + Chat Hooks
+- **M-gate**: consenso umano per-uso sui soli verbi **mutanti** (letture libere),
+  RBAC-scoped (`gate:<verb>`), block-and-wait sulla tool-call; card di
+  approvazione **inline** nella chat. Eliminato il sottosistema **sudo** legacy
+  (cross-topic unificato nel gate).
+- **Deleghe firmate** (verifica CA + `covers`), store permanente, endpoint
+  register/list/revoke, finestra d'attesa async (~2h) con notifica sui canali di
+  contatto del principal.
+- **Chat Hooks** F1–F3: un hook per topic (create-or-regenerate), ingress
+  webhook con **firma CA**, **audit-log** e **rate-limit** per-minuto; pannello
+  owner-only in webui.
+
+### 🧭 Routing dei canali
+- **Alias** di canale instance-wide (`$alias` → prompt completo).
+- **Routing multi-intent**: decomposizione in sotto-task e fan-out ai
+  specialisti pertinenti, con **cap** anti-amplificazione (embed bloccante) e
+  filtro d'idoneità (clearance/SEAL, partecipanti) prima dello scoring.
+- **Feedback di routing** in UI (conferma/correzione dell'agente scelto) e
+  tuning delle soglie del router semantico (threshold/margin/soft-ratio).
+
+### 📦 Pack & agenti
+- **Check update / Update da GitHub** (upstream) dei pack first-party: replace +
+  restart agenti; flag `setup_pending` + "Finish setup".
+- **base-pack a dieta**: primitivi di piattaforma separati da editoriale
+  (`editorial-pack`) e comms/supporto (`comms-pack`); capability dei seed
+  **per ruolo** (basta wildcard grab-bag) con **migrazione datadir** idempotente
+  per i deployment esistenti. Consolidati janitor+sysadmin in un unico steward
+  `sysadmin`; nuovo seed `segretario`; `messaggero` con `check-email`/reconcile.
+- Skill **`adversarial-code-review`** (security-engineer). **Auto-mount MCP** dei
+  plugin solo da fonti **trusted** (update first-party); gli import esterni
+  restano opt-in (pending) — barriera Prima Legge. `rag_collections` dichiarate
+  dal pack.
+- Forward degli **embedded text resource** MCP dal gateway; pin `mcp<2`.
+
+### 🔑 Clearance & contenimento
+- **SEAL effettiva** di un agente = SEAL del **provider** che usa (non quella
+  dichiarata nel seed), regola **uniforme per tutti** (super inclusi).
+- Consolidato il runtime **keyless** + gateway trust-anchor e il volume-split
+  M3++ (già in 6.4-rc0), ora in produzione sul personal.
+
+### 🎨 Branding
+- Identità **Clodia Colony** su web e PWA (asset dalla sorgente canonica
+  approvata); rimosso il widget helpdesk flottante.
+
+---
+
 ## [6.4-rc0] — 2026-07-21
 
 **Release candidate.** Runtime **keyless** + gateway **trust-anchor** + document
