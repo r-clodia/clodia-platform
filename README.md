@@ -13,6 +13,37 @@ un modello di permessi per-agente. Pensata per chi vuole l'automazione agentica
 
 ---
 
+## ⚠️ Prima di installare — leggi questo
+
+Clodia Platform è distribuito **"COSÌ COM'È" (AS-IS), senza alcuna garanzia**, e
+**lo installi ed esegui a tuo rischio e pericolo**. Il progetto è in sviluppo
+attivo: contiene difetti noti, alcuni con impatto sulla sicurezza.
+
+**Passo obbligatorio prima del deploy — leggi i difetti noti:**
+
+1. **[Issue aperte con label `security`](https://github.com/r-clodia/clodia-platform/issues?q=is%3Aissue+is%3Aopen+label%3Asecurity)** — difetti di sicurezza noti e non ancora risolti.
+2. **[Tutte le issue aperte](https://github.com/r-clodia/clodia-platform/issues?q=is%3Aissue+is%3Aopen)** — limiti funzionali e bug noti.
+3. **[`SECURITY.md`](SECURITY.md)** — stato dei controlli tecnici, controllo per controllo, e clausola as-is completa.
+
+I difetti noti sono tracciati **pubblicamente e in chiaro**: la loro assenza da
+questo README non significa che non esistano — significa che devi guardare nel
+tracker. Valuta ogni issue aperta rispetto al *tuo* modello di rischio prima di
+mettere il sistema in produzione o di affidargli dati di terzi.
+
+**Limite corrente da conoscere subito:** la piattaforma è, di fatto,
+**mono-utente**. Le credenziali dei connettori esterni (Google, email, e ogni
+altra integrazione nel vault) sono identità **a livello di piattaforma**: un
+secondo utente umano, pur privo di grant sui topic altrui, può ottenere per il
+tramite di un agente autorizzato l'accesso ai dati esterni raggiungibili con
+quelle credenziali. Vedi
+**[#68](https://github.com/r-clodia/clodia-platform/issues/68)**. Non aggiungere
+utenti umani a un'istanza con connettori attivi finché non è risolta.
+
+Se questo modello di rischio non è accettabile nel tuo contesto, **non usare il
+software in produzione** senza una valutazione di sicurezza indipendente.
+
+---
+
 ## Quickstart (Docker, build-from-source)
 
 Requisiti: Docker + Docker Compose, `git`, e una `ANTHROPIC_API_KEY` (oppure un
@@ -53,6 +84,11 @@ contengono dati: sono clonabili e usa-e-getta.
 - **Gateway come reference monitor**: ogni agente vede solo i tool nella sua
   whitelist; i super-agent hanno accesso pieno.
 - **Identità con PKI**: ogni agente ha un certificato firmato dalla CA locale.
+
+> Questi sono i controlli **implementati**, non un livello di assurance
+> certificato: non c'è stato audit indipendente né penetration test. Lo stato
+> reale controllo-per-controllo è in [`SECURITY.md`](SECURITY.md), i difetti
+> aperti nel [tracker](https://github.com/r-clodia/clodia-platform/issues?q=is%3Aissue+is%3Aopen+label%3Asecurity).
 
 ## Vuoi questa piattaforma nella tua organizzazione?
 
