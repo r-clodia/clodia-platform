@@ -1,6 +1,6 @@
 # Security posture — Clodia Platform
 
-**Ultimo aggiornamento:** 2026-07-13
+**Ultimo aggiornamento:** 2026-07-30
 **Valutazione ancorata ai commit:** `clodia-logic@fde43ea` · `clodia-tools@ccdee04` · `clodia-web@333117c` · `clodia-pwa@e55eba6`
 
 Questo documento descrive lo **stato corrente dei controlli tecnici di sicurezza**
@@ -27,6 +27,12 @@ licenza del progetto (**GNU AGPL v3**, sezioni 15–17; vedi [`LICENSE`](LICENSE
 - I controlli qui elencati come `OK` sono implementati **ma non sono stati
   sottoposti ad audit indipendente né a penetration test**. Uno stato `OK` indica
   presenza del controllo nel codice, non un livello di assurance certificato.
+- **I difetti noti sono tracciati pubblicamente.** Prima di installare o
+  aggiornare, è tuo onere leggere le
+  [issue aperte con label `security`](https://github.com/r-clodia/clodia-platform/issues?q=is%3Aissue+is%3Aopen+label%3Asecurity)
+  e le [issue aperte](https://github.com/r-clodia/clodia-platform/issues?q=is%3Aissue+is%3Aopen)
+  in generale, e valutarle rispetto al tuo modello di rischio. Questo documento
+  fotografa i controlli; il tracker elenca ciò che è rotto.
 - **Nessuna certificazione ISO 27001**: ISO 27001 certifica l'ISMS di
   un'organizzazione, non un prodotto software. Questa tabella serve a *abilitare*
   i controlli tecnici per chi deploya, fornendo evidenza, non ad attestare
@@ -49,6 +55,29 @@ Questo documento copre **solo i controlli tecnologici (Annex A, Tema 8)**.
 
 ---
 
+## Limite di progetto: istanza mono-utente
+
+Allo stato attuale la piattaforma va deployata come **istanza a utente singolo**.
+Il controllo accessi interno (clearance + appartenenza al topic) regge sul
+*proprio* asse, ma **non si estende ai dati esterni** raggiunti tramite i
+connettori: le credenziali delle integrazioni (Google/Drive/Gmail, e ogni altra
+credenziale nel vault) sono **identità a livello di piattaforma**, non della
+persona. Un secondo utente umano — autenticato regolarmente e privo di grant sui
+topic altrui — può quindi ottenere, per il tramite di un agente che detiene il
+grant sul connettore, l'accesso ai dati esterni condivisi con quell'account.
+
+Difetto tracciato in
+**[#68](https://github.com/r-clodia/clodia-platform/issues/68)** (design gap, non
+regressione). Fino alla remediation:
+
+- non aggiungere utenti umani a un'istanza con connettori esterni attivi;
+- non condividere con un account di piattaforma contenuti che non siano
+  destinati a **tutti** gli utenti dell'istanza;
+- tratta l'onboarding di un secondo utente umano come un cambiamento con impatto
+  di sicurezza, non come operazione di routine.
+
+---
+
 ## Controlli tecnici (ISO/IEC 27001:2022, Annex A — Tema 8)
 
 **Legenda stato:** `OK` implementato · `PARZ` parziale · `PLAN` pianificato ·
@@ -59,7 +88,7 @@ Questo documento copre **solo i controlli tecnologici (Annex A, Tema 8)**.
 |---|-----------|:-----:|------|
 | 8.1 | Dispositivi endpoint | OK | Container isolati; hardening dell'host = deployer |
 | 8.2 | Accessi privilegiati | PARZ | Keystore DENY-default; super-agent bypassa la whitelist senza justification-trail né time-limit; rank model non enforced |
-| 8.3 | Restrizione accesso alle informazioni | OK | Tiering SEAL-0..4 + appartenenza al topic + clearance firmata nel token di sessione |
+| 8.3 | Restrizione accesso alle informazioni | PARZ | Tiering SEAL-0..4 + appartenenza al topic + clearance firmata nel token di sessione; **le credenziali dei connettori sono identità di piattaforma → i dati esterni sfuggono a questi assi** ([#68](https://github.com/r-clodia/clodia-platform/issues/68)), nessuno scoping per oggetto sul servizio remoto |
 | 8.4 | Accesso al codice sorgente | PARZ | Keystore broker per `git_push` (fast-forward, i non-super non possono spingere su branch protetti); manca branch-protection su `main` |
 | 8.5 | Autenticazione sicura | PARZ | Token di sessione firmati Ed25519; nessun MFA umano, nessun rate-limit sul login; UI del gateway aperta se `CLODIA_TOOLS_UI_TOKEN` non è impostato |
 | 8.6 | Gestione della capacità | PLAN | Nessun limite di risorse per container, nessun monitoraggio disco/RAM |
@@ -71,7 +100,7 @@ Questo documento copre **solo i controlli tecnologici (Annex A, Tema 8)**.
 | 8.12 | Prevenzione della fuga di dati | PARZ | `.dockerignore` esclude segreti/dati/topic; cap SEAL per canale; ACL di appartenenza; segreti mai passati al modello; manca hard-block dei dati sensibili verso provider a sovranità inferiore in lettura file |
 | 8.13 | Backup | OK | Restic cifrato lato client → object storage; snapshot SQLite consistente; retention; restore-test automatico |
 | 8.14 | Ridondanza | N/A | Design single-node; il requisito di disponibilità è una scelta del deployer; il disaster-recovery passa dal backup |
-| 8.15 | Logging | PARZ | Audit delle operazioni (`colony.events`) + activity log + Langfuse opzionale; manca un log dedicato agli eventi di sicurezza e un sink centralizzato |
+| 8.15 | Logging | PARZ | Audit delle operazioni (`colony.events`) + activity log + Langfuse opzionale; manca un log dedicato agli eventi di sicurezza e un sink centralizzato; **le azioni verso l'esterno non sono attribuibili all'umano mandante** ([#68](https://github.com/r-clodia/clodia-platform/issues/68)) |
 | 8.16 | Monitoraggio | PARZ | Pagina attività agenti + introspezione runtime + heartbeat; nessun alerting/soglia automatica |
 | 8.17 | Sincronizzazione degli orologi | PARZ | Timestamp interni in UTC; scheduler in fuso locale; nessun `TZ` esplicito nei container, nessun healthcheck di clock-skew |
 | 8.18 | Uso di utility privilegiate | OK | CLI PKI non esposta via API; keystore come broker; immutabilità dei super-agent |
@@ -92,17 +121,30 @@ Questo documento copre **solo i controlli tecnologici (Annex A, Tema 8)**.
 | 8.33 | Informazioni di test | N/A | Il prodotto non contiene dati di produzione/PII usati per i test |
 | 8.34 | Protezione dei sistemi in fase di audit | N/A | Audit su sistemi operativi live = responsabilità del deployer |
 
-**Sintesi Tema 8 (34 controlli):** 6 `OK` · 21 `PARZ` · 2 `PLAN` · 5 `N/A`
-(29 applicabili). Aree calde attuali: **8.24** (cifratura del vault a riposo +
-TLS inter-container), **8.9/8.32** (drift della configurazione), **8.29/8.8**
-(test e scanning delle vulnerabilità fuori dalla CI).
+**Sintesi Tema 8 (34 controlli):** 5 `OK` · 22 `PARZ` · 2 `PLAN` · 5 `N/A`
+(29 applicabili). Aree calde attuali: **8.3/8.15** (identità di piattaforma dei
+connettori: il controllo accessi non copre i dati esterni e le azioni esterne non
+sono attribuibili — blocca il multi-utente, [#68](https://github.com/r-clodia/clodia-platform/issues/68)),
+**8.24** (cifratura del vault a riposo + TLS inter-container), **8.9/8.32**
+(drift della configurazione), **8.29/8.8** (test e scanning delle vulnerabilità
+fuori dalla CI).
 
 ---
 
 ## Segnalare una vulnerabilità
 
-Se individui una vulnerabilità, **non aprire una issue pubblica**. Scrivi in
-privato a **Davide Carboni — dcarboni@gmail.com** con una descrizione del
-problema e i passi per riprodurlo. Faremo del nostro meglio per rispondere, ma —
-coerentemente con la clausola as-is qui sopra — **nessun SLA di risposta o di
-remediation è garantito**.
+Il progetto pratica la **divulgazione pubblica** dei propri difetti: i limiti
+noti, anche quelli con impatto sulla sicurezza, stanno nel
+[tracker pubblico](https://github.com/r-clodia/clodia-platform/issues?q=is%3Aissue+is%3Aopen+label%3Asecurity)
+in chiaro, perché chi deploya deve poterli valutare **prima** di installare. Un
+elenco onesto di ciò che è rotto vale più di un'assenza di notizie.
+
+- **Difetti di progetto e limiti architetturali** → apri una **issue pubblica**
+  con label `security`.
+- **Vulnerabilità sfruttabile con exploit funzionante** (specie se riguarda
+  istanze già deployate di terzi) → scrivi in privato a **Davide Carboni —
+  dcarboni@gmail.com**, così che la remediation possa precedere il dettaglio
+  operativo. Il difetto verrà comunque reso pubblico dopo il fix.
+
+In entrambi i casi, coerentemente con la clausola as-is qui sopra, **nessun SLA
+di risposta o di remediation è garantito**.
