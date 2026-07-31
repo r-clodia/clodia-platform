@@ -32,6 +32,16 @@ if [ ! -f "$ROOT/.env" ]; then
 fi
 # shellcheck disable=SC1090
 set -a; . "$ROOT/.env"; set +a
+
+# Control-plane agent-server↔gateway: genera una volta un secret non esportato
+# ai subprocess agentici. Necessario anche per il canale file cifrato /shared.
+if [ -z "${CLODIA_ORCHESTRATOR_SECRET:-}" ]; then
+  _clodia_orchestrator_secret="$(openssl rand -hex 32)"
+  sed -i.bak "s/^CLODIA_ORCHESTRATOR_SECRET=.*/CLODIA_ORCHESTRATOR_SECRET=${_clodia_orchestrator_secret}/" "$ROOT/.env"
+  rm -f "$ROOT/.env.bak"
+  export CLODIA_ORCHESTRATOR_SECRET="$_clodia_orchestrator_secret"
+  echo "    generato CLODIA_ORCHESTRATOR_SECRET"
+fi
 mkdir -p "${CLODIA_DATA:-$ROOT/clodia-data}"
 
 echo ""
