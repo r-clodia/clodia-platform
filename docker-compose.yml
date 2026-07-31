@@ -33,6 +33,10 @@ services:
       # Solo se il sorgente è un repo privato (mirror enterprise o pre-release).
       # Per i repo pubblici lascialo vuoto.
       GIT_TOKEN: ${GIT_TOKEN:-}
+      # Secret control-plane condiviso SOLO fra orchestrator e gateway; viene
+      # rimosso dall'env dei subprocess agentici.
+      CLODIA_ORCHESTRATOR_SECRET: ${CLODIA_ORCHESTRATOR_SECRET:?run setup.sh to generate it}
+      CLODIA_SHARED_ROOT: /shared
       SERVER_HOST: "0.0.0.0"
       # Contenimento runtime (M3): il subprocess dell'agente gira NON-root, con
       # uid unico per-spawn (base del pool) e gid per-seed → non legge i segreti
@@ -47,6 +51,7 @@ services:
     volumes:
       - ./entrypoint.sh:/entrypoint.sh:ro
       - ${CLODIA_DATA}:/datadir
+      - clodia-transfer:/shared
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python3", "-c", "import httpx; httpx.get('http://localhost:7842/health', timeout=2)"]
@@ -69,6 +74,7 @@ services:
       CLODIA_VAULT_DIR: /datadir/clodia-vault
     volumes:
       - ${CLODIA_DATA}:/datadir
+      - clodia-transfer:/shared
     restart: unless-stopped
 
   webui:
@@ -87,3 +93,8 @@ services:
       PORT: "5173"
       API_TARGET: "http://agent-server:7842"
     restart: unless-stopped
+
+volumes:
+  # Unico canale byte fra agent-server e gateway. Contiene esclusivamente
+  # envelope cifrati effimeri e la chiave PUBBLICA transfer del gateway.
+  clodia-transfer:
