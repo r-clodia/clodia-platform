@@ -1,5 +1,6 @@
 .env
 repos/
 clodia-data/
+gateway-state/
 *.bak
 .DS_Store
