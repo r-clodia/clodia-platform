@@ -2,6 +2,33 @@
 # Tutti i dati dell'istanza vivono in ${CLODIA_DATA} (datadir). Le immagini si
 # costruiscono dal sorgente: l'agent-server clona clodia-logic a runtime
 # (GIT_REPO), gli altri servizi buildano dai repo clonati in ./repos da setup.sh.
+# Shared environment, anchored at top level so the agent container can add its
+# own egress variables without the gateway inheriting them (#104).
+x-common-env: &common-env
+    CLODIA_DATA: /datadir
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    CLODIA_BASE_EMAIL: ${CLODIA_BASE_EMAIL:-}
+    GIT_REPO: ${GIT_REPO:-r-clodia/clodia-logic}
+    GIT_BRANCH: ${GIT_BRANCH:-main}
+    # Solo se il sorgente è un repo privato (mirror enterprise o pre-release).
+    # Per i repo pubblici lascialo vuoto.
+    GIT_TOKEN: ${GIT_TOKEN:-}
+    # Secret control-plane condiviso SOLO fra orchestrator e gateway; viene
+    # rimosso dall'env dei subprocess agentici.
+    CLODIA_ORCHESTRATOR_SECRET: ${CLODIA_ORCHESTRATOR_SECRET:?run setup.sh to generate it}
+    CLODIA_SHARED_ROOT: /shared
+    SERVER_HOST: "0.0.0.0"
+    # Contenimento runtime (M3): il subprocess dell'agente gira NON-root, con
+    # uid unico per-spawn (base del pool) e gid per-seed → non legge i segreti
+    # root-only. ON di default (secure by default), overridabile. Il gateway
+    # ignora queste var. Vuoto in UID = OFF.
+    CLODIA_AGENT_SANDBOX_UID: "${CLODIA_AGENT_SANDBOX_UID:-60000}"
+    CLODIA_AGENT_SANDBOX_KINDS: "${CLODIA_AGENT_SANDBOX_KINDS:-*}"
+    # Router semantico — tuning soglie (issue clodia-logic#150)
+    RESPONDER_ROUTING_THRESHOLD: "${RESPONDER_ROUTING_THRESHOLD:-0.75}"
+    RESPONDER_ROUTING_MARGIN: "${RESPONDER_ROUTING_MARGIN:-0.04}"
+    RESPONDER_FALLBACK_SOFT_RATIO: "${RESPONDER_FALLBACK_SOFT_RATIO:-0.87}"
+
 services:
 
   # ── Build helpers (catena di immagini base) ────────────────────────────────
@@ -24,34 +51,31 @@ services:
     command: ["sh", "-c", "cd /clodia && python3 -m server.main"]
     ports:
       - "${AGENT_SERVER_PORT:-7842}:7842"
-    environment: &common-env
-      CLODIA_DATA: /datadir
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      CLODIA_BASE_EMAIL: ${CLODIA_BASE_EMAIL:-}
-      GIT_REPO: ${GIT_REPO:-r-clodia/clodia-logic}
-      GIT_BRANCH: ${GIT_BRANCH:-main}
-      # Solo se il sorgente è un repo privato (mirror enterprise o pre-release).
-      # Per i repo pubblici lascialo vuoto.
-      GIT_TOKEN: ${GIT_TOKEN:-}
-      # Secret control-plane condiviso SOLO fra orchestrator e gateway; viene
-      # rimosso dall'env dei subprocess agentici.
-      CLODIA_ORCHESTRATOR_SECRET: ${CLODIA_ORCHESTRATOR_SECRET:?run setup.sh to generate it}
-      CLODIA_SHARED_ROOT: /shared
-      SERVER_HOST: "0.0.0.0"
-      # Contenimento runtime (M3): il subprocess dell'agente gira NON-root, con
-      # uid unico per-spawn (base del pool) e gid per-seed → non legge i segreti
-      # root-only. ON di default (secure by default), overridabile. Il gateway
-      # ignora queste var. Vuoto in UID = OFF.
-      CLODIA_AGENT_SANDBOX_UID: "${CLODIA_AGENT_SANDBOX_UID:-60000}"
-      CLODIA_AGENT_SANDBOX_KINDS: "${CLODIA_AGENT_SANDBOX_KINDS:-*}"
-      # Router semantico — tuning soglie (issue clodia-logic#150)
-      RESPONDER_ROUTING_THRESHOLD: "${RESPONDER_ROUTING_THRESHOLD:-0.75}"
-      RESPONDER_ROUTING_MARGIN: "${RESPONDER_ROUTING_MARGIN:-0.04}"
-      RESPONDER_FALLBACK_SOFT_RATIO: "${RESPONDER_FALLBACK_SOFT_RATIO:-0.87}"
+    environment:
+      <<: *common-env
+      # ── Egress confinement (clodia-platform#104, phase 1) ────────────────
+      # Agent container ONLY — which is why the shared block above moved to a
+      # top-level anchor. The gateway must keep direct egress (Drive, Telegram,
+      # SMTP): if it went through this proxy the mediated verbs would break, and
+      # the agents would lose the only legitimate way to reach anything.
+      #
+      # Empty by default: CLODIA_AGENT_EGRESS_PROXY is what switches the
+      # confinement on, so this file is safe to deploy before the proxy runs.
+      HTTPS_PROXY: ${CLODIA_AGENT_EGRESS_PROXY:-}
+      HTTP_PROXY: ${CLODIA_AGENT_EGRESS_PROXY:-}
+      # Internal traffic must not take the proxy: gateway, loopback healthcheck,
+      # docker service names. Space-separated, per Claude Code docs.
+      NO_PROXY: "localhost 127.0.0.1 clodia-tools webui pwa ${CLODIA_NO_PROXY_EXTRA:-}"
+      # Drops the two Datadog telemetry hosts at the source rather than
+      # allow-listing them: shorter allow-list, less data leaving.
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
     volumes:
       - ./entrypoint.sh:/entrypoint.sh:ro
       - ${CLODIA_DATA}:/datadir
       - clodia-transfer:/shared
+    # ONLY the internal network: the confinement rule targets this subnet, so a
+    # process here has no route out except through the proxy.
+    networks: [clodia-int]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python3", "-c", "import httpx; httpx.get('http://localhost:7842/health', timeout=2)"]
@@ -84,6 +108,21 @@ services:
       # restare nel perimetro di backup/ripristino dell'operatore.
       - ${CLODIA_GATEWAY_STATE:-./gateway-state}:/gateway-state
       - clodia-transfer:/shared
+    # Both networks: the gateway is the mediator and KEEPS direct egress (Drive,
+    # Telegram, SMTP, inference providers). Its traffic leaves through clodia-ext,
+    # which the confinement rule does not touch.
+    networks: [clodia-int, clodia-ext]
+    restart: unless-stopped
+
+  # ── Egress proxy for the agent container (#104 phase 1) ────────────────────
+  # Not published on the host: reachable only from the internal network. It adds
+  # host granularity on top of the network rule; it is not what stops a process
+  # that ignores the proxy variables — that is the firewall rule in
+  # docker/egress/confine-agents.sh. See docker/egress/README.md.
+  egress-proxy:
+    build: { context: ./docker/egress, dockerfile: Dockerfile }
+    image: clodia-egress-proxy
+    networks: [clodia-int, clodia-ext]
     restart: unless-stopped
 
   webui:
@@ -91,6 +130,7 @@ services:
     image: clodia-webui
     ports:
       - "${WEBUI_PORT:-7843}:7843"
+    networks: [clodia-int]
     restart: unless-stopped
 
   pwa:
@@ -98,6 +138,7 @@ services:
     image: clodia-pwa
     ports:
       - "${PWA_PORT:-5173}:5173"
+    networks: [clodia-int]
     environment:
       PORT: "5173"
       API_TARGET: "http://agent-server:7842"
@@ -107,3 +148,25 @@ volumes:
   # Unico canale byte fra agent-server e gateway. Contiene esclusivamente
   # envelope cifrati effimeri e la chiave PUBBLICA transfer del gateway.
   clodia-transfer:
+
+networks:
+  # Fixed subnets on purpose: the confinement rule in
+  # docker/egress/confine-agents.sh matches on the subnet, so it must not change
+  # when the stack is recreated.
+  #
+  # `internal: true` was measured and rejected: it does block egress, but it also
+  # breaks host port publishing, and the API has to stay reachable from the host
+  # for the browser to talk to it. The block therefore lives in the host firewall
+  # and this network stays a normal bridge.
+  clodia-int:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${CLODIA_INT_SUBNET:-172.31.7.0/24}
+  # Egress path for the services that legitimately reach the outside: gateway and
+  # proxy only. Nothing that runs agent code is attached here.
+  clodia-ext:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${CLODIA_EXT_SUBNET:-172.31.8.0/24}
