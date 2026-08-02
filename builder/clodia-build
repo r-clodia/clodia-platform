@@ -148,6 +148,15 @@ def cmd_up(bp_path: Path, target_dir: Path | None, start: bool) -> None:
     print(f"▸ terraformazione '{name}' → {target} (datadir {datadir})")
     target.mkdir(parents=True, exist_ok=True)
     (target / ".vault-mask").mkdir(exist_ok=True)
+    # Stato decisionale del gateway (whitelist/gate/deleghe): directory montata
+    # dal SOLO container clodia-tools, fuori dalla datadir che l'agent-server
+    # vede (issue #80). 0700: leggibile solo dall'owner del deploy.
+    gw_state = target / "gateway-state"
+    gw_state.mkdir(exist_ok=True)
+    try:
+        gw_state.chmod(0o700)
+    except OSError:
+        pass
 
     compose = (TEMPLATES / "docker-compose.yml.tpl").read_text(encoding="utf-8")
     if pwa:
@@ -161,6 +170,7 @@ def cmd_up(bp_path: Path, target_dir: Path | None, start: bool) -> None:
 
     env = [
         f"CLODIA_DATA={datadir}",
+        f"CLODIA_GATEWAY_STATE={gw_state}",
         f"CLODIA_PROJECT={project}",
         f"AGENT_SERVER_PORT={ports['agent_server']}",
         f"TOOLS_PORT={ports['tools']}",

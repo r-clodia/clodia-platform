@@ -87,14 +87,14 @@ regressione). Fino alla remediation:
 | # | Controllo | Stato | Note |
 |---|-----------|:-----:|------|
 | 8.1 | Dispositivi endpoint | OK | Container isolati; hardening dell'host = deployer |
-| 8.2 | Accessi privilegiati | PARZ | Keystore DENY-default; super-agent bypassa la whitelist senza justification-trail né time-limit; rank model non enforced |
+| 8.2 | Accessi privilegiati | PARZ | Keystore DENY-default; super-agent bypassa la whitelist senza justification-trail né time-limit; rank model non enforced; lo **stato che concede i privilegi** (whitelist, consensi del gate, deleghe) vive su un volume del solo gateway, non nel filesystem del piano agenti ([#80](https://github.com/r-clodia/clodia-platform/issues/80)) |
 | 8.3 | Restrizione accesso alle informazioni | PARZ | Tiering SEAL-0..4 + appartenenza al topic + clearance firmata nel token di sessione; **le credenziali dei connettori sono identità di piattaforma → i dati esterni sfuggono a questi assi** ([#68](https://github.com/r-clodia/clodia-platform/issues/68)), nessuno scoping per oggetto sul servizio remoto |
 | 8.4 | Accesso al codice sorgente | PARZ | Keystore broker per `git_push` (fast-forward, i non-super non possono spingere su branch protetti); manca branch-protection su `main` |
 | 8.5 | Autenticazione sicura | PARZ | Token di sessione firmati Ed25519; nessun MFA umano, nessun rate-limit sul login; UI del gateway aperta se `CLODIA_TOOLS_UI_TOKEN` non è impostato |
 | 8.6 | Gestione della capacità | PLAN | Nessun limite di risorse per container, nessun monitoraggio disco/RAM |
 | 8.7 | Protezione da malware | PARZ | Immagini slim + shell in denial-by-default; nessun AV/scansione immagini |
 | 8.8 | Gestione delle vulnerabilità tecniche | PARZ | Gitleaks in CI (segreti); nessuno scanning CVE (pip-audit/dependabot), pinning delle dipendenze lasco |
-| 8.9 | Gestione della configurazione | PARZ | compose/config versionati; possibile drift della configurazione al deploy, nessun audit dei cambi di config |
+| 8.9 | Gestione della configurazione | PARZ | compose/config versionati; possibile drift della configurazione al deploy, nessun audit dei cambi di config; la config **di autorizzazione** del gateway non è modificabile dal piano agenti ([#80](https://github.com/r-clodia/clodia-platform/issues/80)) |
 | 8.10 | Cancellazione delle informazioni | PARZ | Soft-delete (cestino topic / trash Drive); nessuna policy di retention/TTL |
 | 8.11 | Mascheramento dei dati | PARZ | Keystore/vault non restituiscono **mai** il valore di un segreto al modello; i messaggi d'errore espongono i nomi (non i valori); nessuna redazione dell'output |
 | 8.12 | Prevenzione della fuga di dati | PARZ | `.dockerignore` esclude segreti/dati/topic; cap SEAL per canale; ACL di appartenenza; segreti mai passati al modello; manca hard-block dei dati sensibili verso provider a sovranità inferiore in lettura file |
@@ -107,7 +107,7 @@ regressione). Fino alla remediation:
 | 8.19 | Installazione del software | PARZ | Pinning parziale (versioni via ARG); nessuna firma delle immagini né hash-lock |
 | 8.20 | Sicurezza delle reti | PARZ | Bind su loopback + docker bridge; il perimetro di rete è responsabilità del deployer (es. VPN/Tailscale) |
 | 8.21 | Sicurezza dei servizi di rete | PARZ | Autenticazione al gateway via PKI (chiave pubblica); il token bearer viaggia in HTTP in chiaro tra container; UI aperta di default |
-| 8.22 | Segregazione delle reti | PARZ | Singolo bridge di default; nessuna segregazione tra gateway e agent-server |
+| 8.22 | Segregazione delle reti | PARZ | Singolo bridge di default; nessuna segregazione tra gateway e agent-server: **l'egress internet dal container degli agenti è aperto**, quindi `curl` scavalca il gateway ([#80](https://github.com/r-clodia/clodia-platform/issues/80), punto 2 — resta aperto; richiede la separazione piano-agenti / piano-core). Verificabile con `docker/test-plane-isolation.sh` |
 | 8.23 | Filtraggio web | N/A | L'accesso al web avviene solo tramite tool whitelisted; nessun browser generico esposto |
 | 8.24 | Uso della crittografia | PARZ | TLS verso i provider esterni presente; **il vault dei segreti non è cifrato a riposo** (solo permessi OS `0600`); traffico inter-container in HTTP in chiaro |
 | 8.25 | Ciclo di vita di sviluppo sicuro | PARZ | Gitleaks + processo PR; nessun SSDLC formalizzato, test non eseguiti in CI |

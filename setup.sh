@@ -43,6 +43,12 @@ if [ -z "${CLODIA_ORCHESTRATOR_SECRET:-}" ]; then
   echo "    generato CLODIA_ORCHESTRATOR_SECRET"
 fi
 mkdir -p "${CLODIA_DATA:-$ROOT/clodia-data}"
+# Stato decisionale del gateway (whitelist/gate/deleghe): directory a parte,
+# montata dal SOLO container clodia-tools. Se stesse nella datadir la
+# vedrebbe anche l'agent-server, dove girano gli agenti (issue #80).
+_gw_state="${CLODIA_GATEWAY_STATE:-$ROOT/gateway-state}"
+mkdir -p "$_gw_state"
+chmod 700 "$_gw_state" 2>/dev/null || true
 
 echo ""
 echo "Setup completato. Prossimi passi:"

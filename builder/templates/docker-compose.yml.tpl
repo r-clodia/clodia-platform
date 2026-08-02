@@ -66,8 +66,17 @@ services:
       CLODIA_SECRETS_DIR: /datadir/secrets
       CLODIA_VAULT_DIR: /datadir/clodia-vault
       CLODIA_PROFILE_ADMINS: ${CLODIA_PROFILE_ADMINS:-}
+      # Stato decisionale del gateway fuori dalla datadir condivisa (issue #80).
+      CLODIA_TOOLS_STATE_DIR: /gateway-state
     volumes:
       - ${CLODIA_DATA}:/datadir
+      # Stato DECISIONALE del gateway (whitelist per-agente, consensi del gate,
+      # deleghe): volume montato dal SOLO gateway. Non sta in ${CLODIA_DATA}
+      # perche' quella e' montata anche dall'agent-server, dove girano gli
+      # agenti: chi puo' riscrivere la whitelist si auto-concede i tool e il
+      # reference monitor cade dall'interno (issue #80). Bind su host per
+      # restare nel perimetro di backup/ripristino dell'operatore.
+      - ${CLODIA_GATEWAY_STATE:-./gateway-state}:/gateway-state
     restart: unless-stopped
 
   webui:

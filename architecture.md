@@ -49,9 +49,12 @@ owner-check su topic/job). **Manca che sia un confine reale**, non solo una
 convenzione. Tre gap:
 
 1. **Runtime `/proc`-only e keyless (M3).** Oggi il subprocess SDK condivide
-   l'intera datadir e legge `secrets/ca/ca.key` (root, stesso volume). Con `bash`
-   può leggere segreti, coniare token, scrivere lo stato del gateway → **bypassa
-   l'intero RBAC dall'interno**. Fix: eseguire il subprocess in una **sandbox**
+   la datadir dell'istanza. Vault, file dei topic e stato decisionale del gateway
+   sono già fuori dalla sua portata (maschera del vault + volume `gateway-state`
+   del solo gateway, [#80](https://github.com/r-clodia/clodia-platform/issues/80)),
+   ma il piano agenti resta co-residente col piano core e ha **egress internet
+   aperto**: con `bash`, `curl` esce senza passare dal gateway → il reference
+   monitor non è ancora l'**unica** via. Fix: eseguire il subprocess in una **sandbox**
    (runc/gVisor) che bind-monta **solo** lo spawn, con token iniettato ed egress
    **solo** verso il gateway. Con quel rootfs, `bash`/`Read`/`Write` diventano
    innocui (vedono solo il `/proc` dello spawn).
@@ -95,5 +98,11 @@ sandbox**, altrimenti l'agente perde la capability.
 2. ✅ **`fs.list_dir`** (verificato): già contenuto (root `/clodia`, path-check) → nessuna azione.
 3. Wrapping dei tool mancanti (CRM/dati + `markdown_pdf`/`slide_renderer`/`web_render`/…) — completa la copertura per il modello `/proc`-only.
 4. **M3** — sandbox launcher: il subprocess parte con bind-mount del solo spawn + token + egress-gateway; home SDK iniettate effimere.
-5. Minter isolato + volume split (`secrets`/vault fuori dalla portata del runtime).
-6. Collasso del path REST UI duplicato → webapp/PWA come client puri del gateway.
+5. ✅ **Stato decisionale del gateway su volume dedicato** (fatto, #80): whitelist,
+   consensi del gate e deleghe stanno in `CLODIA_TOOLS_STATE_DIR` (`gateway-state`),
+   montato dal **solo** gateway → riscrivere quei file dal piano agenti non concede
+   più tool né sblocca gate. Restano aperti dello stesso #80: **egress** del piano
+   agenti (serve la separazione piano-agenti / piano-core) e **vault cifrato a
+   riposo**. Test negativi: `docker/test-plane-isolation.sh`.
+6. Minter isolato + volume split (`secrets`/vault fuori dalla portata del runtime).
+7. Collasso del path REST UI duplicato → webapp/PWA come client puri del gateway.
