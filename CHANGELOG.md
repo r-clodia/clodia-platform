@@ -11,6 +11,169 @@ Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionament
 
 ---
 
+## [7.1] — 2026-08-02
+
+> From this release on, changelog entries are written in **English**: the
+> platform repos are open source and the audience is not Italian. Earlier
+> entries are left as they were written.
+
+Minor release driven by **security posture**: the lethal trifecta gets measured
+instead of guessed, the gateway's decision state leaves the volume it shared
+with the agents, and seeds lose the one verb that let any of them pull any agent
+into a channel. Ships also **multi-spawn participation** (a seed can now work as
+N concurrent instances), **inference stacks** (a seed can hold more than one
+(model, provider) pair) and **actionable notifications** in recent topics.
+
+### 🔺 Lethal trifecta: measure, then reduce
+
+The three capabilities that make an agent structurally exposed to indirect
+prompt injection — private data, untrusted content, external write — are now
+**computed from the effective grants**, not declared.
+
+- **Danger score per agent and per context**, as the OR over the channel's
+  transitive closure (participants + agents reachable by whoever can widen the
+  composition). Shell is a **separate flag, not a fourth side**: it does not make
+  a channel riskier, it makes the control *bypassable* (`curl` never reaches the
+  gateway). Exposed on the topic and shown in the UI with a per-side, per-agent
+  breakdown — the number alone is not actionable.
+- **Verb classification is versioned configuration** (`catalogs/trifecta.yaml`),
+  refined by review instead of hard-coded. The v2 pass realigned it to the
+  gateway's **actual** verb list: `fs.list_dir` was a false positive (it lists a
+  directory inside the agent's own workspace, never file contents), the
+  third-party connectors were **not classified at all** (Calendar, Docs, Trello,
+  image generation, pack installs — all writes that leave the instance), five
+  exceptions pointed at verbs that do not exist, and `email.reply` — which sends
+  in-thread **with attachments** — did not light up egress at all.
+- **Instance overrides merge, they no longer replace**: a partial override
+  declaring only `egress` used to zero the other two sides, reporting a genuinely
+  3/3 agent as 0/3. False reassurance is the one direction this measure cannot
+  afford.
+- **`topic.add_participant` removed from every seed except the two supers**, by
+  expanding the `topic.*` wildcard into its 26 remaining verbs. Composing a team
+  stays gated even for the supers, and human principals are unaffected — they add
+  participants through an endpoint that never touches the agents' PDP. Side
+  effect worth having: a *future* `topic.*` verb is no longer granted implicitly.
+
+Measurement is deliberately separate from enforcement: **nothing is blocked by
+this release**. Context gates, taint tracking and per-seed egress allow-lists are
+specified but not shipped.
+
+### 🛡️ Control plane isolated from the agents ⚠️
+
+Per-agent whitelists, gate consents and delegations **are** the reference
+monitor's authorization decisions, and they used to live on the datadir the
+compose mounts **into the container where agents run**: rewriting your own entry
+granted you a tool, and later calls passed "legitimately" because the *state* had
+been tampered with, not the control bypassed.
+
+They now live in a directory owned by the gateway alone
+(`CLODIA_TOOLS_STATE_DIR`, mounted only by the `clodia-tools` service). Legacy
+copies migrate once, and the state directory is inside the restic backup
+perimeter — isolating it would otherwise have quietly dropped it from backups.
+
+⚠️ **Deployment action required**: the volume and the environment variable must
+be added to existing compose files; without them the code keeps the previous
+behaviour (no breakage, no protection either). Known gap: migration is currently
+lazy, so it should be forced at gateway startup — see platform issue #112.
+
+### 👯 Multi-spawn participation
+
+A seed can declare `multi_spawn` and materialize **N concurrent instances** in
+one context, addressed by ordinal (`@agent#2`):
+
+- a generic mention goes to the **lowest free ordinal**; if all are busy a new
+  instance is **forked**, up to `max_spawns`, then work queues on the lowest;
+- **only ordinal #1 writes the seed memory** — the others receive a read-only
+  snapshot, so concurrent instances cannot race on `MEMORY.md`;
+- mentions with ordinals are parsed into the message's structured `mentions`
+  field, and delegation compares by *seed*, so `agent#2` mentioning `@agent`
+  does not delegate to itself;
+- the Participants panel shows a **tree of live instances** with a status light,
+  served by an endpoint scoped to channel members and closed to four fields
+  (`agent`, `instance`, `label`, `state`) — presence, never work: an instance may
+  be running in a topic classified above the viewer's clearance.
+
+Verified in production with four concurrent instances of one seed.
+
+### 🧠 Inference stacks: one seed, N (model, provider) pairs
+
+The old model was "one seed, one LLM; one LLM, N providers". A provider could
+already serve a different model, so the assumption was already broken in
+practice. It is now explicit:
+
+```yaml
+stacks:
+  - { model: gpt-5.6-sol, provider: codex }
+  - { model: claude-opus-5, provider: claude-team }
+```
+
+Legacy fields keep working and are normalized in both directions — the old model
+is a special case of the new one, so no migration is needed. The UI picks a
+**stack**, and cards, tables and profile show the **effective** model instead of
+the top-level one, which used to lie whenever a fallback was active. Topic turns
+also pick the cheapest provider eligible for the topic's tier.
+
+### 🔔 Actionable notifications in recent topics
+
+The badge counted every new message, which turns a notification into noise. It
+now lights up **only for items that wait for you** — unread mentions addressed to
+you, plus workflow gates assigned to you — and counts *items, not messages*.
+Ordinary traffic gets a small neutral dot with no number.
+
+- computed **per principal**, never shared: a topic you do not participate in is
+  absent from the response, not reported as zero;
+- authorization is re-evaluated on every call, so revoking a grant removes the
+  badge immediately;
+- visiting a topic clears the dot but **not** the gates: a gate is not an unread
+  message, and it goes away only when resolved or reassigned;
+- mentions are matched against a **structured** field written at post time, not a
+  regex over raw text — escapes, code blocks and quoted lines no longer produce
+  false mentions.
+
+### 💬 Topic UX
+
+- **One box per agent** for reasoning and tool calls, in sequence. Two data bugs
+  made the feature impossible before: the expand state was a single page-wide
+  variable (opening one agent's reasoning opened all of them) and tool steps
+  overwrote each other, so the sequence never existed. Net effect on the page is
+  **−52/+21 lines**.
+- Markdown files preview in the topic, readable by default.
+- Channel aliases: managed in settings, tokenized in the composer (desktop and
+  mobile), and **isolated from ingest** — an alias is a composer macro and must
+  never be expanded on inbound content.
+
+### ⚙️ Platform operations
+
+- **Pack provisioning**: dedicated gateway verbs, and MCP servers now enter
+  reconciliation. Previously a plugin declaring only MCP servers marked the pack
+  `setup_pending` — "Finish setup" lit in the UI — without triggering any
+  reconciliation, so nobody could close that setup. With `features.rag` off the
+  prompt no longer asks for verbs that do not exist.
+- `GET /clodia/packs/{name}` resolves a **plugin** name to its containing pack:
+  setup declarations are per-plugin, so whoever reconciles always starts from a
+  plugin name.
+- Encrypted spawn-to-spawn file transfers over a dedicated volume.
+- Archived topics enforce access; job run status persists across restarts; job
+  run history refreshes; Codex usage accounting hardened; GET requests cached
+  within a web session.
+- Routing: **one responder per message** by default (fan-out is opt-in), routing
+  feedback actually applied, and the state-writer seed no longer picked as a
+  generic conversational responder.
+
+### 📦 Modules
+
+| module | version |
+|---|---|
+| `clodia-logic` | 6.105.0 |
+| `clodia-tools` | 1.0.0 |
+| `clodia-web` | 0.117.0 |
+| `clodia-pwa` | — (fixes only) |
+
+`clodia-tools` crosses 1.0.0 with this release: isolating the reference
+monitor's state is a change of posture, not an increment of features.
+
+---
+
 ## [7.0] — 2026-07-29
 
 Primo **major** dopo la linea 6.x. Il salto è trainato dalla **ristrutturazione
