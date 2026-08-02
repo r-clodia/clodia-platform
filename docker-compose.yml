@@ -64,8 +64,15 @@ services:
       HTTPS_PROXY: ${CLODIA_AGENT_EGRESS_PROXY:-}
       HTTP_PROXY: ${CLODIA_AGENT_EGRESS_PROXY:-}
       # Internal traffic must not take the proxy: gateway, loopback healthcheck,
-      # docker service names. Space-separated, per Claude Code docs.
-      NO_PROXY: "localhost 127.0.0.1 clodia-tools webui pwa ${CLODIA_NO_PROXY_EXTRA:-}"
+      # docker service names.
+      #
+      # COMMA-separated, and this is not cosmetic. The Claude Code docs accept
+      # spaces or commas, but Python clients (httpx/requests, which the
+      # agent-server uses to reach the gateway) treat a space-separated string as
+      # ONE hostname. Deployed with spaces, `POST clodia-tools:7849/internal/mint`
+      # went through the proxy and was refused as a filtered domain — token
+      # minting broken. Found in the proxy log within a minute of phase B.
+      NO_PROXY: "localhost,127.0.0.1,clodia-tools,webui,pwa,agent-server,egress-proxy${CLODIA_NO_PROXY_EXTRA:-}"
       # Drops the two Datadog telemetry hosts at the source rather than
       # allow-listing them: shorter allow-list, less data leaving.
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
