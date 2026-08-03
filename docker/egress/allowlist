@@ -1,0 +1,37 @@
+# Extended regular expressions matched against the destination host.
+# Anchored on purpose: `^api\.openai\.com$` must not also match
+# `api.openai.com.attacker.tld`.
+
+# ── inference providers actually connected on this instance ──────────────
+^api\.anthropic\.com$
+^platform\.claude\.com$
+^claude\.ai$
+^api\.openai\.com$
+^auth\.openai\.com$
+^chatgpt\.com$
+^api\.scaleway\.ai$
+^bedrock-runtime\.eu-west-1\.amazonaws\.com$
+^sts\.eu-west-1\.amazonaws\.com$
+
+# ── source code and packages (git push from shell, pack installs) ────────
+^github\.com$
+^api\.github\.com$
+^codeload\.github\.com$
+^raw\.githubusercontent\.com$
+^objects\.githubusercontent\.com$
+^registry\.npmjs\.org$
+^pypi\.org$
+^files\.pythonhosted\.org$
+
+# ── Claude Code housekeeping (docs lookup, plugin metadata, updates) ─────
+^code\.claude\.com$
+^downloads\.claude\.ai$
+^storage\.googleapis\.com$
+
+# NOT here on purpose:
+#   http-intake.logs.us5.datadoghq.com, browser-intake-us5-datadoghq.com
+#     optional operational telemetry, disabled at the source with
+#     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+#   googleapis.com (Drive/Docs/Calendar), api.telegram.org, SMTP/IMAP hosts
+#     these belong to the GATEWAY, which keeps direct egress: an agent must
+#     reach them through a mediated verb, never on its own
