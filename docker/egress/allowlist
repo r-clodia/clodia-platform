@@ -35,3 +35,17 @@
 #   googleapis.com (Drive/Docs/Calendar), api.telegram.org, SMTP/IMAP hosts
 #     these belong to the GATEWAY, which keeps direct egress: an agent must
 #     reach them through a mediated verb, never on its own
+
+# ── added after the first real traffic hit the proxy (see #104) ──────────────
+# Bedrock CONTROL plane, distinct from bedrock-runtime: the CLI calls it to
+# resolve inference profiles. Missing it broke every SEAL-2 topic, because
+# aws-region-eu is the only connected provider with SEAL >= 2.
+^bedrock\.eu-west-1\.amazonaws\.com$
+# OpenCode model metadata (agents on the opencode runtime: scaleway).
+^models\.dev$
+# GitHub release assets (downloads referenced by releases).
+^release-assets\.githubusercontent\.com$
+# The RAG service runs on the HOST and containers reach it by LAN IP. With an
+# internal network there is no direct route, so it has to come through here.
+# An IP, not a name: the filter matches the CONNECT host verbatim.
+^192\.168\.1\.45$
