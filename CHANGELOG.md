@@ -11,6 +11,197 @@ Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionament
 
 ---
 
+## [8.0] — 2026-08-03
+
+> ⚠️ **Major release: this one changes what agents are allowed to do.** Three
+> behaviours break an instance already in service — read *Migration* before
+> upgrading. Nothing changes in an API contract or a data format; what changes is
+> the policy the platform enforces, and it changes enough to warrant the major.
+
+Where 7.1 **measured** the lethal trifecta, 8.0 **enforces** it. The model of
+`clodia-platform#104` ships whole: outbound traffic is confined to declared
+destinations, untrusted content is tracked instead of assumed away, the third leg
+of the triangle costs a human approval, and an unattended job cannot touch topic
+data at all. The measurement was also corrected twice along the way — twice in a
+direction that made the numbers *worse and truer*.
+
+### ⚠️ Migration
+
+1. **Scheduled jobs lose access to topic data.** A job whose prompt reads a topic
+   now fails. The only remaining path into a topic from an unattended session is
+   `topic.invoke_hook`. Rewrite such jobs to push information rather than read it.
+2. **Outbound destinations must be declared.** The egress whitelist starts
+   **empty** and the default mode is `gate`: in a chat, the first send to a new
+   destination asks for approval and remembers it; **in a job it is refused**, and
+   the refusal happens at the next fire rather than at deploy. Either let the
+   destinations accumulate through use in chat, or declare them up front in the
+   gateway config (`egress_allow`). `CLODIA_EGRESS_ENFORCE=report` restores the
+   old behaviour while logging what would have been refused.
+3. **`mcp.add`, `packs.install_*` and `settings.backup_run` are no longer
+   chat-turn operations** for `clodia`/`ophelia`. Install packs from the Packs
+   page; run a backup from a job.
+
+Also behaviour-changing, without breaking anything: uploaded files default to
+`untrusted` and taint the channel, several seeds lost verbs (§8 below), and the
+danger score of most agents **went up** because the catalogue stopped assuming
+unknown verbs are harmless.
+
+### 🔒 Egress: from a binary capability to a circumscribed one
+
+"Can send email" used to mean "to anyone", so exfiltration was one line of
+prompt away.
+
+- **Network confinement.** The agent container sits on an `internal` network: no
+  route out except the gateway, and a process inside cannot undo it. Measured
+  along the way: **DNS is closed too** — only internal names resolve, so the
+  covert channel inside DNS queries is shut by construction rather than by a
+  separate rule. `internal: true` also disables host port publishing, which is
+  why the API is now fronted by an nginx ingress.
+- **Destination whitelist** per agent and per channel type (email, telegram,
+  http, drive, gsheets, github by repo), living in the **gateway's own config** —
+  not in `agent.yaml`, which sits on the datadir where agent code runs: whoever
+  can rewrite the whitelist grants themselves destinations.
+- Three deny-by-default rules, each one the reason the whitelist is not
+  decorative: an **unmodelled channel type** is refused rather than free, a
+  **declared-empty** type is muted (kept distinct, because "never configured" and
+  "deliberately muted" call for opposite fixes), and an **unreadable
+  destination** is refused. The last one exists because `email.reply` takes its
+  recipient from the message being replied to — that is, from untrusted content.
+  "Attacker mails in, agent replies with the data" is the injection path itself.
+- **A new destination asks, and approving remembers it.** The dialog says so:
+  approving is more privileged than the single send, because it makes that
+  destination silent from then on. A pre-signed delegation cannot cover this
+  gate — it would make a new destination silent without anybody ever seeing it.
+
+### 🧪 Taint: untrusted content is tracked, not assumed away
+
+- **Contamination flag per channel**, defined as in #77: *untrusted content
+  entered after the last unlock*. The unit is the channel, not the spawn — with
+  multi-spawn, four instances of a seed share a room. The **sources** are
+  recorded and not just the boolean: "the channel is tainted" is not actionable,
+  "an untrusted PDF came in" is.
+- **Taint is born in the gateway**, after a verb returns and only on success.
+  Both dispatch paths are marked, including the proxied one — GitHub and external
+  MCPs go through it, and marking only the native return would have left exactly
+  the Invariant Labs vector uncovered.
+- **File provenance at upload.** The UI asks where the file comes from: it is the
+  only moment the information exists and the only party who can answer is the
+  user. It is a *classification*, not an authorisation — reading stays free and
+  taints the channel. A block would teach the user to answer "trusted" to get on
+  with it, which is how the label becomes useless. Both options carry the same
+  weight, there is no preselected default, the question is asked once per batch,
+  and cancelling uploads nothing. A file with no label reads `unknown`, never
+  `trusted`.
+- **No cross-channel propagation** — decided, and it holds because there is no
+  cross-topic data path other than hooks. If one is ever reopened, the decision
+  must be made again from scratch.
+
+### 🚪 The context gate
+
+An agent lives at two legs. The verbs that light the third stay declared and
+**inert**, and their invocation *in a contaminated channel* passes a human. Not
+on capability alone: that would fire on 150 channels out of 156.
+
+The deduplication is evaluated on the gate that **will actually stop in front of
+a human this turn** — not on the verb's membership of the gated list. A new
+destination already shows the call to someone, so the context gate stays quiet; a
+destination already whitelisted shows it to nobody, so it fires. That case is the
+residual risk the whitelist cannot cover: egress toward a *legitimate*
+destination of data collected under injection.
+
+"A composition change invalidates active unlocks" is implemented by putting the
+composition **inside the key**, so adding a participant makes the previous unlock
+stop matching. No revocation sweep to forget, which is the only way it cannot be
+forgotten.
+
+### 🤖 Unattended sessions
+
+A job is not defended by gates, because **nobody can answer**: a gate in an
+unattended session is a stall until timeout. Keyed on a signed `unattended` claim
+the agent cannot remove, a scheduled session loses every `topic.*` verb except
+`topic.invoke_hook`, and the egress mode `gate` becomes a refusal. A destination
+already approved by a human still works, which is how jobs remain useful.
+
+### 🎚 Least authority per seed (§8)
+
+Applied to the running instance **and** to the pack seeds, so a fresh install is
+born reduced. The three documentaries (`avvocato`, `commercialista`,
+`esperto-bandi`) went from 29 verbs to 14 and **from 3/3 to 2/3**;
+`fullstack-dev` lost `fs.list_dir` (it has a shell, so the verb adds nothing and
+counts a leg); `impiegato-tomato` lost `runtime.*` and its writes are now gated;
+`segretario` lost the topic file readers, since it minutes the conversation, which
+arrives in the prompt.
+
+`security-engineer` **gained** the topic file readers: passing it code in chat was
+unsustainable, and it remains the best profile in the colony — it reads hostile
+code with no egress and no shell.
+
+Two new PDP mechanisms were needed to express this. **`denied_tools`** subtracts
+verbs from a wildcard: `clodia` keeps its `*` (enumerating it would make the score
+stale at the first new pack) and loses the verbs that are not chat-turn
+operations. **`gated_tools`** gates a verb *for one agent* — the same verbs stay
+free for others, so the granularity cannot be global. Deny wins over allow,
+super-agents included.
+
+**Attach by reference** made the messenger reduction possible: `email.send` takes
+`topic_files`, the gateway reads them and attaches them, and the content never
+enters the agent's context. Telegram already worked this way.
+
+### 📏 The measurement, corrected twice
+
+- **The catalogue is fail-closed.** An unknown verb namespace used to light
+  nothing: an agent whose only grants were `slack.post_message` and
+  `dropbox.upload` scored **0/3** while it could exfiltrate. Unknown namespaces
+  are now assumed able to read private data and to send it out. On the first run
+  it immediately found two real gaps (`jobs.*`, `app_runtime.*`, flagged on 148
+  and 145 channels). This is also why enumerating `clodia`'s `*` was withdrawn:
+  enumeration makes the score stale, the wildcard keeps it truthful.
+- **The score distinguishes circumscribed egress from arbitrary egress.** `score`
+  stays the capability; `residual` is what is left once the *applied* confinement
+  is accounted for. A confinement that is not enforced is not counted — it would
+  lower the score of an agent that can still send freely.
+- **The score understands grant negations**, found by measuring right after §8
+  went in: the reductions were enforced by the PDP and invisible to the score.
+  A number describing a different system from the one that runs is the worst
+  divergence available.
+
+### 📖 Verb telemetry
+
+Append-only register in the gateway, on by default — an opt-in register does not
+exist on the day it is needed. **Metadata only: verb, agent, channel, outcome,
+context flags. Never arguments**, and refusal reasons as a *class* rather than a
+message: an address is an argument, and the reason this file exists does not
+justify turning it into an address book. It answers "what does this agent
+actually use" and "how often did we refuse" — which every measurement in this
+epic so far could not, because all of them were declared capability rather than
+observed action.
+
+### 🔧 Also in this release
+
+- **Google Sheets** (`gsheets.*`): incremental verbs — `add_tab` adds a tab to an
+  existing spreadsheet without touching the others, which the file-level
+  connector could not express (its only path was download + re-upload, which
+  destroys every tab the agent did not author). `read(formulas=true)` returns
+  formula text: found in the live check, where writing `=SUM(B1:C1)` and reading
+  it back returned `0` — a read that is lossy exactly where a formula lives, and
+  silently.
+- **Drive-backed topics**: subfolders are navigable in the topic file view again.
+  A Drive folder's mime matched the "native Google document" prefix, so every
+  subfolder was emitted as a remote *file* with a link, and navigation stopped at
+  the first level. Opening Drive stays available as an explicit `↗`.
+- **An unreachable topic remote says so** (424 with the reason) instead of
+  showing an empty folder, and a revoked Drive token no longer takes down the
+  whole topic list.
+- **Pack reconciliation reports at boot instead of acting.** The boot turn needed
+  verbs that are gated by definition, from a session with no channel, so every
+  attempt surfaced as a consent popup with no conversation to answer it in. It
+  now records what is pending and the operator starts it from the Packs page.
+- **Bedrock**: the provider catalogue accepts the inference profiles it requires
+  (`eu.anthropic.*`), and the compatibility check reads the declared model rather
+  than the translated one.
+
+---
+
 ## [7.1] — 2026-08-02
 
 > From this release on, changelog entries are written in **English**: the
