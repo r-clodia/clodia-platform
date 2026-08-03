@@ -105,16 +105,19 @@ services:
       CLODIA_VAULT_DIR: /datadir/clodia-vault
       # Stato decisionale del gateway fuori dalla datadir condivisa (issue #80).
       CLODIA_TOOLS_STATE_DIR: /gateway-state
-      # Destination whitelist for outbound verbs (#104 §7, step 5).
-      #   report  decide and LOG, block nothing — the DEFAULT, and what makes the
-      #           rollout survivable: whitelists start empty, so flipping a live
-      #           instance to `on` would mute every agent at once. The log line
-      #           `egress WOULD-DENY …` is what the real destination list is built
-      #           from, the same way the network whitelist gaps were found.
-      #   on      enforce: a destination outside egress_allow is refused
-      #   off     escape hatch, no check at all
-      # An unknown value falls back to `report`, never to `off`.
-      CLODIA_EGRESS_ENFORCE: ${CLODIA_EGRESS_ENFORCE:-report}
+      # Destination whitelist for outbound verbs (#104 §7, steps 5-6).
+      #   gate    an unlisted destination ASKS the human — the DEFAULT. Approving
+      #           lets the call through and remembers the destination, so the
+      #           whitelist starts empty and fills up through use. Sending to an
+      #           unvetted address is never silent.
+      #   report  decide and LOG, allow anyway — harvest destinations without
+      #           involving the human.
+      #   on      hard deny, no question asked. The right mode where nobody can
+      #           answer: an unattended job that hits a gate stalls until the
+      #           request times out (#116).
+      #   off     escape hatch, no check at all.
+      # An unknown value falls back to `gate`, never to `off`.
+      CLODIA_EGRESS_ENFORCE: ${CLODIA_EGRESS_ENFORCE:-gate}
     volumes:
       - ${CLODIA_DATA}:/datadir
       # Stato DECISIONALE del gateway (whitelist per-agente, consensi del gate,
