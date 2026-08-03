@@ -13,14 +13,23 @@ by malice.
 |---|---|
 | `Dockerfile`, `tinyproxy.conf` | the egress proxy: CONNECT to allow-listed hosts, default-deny |
 | `allowlist` | the hosts, as anchored regular expressions |
-| `confine-agents.sh` | the host firewall rule that makes the proxy the *only* route |
+| `../ingress/` | the nginx that fronts the agent API, because phase C removes its published port |
 
 ## Two measured facts that shaped this
 
-**`internal: true` is not usable.** A docker network with `internal: true` does
-block egress — verified — but it also breaks host port publishing, and the API
-must stay reachable from the host for the browser to talk to it. The network
-therefore stays a normal bridge and the block lives in the host firewall.
+**A host firewall rule cannot work here — the daemon is rootless.** The first
+draft of this put an iptables rule in `DOCKER-USER`. On this deployment docker
+runs **rootless**: container traffic leaves through `rootlesskit` inside a user
+namespace and never traverses the host's `FORWARD`/`DOCKER-USER` chains, so the
+rule would match nothing. The same rootless setup also means `sudo docker` speaks
+to a socket that does not exist (`/var/run/docker.sock`), which is how the
+mistake surfaced — the script could not even find the proxy container.
+
+**`internal: true` is the confinement, and it is better.** Docker gives the
+network no route out, and a process inside the container cannot undo it — unlike
+an iptables rule, which on a rootless daemon it would never reach anyway. The
+cost is real and measured: an internal network **also disables host port
+publishing**, so the agent API needs a front. That is `docker/ingress`.
 
 **The proxy alone is not confinement.** `HTTPS_PROXY` is honoured by cooperative
 clients only: the Claude Code CLI honours it (documented), `curl` and
@@ -43,9 +52,18 @@ proxy, and its log starts recording destinations. **This is the step that can
 break turns**: if a host an agent needs is missing from `allowlist`, its requests
 fail. *Rollback: unset the variable, recreate.*
 
-**Phase C — the only route.** Run `sudo docker/egress/confine-agents.sh`. From
-here a process in the agent container cannot leave except through the proxy,
-whether it cooperates or not. *Rollback: `sudo docker/egress/confine-agents.sh --off`.*
+**Phase C — the only route.** Set `internal: true` on `clodia-int`, drop the
+agent-server's published port, and bring up `ingress`. From here a process in the
+agent container cannot leave except through the proxy, whether it cooperates or
+not — and no root is needed at any point. *Rollback: remove `internal: true` and
+recreate; the published port can stay on the ingress either way.*
+
+Verify with the test that distinguishes preference from obligation:
+
+```bash
+# must FAIL once phase C is active — this bypasses the proxy variables
+docker exec <agent-container> curl -s --noproxy '*' -m 10 https://example.com/
+```
 
 Do not skip B: its log is how you find the hosts the allow-list is still missing,
 before a firewall turns a missing entry into a hard failure.

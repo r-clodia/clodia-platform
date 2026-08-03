@@ -49,8 +49,8 @@ services:
     build: { context: ., dockerfile: docker/agent-server.Dockerfile }
     image: clodia-agent-server
     command: ["sh", "-c", "cd /clodia && python3 -m server.main"]
-    ports:
-      - "${AGENT_SERVER_PORT:-7842}:7842"
+    # NO published port: on an internal network publishing does not work,
+    # and the ingress below is what makes the API reachable from the host.
     environment:
       <<: *common-env
       # ── Egress confinement (clodia-platform#104, phase 1) ────────────────
@@ -116,9 +116,21 @@ services:
       - ${CLODIA_GATEWAY_STATE:-./gateway-state}:/gateway-state
       - clodia-transfer:/shared
     # Both networks: the gateway is the mediator and KEEPS direct egress (Drive,
-    # Telegram, SMTP, inference providers). Its traffic leaves through clodia-ext,
+    # Telegram, SMTP, inference providers). Its traffic leaves through clodia-pub,
     # which the confinement rule does not touch.
-    networks: [clodia-int, clodia-ext]
+    networks: [clodia-int, clodia-pub]
+    restart: unless-stopped
+
+  # Inbound path for the agent API (#104 phase C). The agent container has no
+  # published port of its own: it sits only on the internal network, so this is
+  # the single component that bridges host traffic to it.
+  ingress:
+    build: { context: ./docker/ingress, dockerfile: Dockerfile }
+    image: clodia-ingress
+    ports:
+      - "${AGENT_SERVER_PORT:-7842}:7842"
+    networks: [clodia-int, clodia-pub]
+    depends_on: [agent-server]
     restart: unless-stopped
 
   # ── Egress proxy for the agent container (#104 phase 1) ────────────────────
@@ -129,7 +141,7 @@ services:
   egress-proxy:
     build: { context: ./docker/egress, dockerfile: Dockerfile }
     image: clodia-egress-proxy
-    networks: [clodia-int, clodia-ext]
+    networks: [clodia-int, clodia-pub]
     restart: unless-stopped
 
   webui:
@@ -137,7 +149,9 @@ services:
     image: clodia-webui
     ports:
       - "${WEBUI_PORT:-7843}:7843"
-    networks: [clodia-int]
+    # int to reach the agent API, pub because it publishes a host port
+    # (an internal network disables publishing).
+    networks: [clodia-int, clodia-pub]
     restart: unless-stopped
 
   pwa:
@@ -145,7 +159,9 @@ services:
     image: clodia-pwa
     ports:
       - "${PWA_PORT:-5173}:5173"
-    networks: [clodia-int]
+    # int to reach the agent API, pub because it publishes a host port
+    # (an internal network disables publishing).
+    networks: [clodia-int, clodia-pub]
     environment:
       PORT: "5173"
       API_TARGET: "http://agent-server:7842"
@@ -167,12 +183,19 @@ networks:
   # and this network stays a normal bridge.
   clodia-int:
     driver: bridge
+    # THE confinement: docker gives this network no route to the outside, and a
+    # process in the container cannot undo it (unlike an iptables rule, which on
+    # a rootless daemon it would never even reach — container traffic leaves
+    # through rootlesskit and never traverses the host's DOCKER-USER chain).
+    # Cost, measured: an internal network also disables host port publishing,
+    # which is why the agent API is fronted by docker/ingress.
+    internal: true
     ipam:
       config:
         - subnet: ${CLODIA_INT_SUBNET:-172.31.7.0/24}
   # Egress path for the services that legitimately reach the outside: gateway and
   # proxy only. Nothing that runs agent code is attached here.
-  clodia-ext:
+  clodia-pub:
     driver: bridge
     ipam:
       config:
