@@ -47,6 +47,8 @@ x-common-env: &common-env
     # Watchdog del turno: secondi di silenzio SDK dopo i quali il subprocess
     # viene chiuso. Anche questa viveva solo in una copia locale.
     CLODIA_TURN_WATCHDOG_SILENCE: ${CLODIA_TURN_WATCHDOG_SILENCE:-180}
+    # NB: `CLODIA_BIND_HOST` non va qui — non è una variabile del container ma
+    # l'indirizzo su cui l'host pubblica le porte (vedi `ports:` sotto).
 
 services:
 
@@ -113,7 +115,7 @@ services:
     build: { context: ./repos/clodia-tools, dockerfile: Dockerfile }
     image: clodia-tools
     ports:
-      - "${TOOLS_PORT:-7849}:7849"
+      - "${CLODIA_BIND_HOST:-127.0.0.1}:${TOOLS_PORT:-7849}:7849"
     environment:
       <<: *common-env
       CLODIA_CA_CRT: /datadir/secrets/ca/ca.crt
@@ -160,7 +162,7 @@ services:
     build: { context: ./docker/ingress, dockerfile: Dockerfile }
     image: clodia-ingress
     ports:
-      - "${AGENT_SERVER_PORT:-7842}:7842"
+      - "${CLODIA_BIND_HOST:-127.0.0.1}:${AGENT_SERVER_PORT:-7842}:7842"
     networks: [clodia-int, clodia-pub]
     depends_on: [agent-server]
     restart: unless-stopped
@@ -180,7 +182,7 @@ services:
     build: { context: ./repos/clodia-web, dockerfile: Dockerfile }
     image: clodia-webui
     ports:
-      - "${WEBUI_PORT:-7843}:7843"
+      - "${CLODIA_BIND_HOST:-127.0.0.1}:${WEBUI_PORT:-7843}:7843"
     # int to reach the agent API, pub because it publishes a host port
     # (an internal network disables publishing).
     networks: [clodia-int, clodia-pub]
@@ -190,7 +192,7 @@ services:
     build: { context: ./repos/clodia-pwa, dockerfile: Dockerfile }
     image: clodia-pwa
     ports:
-      - "${PWA_PORT:-5173}:5173"
+      - "${CLODIA_BIND_HOST:-127.0.0.1}:${PWA_PORT:-5173}:5173"
     # int to reach the agent API, pub because it publishes a host port
     # (an internal network disables publishing).
     networks: [clodia-int, clodia-pub]
