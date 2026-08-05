@@ -28,6 +28,25 @@ x-common-env: &common-env
     RESPONDER_ROUTING_THRESHOLD: "${RESPONDER_ROUTING_THRESHOLD:-0.75}"
     RESPONDER_ROUTING_MARGIN: "${RESPONDER_ROUTING_MARGIN:-0.04}"
     RESPONDER_FALLBACK_SOFT_RATIO: "${RESPONDER_FALLBACK_SOFT_RATIO:-0.87}"
+    # ── Postura di sicurezza dell'istanza ─────────────────────────────────────
+    # Vivevano solo nella copia locale del compose di un'istanza, applicate a
+    # mano. Conseguenza misurata su una istanza nuova: `CLODIA_DEBUG_MODE=1` era
+    # nel suo `.env` e non raggiungeva il container, quindi la rilevazione delle
+    # anomalie era INERTE — e un agente è morto in silenzio proprio nel caso che
+    # quel meccanismo esiste per intercettare. Una variabile di sicurezza che sta
+    # in una copia locale non esiste per la prossima istanza.
+    #
+    # `1` = i gate REGISTRANO invece di bloccare (osservazione). Default `0`:
+    # bloccano. Il default sicuro è quello, e va scritto qui perché sia il
+    # default anche di chi installa senza leggere.
+    CLODIA_DANGEROUSLY_SKIP_GATES: ${CLODIA_DANGEROUSLY_SKIP_GATES:-0}
+    # Rilevazione delle anomalie di canale + risveglio del guardiano. Spenta per
+    # default: accesa, ogni anomalia costa un turno.
+    CLODIA_DEBUG_MODE: ${CLODIA_DEBUG_MODE:-0}
+    CLODIA_DEBUG_DEDUP_SECONDS: ${CLODIA_DEBUG_DEDUP_SECONDS:-600}
+    # Watchdog del turno: secondi di silenzio SDK dopo i quali il subprocess
+    # viene chiuso. Anche questa viveva solo in una copia locale.
+    CLODIA_TURN_WATCHDOG_SILENCE: ${CLODIA_TURN_WATCHDOG_SILENCE:-180}
 
 services:
 
