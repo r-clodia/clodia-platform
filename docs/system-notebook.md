@@ -1001,6 +1001,64 @@ it cannot form the URI, and `None` contaminates.
 
 ---
 
+## 20 · Humans are agents too: spawns of two fundamental seeds, with no provider
+
+**Definition (Davide, 6 Aug 2026).** Humans are agents like the others, but they have **no
+provider**, they do **not fork spawns** — they **are** spawns, of two fundamental seeds:
+**admin** and **member** (others may follow). Their seed defines **verbs and tier**. They have
+a system prompt, which is in fact **decorative**.
+
+**Accepted, with an elegant consequence the code already honours by accident.**
+
+**The consequence.** No provider means a human's `clearance` is **authoritative**, not a floor.
+Entry 13 established that an agent's effective SEAL is the provider's — because that is where
+the data goes — and the seed's `clearance` is only a declared minimum. A human has no provider
+to lower it, and `_effective_clearance` **already** falls back to the declared clearance when
+no provider resolves. So today's behaviour is right, but by fallback: worth making explicit,
+because a fallback that does the right thing is indistinguishable from one that does it by
+accident.
+
+**Good news on the source of truth: it is already the seed, in both processes.** The gateway's
+`human.role()` and the logic's `admin._is_admin_yaml()` read the **same** file —
+`agents/<name>/agent.yaml`, `type: human` + `role` — and the webui's admin list is **derived**
+from that scan. There is no separate admin list. On this point the definition is already the
+implementation.
+
+**But the two fundamental seeds do not exist.** Measured: `grep -rln 'type: human' catalogs/`
+finds **nothing**. There is no `admin` seed and no `member` seed in any pack. Today each human
+is an **individual** `agent.yaml`, created at runtime by the bootstrap claim, carrying a `role`
+string and — the point — possibly its **own** `tool_permissions`. So the matrix is **per
+person** and drifts: two members on the same instance can hold different verbs with nobody
+having decided so. That is precisely what a seed prevents. The real work of this definition is
+not adding a field but moving the matrix from N individual files into 2 seeds.
+
+**Three precisations.**
+
+1. **There are three roles, not two, and the third is not a level.** `superadmin`, `admin`,
+   `user` exist, plus arbitrary strings normalising to `user` — and the code's own docstring
+   cites `member` as the example, so `member` already exists in the wild as a declared role.
+   But `superadmin` is not a stronger admin: it is the **instance owner**, a singleton, used as
+   the fallback addressee when a gate must be notified and the principal is not human
+   (`_gate_notify_principal`). Collapsing to two seeds loses the distinction between «who owns
+   this instance» and «who may administer it». With two seeds, `superadmin` becomes an
+   **attribute** of the admin spawn (`owner: true`), not a third seed.
+2. **A human is a named spawn, not a numbered one.** Entry 7 says numbering is one series per
+   seed and never reused; humans are distinguished by identity (`davide`, `davide-no-admin`) and
+   an ordinal would mean nothing. Coherent, but it must be declared — otherwise an invariant
+   written as «every spawn has an ordinal» is false and would be *fixed* in the wrong direction.
+3. **The human is link zero of the `origin` chain.** A human forks no spawns of itself but is
+   the root of `["human:davide", "agent:clodia", …]`. That is exactly why the chain is an
+   **intersection** and not a substitution: an agent acting on your behalf can never exceed you,
+   and you can never exceed it.
+
+**On the decorative system prompt:** agreed, and consistent with entry 9 (a seed's
+"constitution" is a prompt fragment with a decorative name). But a decorative field is not
+harmless — it would be the **seventh** declared mechanism that nobody carries, and the lesson of
+the previous six is that whoever reads the file assumes it works. Better that the human seed
+**not have** the field than have it inert.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1020,6 +1078,8 @@ do **not** hold.
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
+- **Does `superadmin` become an attribute of the admin spawn?** (entry 20) — «who owns the
+  instance» is not «who may administer it», and two seeds collapse them.
 - **Does perimeter membership count as vetted by construction?** (entry 19) — otherwise every
   topic duplicates its own resources into the source list.
 - **Per-scope authorisation of senders for email** (entry 18) — Telegram has it, email does
