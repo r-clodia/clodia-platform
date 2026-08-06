@@ -644,6 +644,104 @@ sees the string. `chan:` is frozen as an opaque legacy token meaning "session".
 
 ---
 
+## 15 · Scope is the type: topic isA scope, spawns live in a scope, resources are its elements
+
+**Definition (Davide, 6 Aug 2026).** «topic isA scope. spawns live in scope. resources are
+elements of a scope.»
+
+**Accepted, and it is better than the formulation it replaces.** I had objected that calling
+a topic's resource set a "scope" would re-open the confusion entry 14 had just closed. The
+objection presupposed that topic and scope were siblings. They are not: `scope` is the
+**type**, the resource set is a property **of the type**, and `topic isA scope` inherits it.
+This also settles where a resource perimeter belongs — to the scope, not to the account and
+not to the agent.
+
+The construction is falsifiable, and it produces three statements of which **two are
+currently false in the code**.
+
+**1. Two subtypes ⇒ an invariant, violated once.** Every `chat_id` prefix constructed:
+`chan:`, `job:`, `feedback:`, `default`. `pack-ops:` has **zero** occurrences — already
+corrected. `feedback:` has not been: `channels.py:1931` runs
+
+```python
+chat = await manager.create(chat_id=f"feedback:{agent}", kind=agent)
+```
+
+which **creates a spawn**. Davide's earlier ruling — «il feedback non dovrebbe essere uno
+spawn scope, e se lo è va corretto» — is therefore still outstanding. And
+`DEFAULT_CHAT_ID = "default"` is a fourth thing whose type is declared nowhere.
+
+This is worth an invariant test: every `chat_id` a spawn is created with must belong to
+exactly one of the two subtypes.
+
+**2. «Resources are elements of a scope» and the perimeter code does the opposite.**
+
+```python
+def current_channel() -> str | None:
+    c = current_chat() or ""
+    if not c.startswith("chan:"):
+        return None          # ← job, feedback, default
+```
+
+and on `None` the Drive confinement built 5 Aug falls back to the **account roots**.
+Therefore:
+
+> the scope that declares **zero** resources is the one whose spawns get the **widest**
+> reach.
+
+And it is precisely the **unattended** scope: a job is born with `chat.unattended = True`
+because by design no human is at the turn (issue #104). Under this type system that is
+backwards — an element-less scope should grant nothing, not everything.
+
+Whether it is a bug or a hole depends on a measurement: the jobs table **has** `topic_tier`
+and `topic_name`, but they are populated **only** for `mode == "topic_trigger"`; a plain
+agentic job leaves them `""`. So:
+
+- job attached to a topic → **a bug**, and of the kind that recurs throughout these notes:
+  *the information about the scope exists and does not reach whoever enforces the perimeter.*
+- free-standing job → **a design hole**: it has no scope to derive resources from, so it must
+  be decided whether a job may exist without a scope at all.
+
+**3. `min(dati, provider, storage, channel)` is a property of the type, not of the topic.**
+If `topic isA scope`, a job run has a tier too, and the same weakest-link cap. Today a job
+has **no tier**: nothing caps which provider or which storage may be touched by way of its
+scope. Twin of the uncapped git remote (entry 16).
+
+**Consequence for the model as a whole.** Four of the five resource kinds a scope can hold
+are attached to the topic (files, the conversation, the git remote, the Drive folder, the
+Telegram group); the **mailbox is not** — it is a vault credential (`mailbox_<account>`) and
+a per-agent identity (one real mailbox, the others subaddresses via `mailbox_parent`). It is
+the only resource in the list that is neither an element of a scope, nor perimetered, nor
+part of the weakest-link formula: the destination of an email is chosen by the model at call
+time. Under `resources are elements of a scope` the mailbox is the term that does not yet
+type-check.
+
+---
+
+## 16 · A git remote has no tier cap
+
+**Measured 6 Aug 2026, while checking entry 15.** The weakest-link doctrine is written
+verbatim in an error message — «anello più debole: min(dati, provider, storage, channel)» —
+and enforced on three links: provider (entry 13), storage (`_DRIVE_SEAL_CAP = 2`), channel
+(`_CHANNEL_SEAL_CAP = {"telegram": 1}`).
+
+A **git remote is capped by nothing**. The guard exists only for Drive:
+
+```python
+if tgt_type == "drive" and tier_n > self._DRIVE_SEAL_CAP:
+```
+
+So a **SEAL-4 topic may have a remote on github.com**, and the vault's PAT is injected to
+make it work (`service.py:666`). The `remoteinclude`/`remoteignore` filter limits *what*
+leaves, never *from which tier* — the same asymmetry that for Telegram was closed with a cap
+at SEAL-1.
+
+Not asserted: what the right cap is. GitHub private repos are not obviously SEAL-1, and a
+self-hosted git on the minipc is not the same resource as github.com — which suggests the cap
+belongs to the **remote host**, not to the word "git".
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -661,6 +759,12 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
+- **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
+  the widest perimeter and no human at the turn.
+- **What caps a git remote, and is the cap a property of the host rather than of the
+  protocol?** (entry 16)
+- **Does the mailbox become an element of a scope, or does email get its perimeter from the
+  destination axis?** (entry 15) — issues #149, #150.
 - **Retire the `/clodia/channels/…` prefix** (entry 14): the same `(tier, name)` is
   addressed under four prefixes, and that one is what the UI calls.
 - **Should revoking a scoped override take effect on a live spawn?** (entry 13) — today the
