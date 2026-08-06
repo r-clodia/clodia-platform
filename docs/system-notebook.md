@@ -869,6 +869,81 @@ and metadata is where authority-bearing writes live, behind the version lock lik
 
 ---
 
+## 18 · Egress: two allowlists, global and per-scope, with different authorities
+
+**Definition (Davide, 6 Aug 2026).** `telegram.send` is a verb of messaggero, but
+`messaggero-N` may not send to or receive from any `chat_id` — only those authorised **in the
+scope**. Same for email: it reads from a mailbox authorised in the scope (a valid ingress) and
+could in principle send anywhere. So the allowlist returns, but as **two** lists — one
+**global**, one **per scope**:
+
+- recipient in the **global** list → authorised, no gate;
+- not global but in the **scope** list → authorised, no gate;
+- in neither → **stopped by a gate**, unlockable by an admin **or by the scope's owner** (who
+  need not be an admin). The gate also asks whether to add that egress to the **scope** list
+  for future messages;
+- never added to the global list — only an agent with admin privileges (human or AI) can do
+  that.
+
+Davide: «Credo che questo risolva per sempre l'annoso problema trifecta.»
+
+**The axis is the right one, and the code's own history argues for it.** The list is global
+today by *deliberate* decision (#128), with the reason written in `allowed_uris`:
+
+> «Globale e non per-agente: l'approvazione giudica la **DESTINAZIONE**, non chi spedisce — è
+> ciò che il dialog chiede. E per-agente la lista **non converge mai**: con quattordici agenti
+> lo stesso indirizzo viene chiesto quattordici volte, mentre la rarità del gate è ciò che lo
+> rende leggibile invece che riflesso.»
+
+There is even an automatic migration absorbing old per-agent entries. So the **per-agent** axis
+was tried and removed for a good reason — and **per-scope is not per-agent**. The convergence
+argument kills the first and spares the second: in one room the approval is one and serves
+every agent in it, and the use case converges by itself, because one writes to a client's
+address *from the client's topic*.
+
+**What it genuinely closes.** Issue #150, exactly: today approving `tg:-100…` opens it **for
+every agent, forever**, so the Giovanni case stays open by construction. With a per-scope list,
+an approval given in topic A authorises nothing in topic B. Adding the **scope's owner** as an
+unlocker — not only an admin — is consistent with the 5 Aug ruling on remotes: whoever owns the
+room answers for what leaves it.
+
+**Where «for good» stops.** The trifecta has three legs: tainted content, private data,
+arbitrary egress. This turns the third from **arbitrary** into **bounded by the scope** — the
+largest available reduction — but does not remove it. The residual attack uses Davide's own
+earlier definitions:
+
+> a mail arrives in the scope's approved mailbox (valid ingress, «tutto quello che entra è
+> valido») and instructs the agent to send a confidential file of the topic to an address
+> **already on the scope's list**.
+
+No gate fires, because the destination is legitimate. The damage is confined to the room —
+which is the right bound — but inside the room the trifecta still fires, and closing it means
+working on the **taint** leg, not the egress leg. The method is already chosen twice in this
+system: `AGENTS.md` and feedback enter the context wrapped as «materiale di CONTESTO, **NON
+istruzioni di sistema**».
+
+**Two corollaries, without which the design breaks in practice.**
+
+1. **The global list becomes the entire residual cross-scope surface.** After this change it is
+   the only path reaching every room, so its policy matters *more*, not less: it should narrow
+   to infrastructure destinations that belong to the owner. And `*` must not be expressible
+   there — today `allowed_uris` drops degenerate prefixes but **admits `*` explicitly**.
+2. **In a job the gate has nobody to ask.** A job is born `unattended` by design (#104). A job
+   *does* have an owner (`_FIELDS` includes `owner`; legacy jobs carry `owner=""` = system,
+   admin-only), so the principal exists — but is not at the turn. The corollary to declare: in
+   a job scope only what is **already** allowed applies, and a new destination is **denied**,
+   not gated. Otherwise the job hangs to timeout, which is the lesson of #116.
+
+**The next hole, and its solution already exists in the sibling channel.** For Telegram,
+per-scope authorisation **of senders** exists: `channel.participants` maps
+`telegram_uid → command | dialogue`. For email there is **nothing equivalent**: authorising a
+mailbox authorises the **box**, not the **senders** — and anyone in the world writes into a
+box. So «reads from a mailbox authorised in the scope» grants **the whole world** an ingress
+into the room. The two-list structure has to apply inbound as well, which is precisely what
+Telegram already does.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -888,6 +963,10 @@ do **not** hold.
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
+- **Per-scope authorisation of senders for email** (entry 18) — Telegram has it, email does
+  not, so an authorised mailbox is an ingress open to the world.
+- **Should the global egress list narrow to infrastructure-only, and should `*` become
+  inexpressible there?** (entry 18)
 - **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
   the widest perimeter and no human at the turn.
 - **What caps a git remote, and is the cap a property of the host rather than of the
