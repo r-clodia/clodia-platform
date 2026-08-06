@@ -600,6 +600,50 @@ rather than the action perimeter.
 
 ---
 
+## 14 · Topic is the load-bearing concept; the channel is its group chat
+
+**Definition (Davide, 6 Aug 2026).** The channel is the chat and the **medium**; the topic is
+the **purpose and objective**. They are two ways of seeing one arrangement. Historically it
+was called topic first; the UI may decorate it as «pratica», «fascicolo», «progetto» — that
+does not matter. Keep **topic** as the load-bearing concept, and the topic has a **central
+channel** which is the group chat.
+
+**Correct, and the confusion turned out smaller and more precise than I had described it.**
+Yesterday I set out three levels; there were four concepts, one of them misnamed.
+
+Two decisive measurements:
+
+- **Messages are ONE stream per topic.** `channel_messages` aggregates nothing: it reads
+  `topics_client.list_messages(tier, name)` → `/{tier}/{name}/messages`. There is no
+  per-agent list. So the central channel already exists, and it is the topic's message
+  stream.
+- **The code already knows the right word for the other thing.** From the `reset-context`
+  docstring: «chiude le **runtime session dei responder**». So `chan:<tier>:<name>:<agent>`
+  is a **session** id, not a channel id.
+
+The resulting vocabulary is recorded in `docs/vocabulary.md`. The channel needs no
+identifier of its own: it is the topic's conversational face. That topic is load-bearing is
+confirmed by DMs being topics too — `POST /clodia/dms` also calls `create_topic`.
+
+**Consequence carried forward: one public log, N private contexts.** The N responders share
+a single public stream but each holds its own history (`chat-<chat_id>.jsonl`), and neither
+set contains the other — an agent has its own turns and not a colleague's, and also holds
+material that never reached the log. *«What the channel knows»* ≠ *«what an agent knows»*.
+Any question about who sees which resource starts here.
+
+**Sanitisation is split in two, because the two halves cost differently.** The conceptual
+half is free and done: vocabulary doc, and the UI labels that said «topic / canale»,
+«Owner del canale», «Partecipanti del canale» now say topic — while «Apri il canale» stays,
+because under this definition it is finally correct.
+
+The string half is a **migration**, deliberately not done: `chat_id` is a filename component
+(`sessions/chat-chan:SEAL-1:pof:clodia.jsonl`) and also lives in `scheduler/db`,
+`scoped_overrides`, PKI tokens and telemetry across ~20 modules. Renaming `chan:` → `sess:`
+would migrate the conversational history — the thing least worth risking — and no user ever
+sees the string. `chan:` is frozen as an opaque legacy token meaning "session".
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -617,6 +661,8 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
+- **Retire the `/clodia/channels/…` prefix** (entry 14): the same `(tier, name)` is
+  addressed under four prefixes, and that one is what the UI calls.
 - **Should revoking a scoped override take effect on a live spawn?** (entry 13) — today the
   spawn must die first, so a withdrawn model/provider stays in use.
 - **A cost ladder within one provider is not expressible** (entry 13, v1 constraint).
