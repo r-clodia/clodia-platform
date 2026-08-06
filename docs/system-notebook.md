@@ -944,6 +944,63 @@ Telegram already does.
 
 ---
 
+## 19 · Taint: the signals stay, they just do not fire inside the scope's perimeter
+
+**Definition (Davide, 6 Aug 2026).** A `websearch`/`webfetch` of a **non-whitelisted URL**
+also causes taint. So the trifecta signals remain, but **do not fire while moving inside the
+scope's perimeter** — mailbox, remotes and Telegram groups included. A whitelist of **email
+senders** is agreed: everyone else is untrusted, and if read by an agent sets `taint=1` **on
+the topic**.
+
+**Measurement reverses the estimate: most of this is already built.** Three facts.
+
+**1. Taint already lives on the topic, and is not permanently sticky.** `mark(channel, …)`,
+`status(channel)`, and `clear(channel, by)` — which zeroes the flag but **archives** the
+sources instead of deleting them, «altrimenti l'audit perde il motivo per cui quell'unlock è
+stato chiesto». So `taint=1 sul topic` is exactly what exists.
+
+**2. The source allowlist already exists, and already covers email senders.** It is
+`source_allow`, with `is_vetted_source(uri)`, and `_source_vetted` already resolves a URI per
+verb:
+
+```python
+web    → is_vetted_source(url)                    # by prefix
+email  → is_vetted_source(f"mailfrom:{addr}")     # ← the senders
+mcp    → is_vetted_source(f"mcp:{verb}")
+gdrive → is_vetted_source(f"gdrive:folder/{folder}")
+```
+
+*This corrects something I told Davide on 3 Aug* — that taint looked at the verb and not at the
+source, so `web.fetch` contaminated on `eur-lex` exactly as on any blog. That piece has since
+been built.
+
+**3. The rule for non-whitelisted sources is already the implemented semantics**, with the
+reason in the docstring:
+
+> `vetted=True` → no contamination. `None` = source not determinable → **contaminates**, the
+> prudent direction. «Prima contaminava sempre, e un flag che si accende su tutto smette di
+> discriminare» (#77, consent fatigue).
+
+**What is missing is one thing, and it is the same as for egress: `source_allow` is global
+only.** There is no per-scope source list, so approving a sender opens them for **every**
+topic — #150 identically, but inbound. The real work is therefore not building source taint:
+it is **applying the two-list structure in both directions**, plus the gate that offers to add
+to the scope list.
+
+**A design point that must be decided, because it changes behaviour.** From «non scattano
+quando ci si muove dentro il perimetro dello scope»: today reading a file from the topic's *own*
+Drive remote is vetted **only if that folder is in `source_allow`**. Under this model listing it
+should not be necessary — it is in the perimeter. So the rule to write is that **membership in
+the scope's perimeter counts as vetted by construction**, and the lists exist for what is
+**outside**. Otherwise every topic with a remote must duplicate its own folder into a list, and
+the list fills with entries that defend nothing — which is the same erosion #77 warns about.
+
+With one practical constraint: membership must be **expressible as a URI** in the same
+vocabulary (`mailfrom:`, `gdrive:folder/`, `tg:`), because `_source_vetted` returns `None` when
+it cannot form the URI, and `None` contaminates.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -963,6 +1020,8 @@ do **not** hold.
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
+- **Does perimeter membership count as vetted by construction?** (entry 19) — otherwise every
+  topic duplicates its own resources into the source list.
 - **Per-scope authorisation of senders for email** (entry 18) — Telegram has it, email does
   not, so an authorised mailbox is an ingress open to the world.
 - **Should the global egress list narrow to infrastructure-only, and should `*` become
