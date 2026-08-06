@@ -859,11 +859,19 @@ the UI. Sensible default: **the type**, when it is the first remote of that type
 agents_md = self.s.read(f"{d}/files/AGENTS.md")
 ```
 
-`self.s` is the **storage abstraction**. So when a topic's storage is Drive, `AGENTS.md` is
-read **from Drive** — and it is not among the sync filter's `_HARD_DENY` entries.
-Consequence today: **anyone with write access to that Drive folder writes the instruction file
-that enters every agent's context on every turn.** Moving it to metadata takes it out of the
-data plane: no longer writable by a remote, nor by a participant's file upload. It also
+*Corrected 6 Aug while implementing A1: the original claim here was wrong.* `self.s` is **always
+the local control plane**, not the file backend — `_files_backend()` returns Drive only for the
+files plane, and the `agents_md` read does not use it. So the real picture is the opposite of what
+was first recorded, and worse in a different way:
+
+- **local topic** (the majority): `put_file` writes `files/AGENTS.md` in the same store the reader
+  reads → **any participant can write the instruction file injected every turn**. The vulnerability
+  is real, and it is here.
+- **Drive topic**: the upload goes to Drive while the read stays local, so the file the UI shows is
+  **not** the file being injected, and the injected one cannot be reached by any normal verb. Not a
+  write path — a silent inconsistency. Moving it to the control-plane root takes it out of the data
+plane: no longer writable by a participant's upload, and no longer split between two locations
+depending on the storage backend. It also
 settles the question left open in entry 9 — whether writing it is an act of authority: yes,
 and metadata is where authority-bearing writes live, behind the version lock like the summary.
 
