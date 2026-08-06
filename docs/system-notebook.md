@@ -1126,33 +1126,45 @@ enter, and whose **files are in fact the system's configurations**. A read/write
 modifies agent behaviour **live**. The simplest case: the `AGENTS.md` of this topic is
 **inherited by all new topics**.
 
-**The design works, and it has exactly one technical condition.** Measured:
+**The design works, and the objection I first raised was wrong.** *Correction, same day.* I read
+the mount **destinations** without their **sources** and concluded that topic files live on a
+volume the agent-server mounts. Davide corrected it; the sources decide:
 
 ```
-agent-server volumes:  /datadir   /datadir/clodia-vault   /shared   …
-gateway volumes:       /datadir   /datadir/topics   /gateway-state   …
+agent-server:  /datadir/clodia-vault  ←  clodia-personal/.vault-mask        ← a MASK
+gateway:       /datadir/clodia-vault  ←  clodia-personal-sensitive/…        ← the real one
 ```
 
-`/gateway-state` is mounted **by the gateway only**. That is where the config lives, and the
-reason is written in `egress.remember`:
+The agent-server mounts a **mask** directory over the vault path. Verified from inside:
 
-> «Scrive nella config del gateway, **sul suo volume: l'agent-server non la monta**, quindi un
-> agente non può aggiungersi destinazioni da sé (#80).»
+```
+agent-server → entries in /datadir/clodia-vault: 0     (and /datadir/topics does not exist)
+gateway      → spawn dirs visible: 227
+```
 
-Topic files, by contrast, live under `/datadir`, which the agent-server **does** mount. So this
-design, taken literally, would move configuration **from a volume agents cannot touch to one they
-can** — undoing #80 at the filesystem level, regardless of who is a participant. Not through a
-missing permission: through a mount.
+So topic files are unreachable from the agent-server, every access goes through the gateway, and
+the **scratch** directories are visible **to** the gateway. The asymmetry runs in the direction
+that is needed: it is exactly what lets `topic.put` / `topic.fetch` move bytes **without** base64
+passing through the model's context.
 
-**The condition, and it is one:** the storage of *this* topic must point at the gateway-only
-volume. Implementable without inventing anything, since topic storage is already pluggable
-(`local_fs`, `drive_fs`) — it needs a backend rooted in `/gateway-state`. Then the topic
-**machinery** applies in full (tier, owner, participants, version lock, audit, views) while the
-**bytes** stay where an agent cannot reach them.
+**Consequence for this design: the condition I posed is already satisfied.** The ordinary topic
+store already sits on a gateway-only volume, so the configuration topic needs no special storage
+backend and can live where the others live. Exactly **one** control remains, and it is the one
+Davide stated from the outset: **who is a participant, and with which verbs.** With no agent
+participants, `topic.put` over the config exists for nobody but an admin in the webui.
+
+**A fragility the measurement exposes, though.** The protection of the topic store from the
+agent-server is **not a kernel permission: it is a line of compose** — the `.vault-mask` mount.
+And the minipc's compose is a local copy already known to drift from the repo. If that line
+disappears in an update, the agent-server silently acquires the whole vault, and no test notices.
+A control resting on a config line that drifts deserves a test asserting it **from inside** —
+«from here the vault must be empty» — rather than being inferred by reading mounts, which is
+precisely the mistake made above.
 
 **Four consequences, in order of how hard they bite.**
 
-1. **If an agent is a participant, it holds `topic.put` over the configuration.** The confused
+1. **The only real control: if an agent is a participant, it holds `topic.put` over the
+   configuration.** The confused
    deputy in its purest form: the agent has the verb, the admin has the authority, and the file
    is the config. «Only admins enter» resolves it — but that means **zero agent participants**,
    so this topic has no channel: it is a config view with a topic's ergonomics. A legal but
@@ -1198,6 +1210,8 @@ do **not** hold.
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
+- **Assert the vault mask from inside, in a test** (entry 22): the agent-server's blindness to the
+  topic store rests on a compose line that is known to drift.
 - **Is the inherited `AGENTS.md` a template or a live metascope?** (entry 22) — «nuovi» reads as
   a template; live inheritance is the most powerful surface in the system.
 - **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
