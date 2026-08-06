@@ -1297,6 +1297,63 @@ particular scope**. One rule, and the admin role turns into a membership propert
 
 ---
 
+## 25 · Not every human in a scope is its owner: membership needs grades
+
+**Definition (Davide, 6 Aug 2026).** Not all humans in a scope are owners — some are merely
+invited. Giovanni and Matteo inside `proof-of-flex`. And being inside the scope does not mean they
+should be able to do everything.
+
+**Measured: in the topic API, membership is binary.** Ten guarded endpoints, one guard —
+`_require_member`, which treats owner and participant **identically**. The only finer distinction
+lives inside the `remote` handler, where `add|enable|disable` demands admin.
+
+So what Giovanni and Matteo can do **today** in `proof-of-flex`, as mere invitees:
+
+- read and post messages, list and **upload files**
+- **interrupt** an agent's turn
+- **`reset-context`** — wipe the channel's conversational memory, destroying shared state
+- **`feedback`** — which becomes a *lesson* injected into the agent's prompt in that channel: a
+  participant **writes into what the agent reads every turn**
+- `remote status` and `pull`
+
+And a consequence that compounds entry 17.7: since `AGENTS.md` lives in `files/` today and upload is
+`_require_member`, **any participant can write the instruction file injected every turn** — not
+only through Drive, as measured earlier, but by the most direct path there is. Moving it to
+metadata closes both doors with one gesture.
+
+**The mechanism needed exists in exactly one place: Telegram.** In the meta's `channel`, human
+participants are a map `telegram_uid → command | dialogue`. Two levels: who may **command** the
+agents and who may only **speak**. That is precisely «inside the scope but not able to do
+everything» — built once, for one channel, and never generalised.
+
+**Proposed: three per-scope roles, a closed set.**
+
+| role | may |
+|---|---|
+| **owner** | unlock boundary gates, move the walls, manage membership |
+| **contributor** | act inside the scope with their seed's verbs: post, upload, command agents |
+| **reader** | read messages and files; not post, not upload, not command |
+
+Telegram's `command | dialogue` maps onto contributor/reader almost exactly, so this is not new
+vocabulary — it is the vocabulary already chosen once, extended to the other channels.
+
+**Why not a per-person, per-scope verb list:** it is #128's argument, and worse here. There it was
+«fourteen agents, the same address asked fourteen times»; here it would be 156 topics × N people,
+and nobody could say what Giovanni may do without opening 156 files. A closed set of three reads;
+a list does not.
+
+**Composition rule:** effective authority = **seed matrix ∩ scope role**. Never union — the same
+principle as the `origin` chain, applied to a third axis.
+
+**The cost, stated rather than hidden:** entry 23 promised «one rule and one membership question».
+Membership now has three answers instead of two. It remains one question, but no longer a binary
+one.
+
+**One reclassification the measurement suggests:** `reset-context` destroys shared state and looks
+more like an act of ownership than of participation.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1316,6 +1373,8 @@ do **not** hold.
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
+- **Grade membership: owner / contributor / reader** (entry 25) — today it is binary, so an
+  invitee can wipe a channel's memory and write the file injected every turn.
 - **Declare "a scope owner is always human" as an invariant with a test** (entry 24) — the rule
   gives owners gate authority, so an agent-owned scope would unlock its own gates.
 - **Re-express the four gating mechanisms as the one boundary rule** (entry 23) — the largest
