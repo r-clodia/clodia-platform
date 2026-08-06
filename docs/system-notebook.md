@@ -1059,6 +1059,66 @@ the previous six is that whoever reads the file assumes it works. Better that th
 
 ---
 
+## 21 · A human is either a participant of a scope or its owner
+
+**Definition (Davide, 6 Aug 2026).** A human can be a **participant** of a scope or its
+**owner**. Giovanni can create a job and own it; or be invited by Davide into a topic where he
+is a plain participant.
+
+**Already implemented for jobs, and the code names Giovanni.** `_require_job_owner`:
+
+> «Agire su un job è riservato al suo **OWNER** (o a un admin come operatore). Un job
+> legacy/di sistema (owner vuoto, es. il job di backup) è gestibile solo da un admin — così un
+> non-owner come **Giovanni** non può cancellarlo.»
+
+Owner or admin, with the empty-owner = system case handled the right way: nobody inherits it by
+default.
+
+**A job has an owner and no participants.** Of the two relations defined, the job subtype
+supports one. It matters for exactly one thing — who may *see* the run and its output, today
+owner and admin. Acceptable as long as it is intentional rather than an omission.
+
+**The divergence is on topics, and it is mine, from 5 Aug.** `topic.remote_{add,enable,disable}`
+is **admin-only** (`require_authz`); I tightened it from `_require_member` because a participant
+could point the remote at a sibling folder and widen the perimeter for themselves. This
+definition puts the owner **between** participant and admin: it is their room, so they should be
+able to.
+
+It cannot simply be relaxed, for a structural reason rather than caution: **the owner does not
+own the credential.** The Google account belongs to the platform and is shared. So an owner free
+to point the remote anywhere can point it at **any folder that credential reaches** — including
+another human's `30-legale`. That is the #80 lesson, and it applies identically to an owner and
+to a participant.
+
+The mechanism that makes owner-authority safe **already exists**: the **ceiling** built 5 Aug —
+`gdrive_roots` per account, intersected with the topic's folder. With a ceiling set, an owner can
+move their own perimeter only *inside* what the account already permits, and then the definition
+is exactly right. Measured on the personal stack:
+
+```
+gdrive_roots: NON IMPOSTATO
+```
+
+So the ceiling does not exist, and until it does, relaxing the guard would hand every owner the
+whole Drive. **Order of work: account roots first, then the guard from admin to owner.** That is
+also what makes the ceiling load-bearing instead of decorative — today that branch of the code
+protects nothing, because it has no entries.
+
+**From the same measurement, something more urgent than this definition** (belongs to entry 19):
+
+```
+source_allow: 0 voci
+egress_allow: 0 voci
+```
+
+The **trusted-source list is empty in production**. So every web read, every mail read, every MCP
+read taints — precisely the «un flag che si accende su tutto smette di discriminare» condition
+that #77 was written to avoid. The mechanism is built and degenerates into the behaviour it
+replaced, for want of entries. On `egress_allow` the direction is safe instead — empty means
+everything gates — so there it is noise, not risk.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1078,6 +1138,12 @@ do **not** hold.
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
+- **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
+  empty in production, which is the pre-#77 behaviour.
+- **Set `gdrive_roots` before relaxing the remote guard to owner** (entry 21) — without a
+  ceiling, owner-authority reaches every folder the shared credential can see.
+- **Should a job scope have participants?** (entry 21) — today it has an owner only, which
+  decides who may see a run's output.
 - **Does `superadmin` become an attribute of the admin spawn?** (entry 20) — «who owns the
   instance» is not «who may administer it», and two seeds collapse them.
 - **Does perimeter membership count as vetted by construction?** (entry 19) — otherwise every
