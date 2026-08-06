@@ -1252,6 +1252,51 @@ simplification the two ideas produce *together*; neither produces it alone.
 
 ---
 
+## 24 · Crossing the boundary fires the gate, and the scope's owner unlocks it
+
+**Definition (Davide, 6 Aug 2026).** When the boundary of a scope is crossed the gate fires, and
+in that case it is the **owner** who unlocks or denies.
+
+**A real change, not a formalisation.** Today `require_authz` asks the gateway and its error reads
+«azione riservata agli **admin**». The owner of a scope, as such, has no standing at all. This
+gives them one. It is the general form of the divergence found in entry 21, which applied only to
+`remote_add`.
+
+**Three things to fix for the rule to be applicable.**
+
+**1. Which owner, when a crossing has two scopes.** «The owner» is unambiguous only for outward
+egress:
+
+| crossing | who decides | why |
+|---|---|---|
+| outward (mail, TG group, `web.post`) | owner of the **originating** scope | there is no owner on the far side, and the data leaving is theirs |
+| cross-scope read (a spawn of A reads a file of B) | owner of **B** | the boundary crossed protects B's data; A's risk is taint, which has its own mechanism |
+| inbound (a new sender writes into the scope's mailbox) | owner of the **receiving** scope | — |
+
+One principle covers all three: **the owner of the scope whose data is at risk decides** — the
+source for egress, the target for a read.
+
+**2. The owner must remain human, and today is.** Measured: for topics and for DMs alike, `owner`
+is the request's `principal`, i.e. an authenticated person. Worth declaring as an invariant,
+because this rule makes that attribute far more powerful: if a scope could ever be owned by an
+agent, **that agent would unlock its own gates** — the confused deputy in its cleanest possible
+form, and this time legitimised by the design.
+
+**3. Class 2 splits in two, and only the first half is safe with the owner alone.**
+
+- **Leaving the room** — sending to a new address, reading from another scope: the blast radius is
+  the scope itself, and the owner answers for what they own. **Owner suffices.**
+- **Moving the walls** — `remote_add`, `remote_disable`, `add_participant`: here the owner is not
+  deciding about what they own but about **how large what they own becomes**. And per entry 21 they
+  do not own the credential: without an account ceiling, an owner moving the remote reaches
+  everything that credential can see. **Owner + ceiling**, and the ceiling does not exist today.
+
+**A closure worth noting.** With entry 23, crossings of the *system* boundary become writes in the
+configuration scope. So «admin» stops being a separate category and becomes **the owner of one
+particular scope**. One rule, and the admin role turns into a membership property like every other.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1271,6 +1316,8 @@ do **not** hold.
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
+- **Declare "a scope owner is always human" as an invariant with a test** (entry 24) — the rule
+  gives owners gate authority, so an agent-owned scope would unlock its own gates.
 - **Re-express the four gating mechanisms as the one boundary rule** (entry 23) — the largest
   simplification available, and it depends on entry 22 shipping first.
 - **Assert the vault mask from inside, in a test** (entry 22): the agent-server's blindness to the
