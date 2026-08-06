@@ -1413,6 +1413,44 @@ it should permit in the job he owns, and permitting things it should block in `p
 
 ---
 
+## 27 · Decisions closing the specification, and the 9.0 plan
+
+**6 Aug 2026 — Davide declares the specification complete** and asks for the plan and the
+implementation. Three decisions were needed and were taken:
+
+1. **Marte freezes at `v8.1`, it is not rolled back to `v8.0`.** Measured first: `v8.0` was the
+   current tag on all four repos and HEAD was 15–34 commits ahead, so a rollback would have
+   discarded two days of security work — per-topic Drive confinement, the human verb matrices, the
+   vault refusal messages, and the `save_config` clobber fix, which is a *live* bug that took clodia
+   from 53 to 130 verbs on venere. `v8.1` was tagged at HEAD on all four repos and marte's webui was
+   rebuilt to it, so on that instance **running == tag**. Cost accepted: marte receives nothing more
+   until 9.0, save cherry-picked fixes on the 8.1 line.
+2. **The inherited `AGENTS.md` is a template at creation**, not a live read every turn. Bounded
+   blast radius: a later change does not propagate to existing topics. The live reading remains
+   describable but would be the most powerful surface in the system and would need a gate of its own.
+3. **A scope's mailbox is an approved ingress only.** Sending stays subject to the two destination
+   allowlists. Symmetry with the remote was rejected for a concrete reason: a folder is bounded by
+   its subtree, an outbound address is not, so «approved mailbox» would authorise sending to anyone.
+
+**Why 9.0 is a legitimate major:** not for quantity but because three things break — paths change
+shape (`//<remote>/…`), `AGENTS.md` changes place (`files/` → metadata, migrating 156 topics), and
+`participants` changes type (list → map name→role).
+
+**The plan, in the order of entry 26** (inverting it does harm), delivered as increments that each
+leave the system working, on **venere** only:
+
+- **A — schema and data (breaking):** `AGENTS.md` to metadata · two data planes with the
+  `//<remote-name>/` namespace, `_abs` from strip to parse · `participants` list → map
+- **B — authority:** `admin`/`member` seeds, `superadmin` as an attribute · third term in the
+  intersection (seed matrix ∩ scope role) · the owner unlocks their scope's boundary gates · the gate
+  re-expressed as standing rather than a list of verbs
+- **C — perimeter:** per-scope egress *and* ingress lists with the gate offering the scope list ·
+  perimeter membership counts as vetted · tier on jobs · git remote capped by host · account roots set
+- **D — configuration as a scope:** the configuration topic, which collapses gate class 3
+- **E — enforcement:** `CLODIA_ORIGIN_ENFORCE=on` and `source_allow` populated
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1430,8 +1468,6 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
-- **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
-  as ingress-only; the other reading re-opens #150.
 - **Sequence to enforcement** (entry 26): AGENTS.md to metadata → scope roles → third term in the
   intersection → `CLODIA_ORIGIN_ENFORCE=on`. Today the chain observes and blocks nothing.
 - **Grade membership: owner / contributor / reader** (entry 25) — today it is binary, so an
@@ -1442,8 +1478,6 @@ do **not** hold.
   simplification available, and it depends on entry 22 shipping first.
 - **Assert the vault mask from inside, in a test** (entry 22): the agent-server's blindness to the
   topic store rests on a compose line that is known to drift.
-- **Is the inherited `AGENTS.md` a template or a live metascope?** (entry 22) — «nuovi» reads as
-  a template; live inheritance is the most powerful surface in the system.
 - **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
   empty in production, which is the pre-#77 behaviour.
 - **Set `gdrive_roots` before relaxing the remote guard to owner** (entry 21) — without a
