@@ -162,6 +162,205 @@ existing at all.
 
 ---
 
+## 4 · The seed declares the skills its spawns will know
+
+**Definition (Davide, 6 Aug 2026) — requirement.** A seed also declares which skills its
+spawns will know how to use, possibly making use of the verbs granted to them.
+
+**Holds as a requirement. Nothing enforces the "possibly making use of the verbs" part,
+and the gap is already active.**
+
+Skills are declared as `capabilities` in the seed — `messaggero` has
+`['comms-pack/check-email', 'comms-pack/telegram-1to1']`. Verified.
+
+**Defect (a): no skill declares the verbs it needs.** Measured: **0 of 11** `SKILL.md`
+files carry a `tools:` / `verbs:` / `requires_tools:` field. So nothing can check that a
+seed declaring a skill holds the verbs to execute it. Coherence rests on whoever writes
+the seed remembering.
+
+**Defect (b): clodia declares five skills it cannot execute.** With
+`capabilities: [base-pack/*, editorial-pack/*, comms-pack/*, anthropic-pack/*]` and 53
+verbs, cross-checking the verbs each skill names against clodia's set:
+
+```
+topic-drive-sync    missing gdrive.download, list, mkdir, upload
+topic-management    missing topic.archive, topic.new
+check-email         missing email.list, read, save_attachment, search, jobs.propose
+telegram-1to1       missing telegram.inbox, lease_acquire, poll, send…
+helpdesk            missing agents.memory, agents.profile
+```
+
+The first four follow from the deliberate reduction to 53 verbs, and clodia *should* not
+have mail. The defect is not the missing verbs — it is that the seed keeps **declaring
+the skills**. An agent that announces a capability it cannot exercise discovers it by
+trying, and reports "I lack the permission": the loop that cost an afternoon with
+messaggero.
+
+`helpdesk` names `agents.memory` and `agents.profile`, which **do not exist** as verbs.
+Fifth dead name found on 6 Aug.
+
+**Consequences of the requirement:** skills must be declared without wildcards
+(`base-pack/*` grants every skill added tomorrow, unevaluated against that agent's
+verbs — the same argument Davide made in August about verb wildcards), and a skill must
+declare the verbs it requires, so `skill ⊆ seed's verbs` is checkable at install rather
+than in production.
+
+*Depends on:* `capabilities` staying the declaration point; skills gaining a verb
+manifest for the check to become possible.
+
+---
+
+## 5 · The spawn loads the seed's prompt and the seed's mutable memory
+
+**Definition (Davide, 6 Aug 2026) — requirement.** When a spawn is materialised it always
+loads into its LLM context the system prompt defined by the seed, which is **immutable**,
+and `MEMORY.md`, also defined by the seed but a memory that spawns may modify when they
+learn new information.
+
+**Holds.**
+
+The prompt is immutable *to the spawn* for a kernel reason, not a policy one:
+`/datadir/agents/<name>/` is `drwx------ root` and a spawn runs as uid 60000 — it cannot
+even read it. Only an admin changes it.
+
+The memory survives a pack update, verified in `pack_import`:
+
+```python
+shutil.copytree(sdir, dest, dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns(".git", "memory"))
+(dest / "memory").mkdir(exist_ok=True)
+```
+
+So the pack ships an initial `memory/MEMORY.md` for four seeds — clodia, ophelia,
+segretario, sysadmin — and from then on it belongs to the agent. Updating the pack
+replaces the definition and preserves the learning. `messaggero` has no `memory/` in the
+pack: its memory is created at runtime, and per its prompt it holds the **Telegram
+authorisation whitelist**.
+
+**Defect: `memory.write` overwrites blindly.** Atomic (`.tmp` then `replace`) but with no
+re-read and no version:
+
+```python
+tmp.write_text(content or "", encoding="utf-8")
+tmp.replace(p)
+```
+
+Two spawns of one seed share the memory by construction (symlink), and on venere
+`clodia-1` and `clodia-2` are both alive. Concurrent writes: **last one wins, the other's
+learning disappears silently.** It is the same defect fixed in `save_config` on the same
+day — "a process pours its own copy over what another wrote in the meantime" — moved onto
+the agent's learning, where it is harder to notice because nobody re-reads it for
+comparison.
+
+Two things make it worse than it sounds. `append` exists and is the right path, but
+nothing compels it: `write` is available, and a model that "rewrites the updated file"
+reaches for that. And an **access-control datum** — messaggero's Telegram whitelist —
+lives in a file subject to this race.
+
+**Fix:** `memory.write` re-reads and writes only its delta, or takes a version and
+refuses on conflict, as `topic.save_summary` already does.
+
+*Depends on:* the memory staying a symlink shared across spawns of a seed; `pack_import`
+keeping `memory` in its ignore list.
+
+---
+
+## 6 · Spawns exist in exactly two scopes: channel and job
+
+**Definition (Davide, 6 Aug 2026) — requirement.** Spawns are born, operate and die in a
+scope of only two kinds: a topic/channel chat, or a job execution.
+
+**The requirement stands. The code has four, and the two extra ones are defects.**
+
+Seven sites create sessions. Two match the requirement — `chan:<tier>:<topic>:<agent>`
+(with `#<ordinal>` for multi-spawn) and `run_id="job:<id>"` from the scheduler. Two do
+not:
+
+- **`feedback:<agent>`** — a thumbs up/down creates its own session with
+  `principal = "feedback"` and hands the agent a prompt asking it to write a lesson into
+  memory. Davide's ruling: *feedback is not a spawn scope, it is an action inside the
+  channel where it happened.* It also writes to the seed's persistent memory — the only
+  state that outlives spawns — through the blind `memory.write` of entry 5.
+- **`pack-ops:<agent>`** — invents its own `chat_id`. Davide's ruling: *it happens in the
+  DM between `sysadmin` and the human*, which is already a channel.
+
+Plus `DEFAULT_CHAT_ID` at server start, to be looked at: if it is neither, it is a third
+leftover.
+
+**A DM is a channel** — a topic with `kind: "dm"`, tier SEAL-0, name `dm-<a>--<b>`, so its
+turns get `chat_id = chan:SEAL-0:dm-…`. Measured:
+
+```
+scope                  in_channel  email.send gated  telegram.send gated
+  canale di topic      True        True              True
+  DM con l'umano       True        True              True
+  job                  False       False             False
+```
+
+**This corrects a statement I made to Davide the same evening** — that a DM is "outside a
+channel" and therefore ungated. It is not: the gate fires in a DM too, so asking
+messaggero to send in your own DM prompts you, as admin, for your own request.
+
+And it exposes what `gated_in_channel` really is: with two scopes and a DM being a
+channel, it means "always except in jobs" — so the mechanism's name misdescribes its
+criterion. The criterion intended was *when whoever asks might not be the owner*, which
+is the origin chain. `gated_in_channel` is a coarser stand-in than even its own PR
+admitted, and the origin chain removes it entirely.
+
+*Depends on:* `in_channel()` keying on the `chan:` prefix; DMs continuing to be topics.
+
+---
+
+## 7 · Spawn numbering: one series per seed, unique across scopes, never reused
+
+**Definition (Davide, 6 Aug 2026) — requirement.** Spawns carry a progressive number
+(`clodia-23`). Numbers already used are **not reusable** in other scopes. This identifies
+a workload uniquely as `spawn-N` and ends up in the audit trail. The counter is global
+per seed — so `clodia-4` and `ophelia-4` may coexist, but `clodia` has a single series
+across all topics and jobs.
+
+**Half implemented.**
+
+**Holds:** the series is per seed and blind to scope. `_next_spawn_index(name)` scans for
+`<name>-<int>` without looking at whether the spawn is born in a channel or a job, so one
+`clodia` series covers both. `clodia-124` and `wainston-7` coexisted on marte.
+
+**Defect: the numbers ARE reusable**, so `spawn-N` does not identify a workload:
+
+```python
+def _next_spawn_index(name: str) -> int:
+    """…Scansiona SPAWNS_ROOT per le cartelle <name>-<int>."""
+    mx = 0
+    for d in SPAWNS_ROOT.iterdir():
+        if d.is_dir() and suffix.isdigit():
+            mx = max(mx, int(suffix))
+    return mx + 1
+```
+
+The index is a `max()` over **existing directories**, and the reaper deletes old spawns —
+so once `clodia-124` is gone the next `clodia` takes a number already used. marte held
+243 directories before a cleanup; after it, numbering restarted into occupied ground.
+
+Two workloads with the same name in different moments make an audit line saying
+`clodia-124` identify nothing. And `_spawn_identity` already publishes `spawn_id` /
+`spawn_instance` derived from that directory name.
+
+Worse, the counter lives **on the spawns' disk** — the most ephemeral state in the
+system. A `docker volume rm` resets it.
+
+**Fix:** a persistent monotonic counter per seed, held where spawn cleanup cannot reach
+it, incremented atomically at allocation, never decremented or reused.
+
+**Open decisions when we get there,** both of which change the audit trail: whether the
+series should be unique only per instance or across instances (`clodia-16` on marte and
+`clodia-16` on venere are two different workloads with one name today, and the collision
+returns the day the audit trails converge).
+
+*Depends on:* the reaper continuing to delete spawn dirs — which is what makes a
+disk-derived counter unsafe.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -176,6 +375,9 @@ do **not** hold.
 - **Does any seed rely on `memory.*` being implicit?** Before removing the universal
   namespace, every seed that uses memory verbs has to declare them, or removing it
   breaks agents silently instead of loudly.
+- **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
+  neither channel nor job it is a third leftover to remove (entry 6).
+- **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **`ophelia` is still a super-agent.** `clodia` was removed from both super sets on
   6 Aug; the concept survives in seven places with three independent definitions, two
   of which are not agent authority at all but the agent-server's *service* identity
