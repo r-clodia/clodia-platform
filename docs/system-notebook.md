@@ -1191,6 +1191,67 @@ risk.
 
 ---
 
+## 23 · A gate is not a property of a verb: it is what happens at the boundary of a scope
+
+**Question (Davide, 6 Aug 2026).** «Per come abbiamo incapsulato gli spawn in uno scope forse non
+ha senso che esistano verbi gated, tutte le risorse di uno scope sono accessibili agli spawn per
+definizione. Cosa pensi?»
+
+**The intuition is right, and the measurement states it more strongly than the question does.**
+The global gated list holds **24 exact verbs plus three prefixes**, and **not one of them means
+«use a resource of your scope»**:
+
+| class | how many | which |
+|---|---|---|
+| **change the rules of the system** | 16 + 3 prefixes | `agents.grant_*`/`revoke_*` (8), `packs.*` (4), `mcp.add/remove` (2), `providers.pause/resume` (2), plus `settings.` `pki.` `ca.` |
+| **change who is in the scope, or how wide it is** | 5 | `topic.add_participant`, `topic.remove_participant`, `topic.remote_{add,enable,disable}` |
+| **cross the boundary outward** | 3 | `web.post`, `egress.allow`, `ingress.allow` |
+| **use a resource of the scope** | **0** | — |
+
+The fourth row is empty. So the intuition is **already the implemented policy**: there is not, and
+never was, a gate on «do your job inside your room». What is wrong is not that gates exist but
+that they are a **flat list of verb names**: the rule is invisible, and every new verb forces a
+human to guess which bucket it belongs to. That is exactly why four separate gating mechanisms
+were found on 5 Aug (`gated_tools`, `gated_in_channel`, `profile_tools`, the global list).
+
+**The reformulation proposed:**
+
+> A gate is not a property of a verb. It is what happens when an action **crosses the boundary of
+> a scope**.
+
+Three classes, each with a *different control* rather than a different list:
+
+1. **Inside the scope** — verb declared by the seed × resource belonging to the scope → **never a
+   gate**. This is Davide's statement, and it already holds.
+2. **Crossing outward** — a destination on neither allowlist, a remote not yet approved, a read
+   from another scope → **gate**, addressed to the **scope's owner** or an admin. Generalises
+   entry 18 from egress to any crossing.
+3. **Changing the rules** — today the flat list. And here is the elegant part: **the configuration
+   topic of entry 22 collapses class 3 into classes 1 and 2.** If the system's configuration is a
+   scope with participants, `settings.set` becomes «write a file in the config scope»,
+   `agents.grant_tool` becomes «write a seed in the config scope», `egress.allow` becomes «write
+   the list in the config scope». The control stops being «is this verb gated» and becomes «are
+   you a participant of the config scope» — membership, the same mechanism as everywhere else.
+
+So **24 gated verbs + 4 gating mechanisms → one rule and one membership question.** That is the
+simplification the two ideas produce *together*; neither produces it alone.
+
+**What is genuinely lost.**
+
+- **Per-act consent.** Today `web.post` asks **every single time** — «consenso umano obbligatorio
+  per ogni singola POST». Under boundary-gating, once a destination is on the scope's list it stops
+  asking. Intended, but it is the difference between authorising *this act* and authorising *this
+  destination*, and one class of harm is caught only by the first: the **right destination with the
+  wrong payload**. Same residual as entry 18 — it does not worsen, it merely does not improve.
+- **Destructive actions inside the scope.** Under class 1 they are never gated, which is right
+  **only if destruction is recoverable**. Verified: `delete_file` moves to
+  `.trash/<timestamp>/<path>` rather than unlinking. But with two data planes (entry 17.6) the
+  trash is ours only on the local plane: on `//drive/…` recovery is Google's, and a git
+  `push --force` is not recoverable by us. So the exact rule is: **in-scope destruction is not
+  gated where the trash is ours.**
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1210,6 +1271,8 @@ do **not** hold.
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
+- **Re-express the four gating mechanisms as the one boundary rule** (entry 23) — the largest
+  simplification available, and it depends on entry 22 shipping first.
 - **Assert the vault mask from inside, in a test** (entry 22): the agent-server's blindness to the
   topic store rests on a compose line that is known to drift.
 - **Is the inherited `AGENTS.md` a template or a live metascope?** (entry 22) — «nuovi» reads as
