@@ -537,6 +537,69 @@ the hole stays.
 
 ---
 
+## 13 · A seed declares a vector of (provider, model); a spawn inherits one and may override it
+
+**Definition (Davide, 6 Aug 2026).** A seed defines a vector
+`[(provider, model), (provider, model), …]`. Every spawn inherits the default
+`(provider, model)`, which can be changed **per spawn**.
+
+**Correct, and the code states it more strongly than the definition does.** `models.py:66`:
+
+> «Uno stack di inferenza dell'agente: la tupla (LLM, provider). Il modello **NON è più una
+> proprietà fissa dell'agente** — è una proprietà dello stack.»
+
+`stacks: list[StackSpec]` is the **primary** syntax; `model` / `providers` /
+`provider_models` are legacy sugar normalised both ways. What the real seeds declare:
+
+```
+clodia       claude-opus-4-8   [claude-team, claude-pro-max, anthropic-api, aws-region-eu]
+messaggero   gpt-oss-120b      [scaleway, aws-region-eu] + {aws-region-eu: claude-haiku-4-5}
+segretario   gemma-4-26b       [scaleway]
+ophelia      gpt-5-codex       — derived from agent_sdk: an implicit length-1 vector
+```
+
+**The vector is not a fallback list — it is a security control.** The decisive line
+(`channels.py:_effective_clearance`):
+
+> «SEAL **effettiva** di un agente = quella del **provider** che usa (il dato va lì), per
+> TUTTI — super inclusi: NESSUNO tratta dati SEAL-3+ su un provider SEAL-2-. Il campo
+> `clearance` del seed è solo una SEAL **minima** dichiarata (floor), non l'effettiva.»
+
+Choosing a stack decides **where the data goes**, and from there which topic tier the agent
+may serve. Hence messaggero's `[scaleway, aws-region-eu]` and its seed comment «Nessun
+SEAL-1»: the vector *is* its clearance. A per-spawn provider override is therefore an
+operation on the data perimeter, not a cost preference — which sets the bar for who may
+perform one.
+
+**«Default» is not «first in the vector».** It is the first whose provider is *connected and
+not paused*, subject to a manual profile override. The default is a **resolution against the
+state of the instance**, not a property of the seed: the same seed on two instances can
+resolve differently with nobody having touched the pack.
+
+**The per-spawn override is live.** `session.py:2413` resolves
+`scoped_overrides.resolve(kind, chat_id=cid, run_id=run_id)` and passes it to
+`_runtime_class(kind, runtime_override)` — so it can even switch **SDK** (claude →
+opencode). Two measured limits:
+
+1. It is resolved **once, at spawn birth**, not per turn. Consistent with the definition —
+   the model is a property of the spawn — but the consequence is that **revocation is not
+   immediate**: an override granted or withdrawn while a spawn lives stays inert until that
+   spawn dies.
+2. Same defect as entry 8: the scope is the **topic** (the ordinal is discarded), so where
+   multi-spawn is enabled **every** instance of that seed in that topic receives it.
+
+**v1 constraint:** a provider may appear in **at most one** stack, because the runtime
+identity of the selection is the provider id. Two models on the same provider — opus and
+haiku both on `anthropic-api` — cannot be declared, which is precisely the shape a
+cost ladder *within* one provider would need.
+
+**Consequence for the seed/spawn model as a whole:** this is the fourth thing a seed
+declares (verbs, skills, prompt+memory, inference vector) and the second that a spawn may
+override for itself. It is also the only one whose override moves the **data perimeter**
+rather than the action perimeter.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -554,6 +617,9 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
+- **Should revoking a scoped override take effect on a live spawn?** (entry 13) — today the
+  spawn must die first, so a withdrawn model/provider stays in use.
+- **A cost ladder within one provider is not expressible** (entry 13, v1 constraint).
 - **Is the parent seed a ceiling or a default?** (entry 10) — decides whether inheritance
   is containment or convenience.
 - **Where should the 226 files live instead?** (entry 12, condition 2)
