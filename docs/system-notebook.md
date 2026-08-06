@@ -1222,7 +1222,9 @@ were found on 5 Aug (`gated_tools`, `gated_in_channel`, `profile_tools`, the glo
 Three classes, each with a *different control* rather than a different list:
 
 1. **Inside the scope** — verb declared by the seed × resource belonging to the scope → **never a
-   gate**. This is Davide's statement, and it already holds.
+   gate**. This is Davide's statement, and it already holds. *Amended by entry 26*: never a gate
+   **for an actor with the standing to mutate**. A reader mutating inside the scope is gated, so the
+   rule is not «inside vs outside» but «with standing vs without».
 2. **Crossing outward** — a destination on neither allowlist, a remote not yet approved, a read
    from another scope → **gate**, addressed to the **scope's owner** or an admin. Generalises
    entry 18 from egress to any crossing.
@@ -1354,6 +1356,63 @@ more like an act of ownership than of participation.
 
 ---
 
+## 26 · The requester's role travels with the command: that is the `origin` chain
+
+**Definition (Davide, 6 Aug 2026).** A **reader** should still speak in chat: their commands must
+simply produce no mutation in the scope. If a reader mentions an agent, the agent answers — but if
+the request implies a mutation it is **gated**. So the command carries the **role, or token**, that
+propagates along the chain of mentions and actions. If a reader says something *without* a mention
+that would require a mutation, the router attributes reader privileges anyway, and those propagate
+to the agents that respond. «Credo che abbiamo implementato già qualcosa di simile, ma senza i 3
+ruoli nello scope.»
+
+**Correct: it is the `origin` chain, built 5 Aug. Three textual confirmations.**
+
+**The chain starts from the message's author, mention or no mention.** `_origin_for` composes
+`human:<principal>` as link zero, where `principal` is whoever spoke. So «a reader speaking without
+a mention still contributes reader privileges» is **already the behaviour**.
+
+**It never restarts**, and the comment says why:
+
+> «una delega **EREDITA** la catena del delegante e vi aggiunge l'esecutore, perché è esattamente il
+> punto in cui l'autorità verrebbe **amplificata** se si ripartisse da zero.»
+
+**Evaluation is the intersection, with exactly the diagnosis this model needs:**
+
+> «Il rifiutante serve al messaggio: «Giovanni non può» e «messaggero non può» chiedono all'umano due
+> cose diverse — la prima si risolve con un'approvazione, la seconda no.»
+
+That distinction *is* the gate: when the refusing link is the human, someone can unlock; when it is
+the agent, no approval helps, because the verb is not theirs. And the «token» is not a metaphor —
+the chain rides inside the **signed** session token, so an agent cannot forge a more permissive one.
+
+**Three things missing.**
+
+1. **The human link contributes their seed matrix, not a per-scope role.** Giovanni contributes the
+   same thing in `proof-of-flex`, where he is a reader, and in the job he owns. With entry 25's
+   roles the intersection gains a third term — and the evaluator already **has the scope at hand**,
+   from the signed `chat` claim, so the term needs no new plumbing.
+2. **This amends entry 23, for the better.** That entry said «inside the scope → never a gate». The
+   reader case breaks it in the right way: a gate is not about the **boundary**, it is about the
+   **lack of standing**. Two gates of one shape — crossing the boundary without standing, and
+   *mutating inside the scope without standing to mutate*. Both address the same person, the scope's
+   owner, and both are already diagnosable by `evaluate`, which names who refused.
+3. **And the piece that makes all of it inert today**: `mode()` reads `CLODIA_ORIGIN_ENFORCE` and
+   defaults to **`report`**. The chain is composed, travels signed, is evaluated — and blocks
+   nothing.
+
+**Order of work, and inverting it does harm:**
+
+1. `AGENTS.md` into metadata — closes the injection path, depends on nothing else
+2. the three per-scope roles (entry 25)
+3. the third term in the intersection
+4. **only then** `CLODIA_ORIGIN_ENFORCE=on`
+
+Switching to `on` before step 3 would enforce against Giovanni's **global** matrix: blocking things
+it should permit in the job he owns, and permitting things it should block in `proof-of-flex`.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1373,6 +1432,8 @@ do **not** hold.
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
+- **Sequence to enforcement** (entry 26): AGENTS.md to metadata → scope roles → third term in the
+  intersection → `CLODIA_ORIGIN_ENFORCE=on`. Today the chain observes and blocks nothing.
 - **Grade membership: owner / contributor / reader** (entry 25) — today it is binary, so an
   invitee can wipe a channel's memory and write the file injected every turn.
 - **Declare "a scope owner is always human" as an invariant with a test** (entry 24) — the rule
