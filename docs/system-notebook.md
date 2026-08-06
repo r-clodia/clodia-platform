@@ -809,6 +809,34 @@ plane, never a replacement.
 With two planes, `files/preventivo.pdf` can exist in both with different contents. Which one
 answers `topic.read_file`? Today the question cannot arise, because there is one plane.
 
+**The collision rule, resolved (Davide, 6 Aug 2026).** «non potrà mai essere lo stesso path,
+i path locali saranno `/path`, i path remoti saranno `//remote/path/`.» The two planes are
+namespaced, so a collision cannot be expressed. Three notes from measurement:
+
+- **One line currently annuls it.** `local_fs._abs` does
+  `(self.root / str(path).lstrip("/")).resolve()` — `lstrip("/")` removes *every* leading
+  slash, so today `//remote/x`, `/remote/x` and `remote/x` are the same path and all land in
+  the local plane. The scheme requires that strip to become a **parse**: choose the plane
+  first, normalise within it second. Good news: that function is the single choke point for
+  every file verb.
+- **`remote` becomes a reserved name in the local plane.** Nothing today forbids a local
+  folder named `remote/`, and after the change `/remote/x` and `//remote/x` would differ by a
+  slash a human mistypes. Better to refuse *creating* a local top-level entry named `remote`
+  than to rely on the distinction: the failure here is silent and in the wrong direction — you
+  write into the plane you did not mean and the operation succeeds.
+- **Containment becomes syntactic — but only for `topic.*`.** The Drive confinement built
+  5 Aug must *walk* the ancestor chain with API calls and fail closed on error, because an
+  agent passes a Drive **file id** that may sit anywhere in the tree. With a path rooted in
+  the plane, containment holds **by construction**: no walk, no fail-open risk, no cache to
+  invalidate. It holds only for verbs that take a path; `gdrive.*` verbs take ids and still
+  need `inside()`. Which points at the right division: inside a topic, files are touched via
+  `topic.*` paths, and `gdrive.*` is the transport for what lies outside any scope.
+
+**Design note worth spending now:** `meta["remote"]` is **singular** today — one remote per
+topic — so the literal prefix `//remote/` is unambiguous. If a topic ever holds a git remote
+*and* a Drive folder at once, the namespace must carry the remote's name (`//drive/…`,
+`//git/…`). Cheap to decide now, expensive to retrofit.
+
 **On (7) — the definition that closes the worst hole.** Measured:
 
 ```python
@@ -842,8 +870,9 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
-- **The collision rule for two data planes** (entry 17.6): with local and remote coexisting,
-  which plane answers a read when both hold the same path?
+- **Should the remote namespace carry the remote's name?** (entry 17.6) — `//remote/` is
+  unambiguous while a topic has one remote; a topic holding git *and* Drive would need
+  `//drive/…` / `//git/…`.
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
 - **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
