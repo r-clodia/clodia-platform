@@ -1119,6 +1119,66 @@ everything gates — so there it is noise, not risk.
 
 ---
 
+## 22 · A configuration topic: admin-only, whose files are the system's config
+
+**Definition (Davide, 6 Aug 2026).** There should be a **special topic** which only **admins**
+enter, and whose **files are in fact the system's configurations**. A read/write on a file there
+modifies agent behaviour **live**. The simplest case: the `AGENTS.md` of this topic is
+**inherited by all new topics**.
+
+**The design works, and it has exactly one technical condition.** Measured:
+
+```
+agent-server volumes:  /datadir   /datadir/clodia-vault   /shared   …
+gateway volumes:       /datadir   /datadir/topics   /gateway-state   …
+```
+
+`/gateway-state` is mounted **by the gateway only**. That is where the config lives, and the
+reason is written in `egress.remember`:
+
+> «Scrive nella config del gateway, **sul suo volume: l'agent-server non la monta**, quindi un
+> agente non può aggiungersi destinazioni da sé (#80).»
+
+Topic files, by contrast, live under `/datadir`, which the agent-server **does** mount. So this
+design, taken literally, would move configuration **from a volume agents cannot touch to one they
+can** — undoing #80 at the filesystem level, regardless of who is a participant. Not through a
+missing permission: through a mount.
+
+**The condition, and it is one:** the storage of *this* topic must point at the gateway-only
+volume. Implementable without inventing anything, since topic storage is already pluggable
+(`local_fs`, `drive_fs`) — it needs a backend rooted in `/gateway-state`. Then the topic
+**machinery** applies in full (tier, owner, participants, version lock, audit, views) while the
+**bytes** stay where an agent cannot reach them.
+
+**Four consequences, in order of how hard they bite.**
+
+1. **If an agent is a participant, it holds `topic.put` over the configuration.** The confused
+   deputy in its purest form: the agent has the verb, the admin has the authority, and the file
+   is the config. «Only admins enter» resolves it — but that means **zero agent participants**,
+   so this topic has no channel: it is a config view with a topic's ergonomics. A legal but
+   unusual shape, worth stating because `contact_agent` is mandatory on topics.
+2. **«Inherited by all new topics» has two readings with different security profiles.**
+   *Copy-at-creation* = a template: existing topics never receive it and a later change does not
+   propagate. *Read live every turn* = the metascope of entry 9: it propagates everywhere at
+   once, and is a single file able to change every agent's behaviour in every room in the same
+   instant. Davide's word is «nuovi», which is the first. If the second is meant, it is the most
+   powerful surface in the system and deserves a gate of its own.
+3. **Live writes must go through `save_config`, not through bytes.** The clobber fixed on 5 Aug —
+   clodia going from 53 to 130 verbs on venere — was two writers with no arbiter. A config file
+   written directly and re-read by another process reintroduces exactly that. Reading may be the
+   file; **writing** must pass through the function that merges.
+4. **This topic's tier makes entry 16 load-bearing.** It should be the highest tier, and then a
+   Drive remote is already barred by the SEAL-2 cap. But a **git remote has no cap at all**, so
+   today an instance's configuration could be pushed to github.com with no guard objecting.
+   Config-as-code is desirable; this is the worst possible topic on which to have that gap.
+
+**On the introspection verbs Davide cites:** `runtime.*` is **read-only by design** — state and
+metadata, never secrets, P3 excluded. This configuration topic is their **write** counterpart,
+which today deliberately does not exist. That is the whole value of the proposal, and its whole
+risk.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1138,6 +1198,8 @@ do **not** hold.
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
+- **Is the inherited `AGENTS.md` a template or a live metascope?** (entry 22) — «nuovi» reads as
+  a template; live inheritance is the most powerful surface in the system.
 - **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
   empty in production, which is the pre-#77 behaviour.
 - **Set `gdrive_roots` before relaxing the remote guard to owner** (entry 21) — without a
