@@ -36,7 +36,7 @@ A resource is the thing acted upon, and it is **not** always a channel:
 | mailbox | `devnullboxx`, `studio`, `info@tomato.blue` | none (verb-level only) |
 | Drive subtree | a folder and everything under it | `gdrive_roots` |
 | RAG collection | `eu-normativa` | `rag_read` declarations |
-| filesystem path | the agent's scratch, the workspace | `allowed_paths` |
+| filesystem path | the agent's scratch, the workspace | `allowed_paths` (`fs.*`) |
 | external destination | an address, a chat, a URL | destination allowlist (global) |
 
 The channel is the **context** of a call, not the resource. Conflating the two is
@@ -108,7 +108,7 @@ Ordered: first the initiator, last the executor.
 
 **Intersection, not substitution.** Running the call on the initiator's authority
 instead of the executor's inverts the bug rather than fixing it: Davide asking
-`messaggero` for `shell.exec` would succeed, because Davide may and the chain
+`messaggero` for `fs.list_dir` would succeed, because Davide may and the chain
 would have adopted his authority. The agent would have borrowed the human's
 power — silent, and available by simply asking. Both must permit.
 
