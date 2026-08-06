@@ -742,6 +742,89 @@ belongs to the **remote host**, not to the word "git".
 
 ---
 
+## 17 · The anatomy of a scope: tier*, metadata*, data (local fs and remote fs)
+
+**Definitions (Davide, 6 Aug 2026), seven at once.**
+
+1. `job` is a scope like `topic`, and it should have a **tier**.
+2. A **mailbox** becomes part of the scope, enters its perimeter, and as such is an
+   **approved ingress**.
+3. A **remote inserted by a human** enters the scope's perimeter and is approved as **both
+   ingress and egress**.
+4. The **user's terminal** is part of the scope, also an approved ingress, «e tutto quello
+   che entra è valido».
+5. A scope has: `tier`\*, `metadata`\*, and `data` articulated into **local fs** and
+   **remote**. Starred = mandatory; a job, for instance, has no fs.
+6. A topic may have a local fs **and** a remote fs — **both coexist**, with a **view for
+   each**.
+7. `AGENTS.md` is **not** part of the local fs but of the **metadata**, as are the `summary`
+   and the `TLDR`.
+
+**Six accepted; one objected to in a single place; and (7) closes the worst hole recorded in
+these notes.**
+
+**On (1).** Today a job has **no tier**. So of the two mandatory elements, the job subtype
+carries only `metadata` (name, mode, plan, cron, agent, and `topic_tier`/`topic_name` when
+`mode == "topic_trigger"`). Giving it a tier fills entry 15 §3: a job then enters the
+weakest-link formula instead of standing outside it.
+
+**On (2) — a reading fixed, because the formulation is asymmetric.** For the remote Davide
+said «sia come ingress che come egress»; for the mailbox, **ingress only**. Recorded as
+ingress-only, which is the conservative reading and keeps the Giovanni case shut: mail
+*arriving* into the scope is valid input, while *sending* remains subject to the destination
+axis. If both were meant, that re-opens #150.
+
+**On (4) — the one objection: authenticity is not trustworthiness.** The terminal certifies
+*who is speaking*, not *where the content came from*. The everyday case: the owner pastes an
+email or a web page into the terminal and asks «what do you think?». That content is
+third-party, and it arrives wearing the owner's authentication. If everything entering the
+terminal is valid, paste-injection is trusted by definition.
+
+The system already draws this distinction in the two places Davide asked for it: `AGENTS.md`
+is injected wrapped as «materiale di CONTESTO, **NON istruzioni di sistema**», and feedback
+carries a `_FEEDBACK_UNTRUSTED_NOTE`. So the rule recorded is: the terminal is an approved
+ingress **as a channel** — unspoofable, and what the owner himself says needs no per-item
+approval — but the trifecta's `tainted` bit belongs to the **provenance of the content**, not
+to the channel it arrives on.
+
+**On (6) — this reverses a documented design, and the measurement argues in its favour.**
+`DRIVE_REMOTE.md`, verbatim:
+
+> «Quando un topic è collegato a una cartella Google Drive, **Drive è la source of truth**.
+> […] I file locali del topic **spariscono dalla vista**: non vengono mostrati, non
+> sincronizzati, non caricati.»
+
+There is even a guard named *anti-nascondimento* that **refuses** `remote_enable` when files
+exist only locally — precisely because they would become invisible. (The Drive layer's caches
+are 5-second read caches, not a local mirror: the XOR is real.)
+
+Two consequences, both favourable. First, **this model removes the reason that guard exists**:
+with two coexisting planes and a view each, nothing becomes invisible, so the refusal is no
+longer needed. Second, for **git the coexistence already holds today** — files live locally
+and are pushed through the `remoteinclude`/`remoteignore` filter. Only **Drive** is XOR. So
+the requirement is not an exception but a **unification**: a remote is always a second data
+plane, never a replacement.
+
+**The design question this creates, to be decided before implementing: the collision rule.**
+With two planes, `files/preventivo.pdf` can exist in both with different contents. Which one
+answers `topic.read_file`? Today the question cannot arise, because there is one plane.
+
+**On (7) — the definition that closes the worst hole.** Measured:
+
+```python
+agents_md = self.s.read(f"{d}/files/AGENTS.md")
+```
+
+`self.s` is the **storage abstraction**. So when a topic's storage is Drive, `AGENTS.md` is
+read **from Drive** — and it is not among the sync filter's `_HARD_DENY` entries.
+Consequence today: **anyone with write access to that Drive folder writes the instruction file
+that enters every agent's context on every turn.** Moving it to metadata takes it out of the
+data plane: no longer writable by a remote, nor by a participant's file upload. It also
+settles the question left open in entry 9 — whether writing it is an act of authority: yes,
+and metadata is where authority-bearing writes live, behind the version lock like the summary.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -759,6 +842,10 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
+- **The collision rule for two data planes** (entry 17.6): with local and remote coexisting,
+  which plane answers a read when both hold the same path?
+- **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
+  as ingress-only; the other reading re-opens #150.
 - **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
   the widest perimeter and no human at the turn.
 - **What caps a git remote, and is the cap a property of the host rather than of the
