@@ -832,10 +832,26 @@ namespaced, so a collision cannot be expressed. Three notes from measurement:
   need `inside()`. Which points at the right division: inside a topic, files are touched via
   `topic.*` paths, and `gdrive.*` is the transport for what lies outside any scope.
 
-**Design note worth spending now:** `meta["remote"]` is **singular** today — one remote per
-topic — so the literal prefix `//remote/` is unambiguous. If a topic ever holds a git remote
-*and* a Drive folder at once, the namespace must carry the remote's name (`//drive/…`,
-`//git/…`). Cheap to decide now, expensive to retrofit.
+**Decided (Davide, 6 Aug 2026): the namespace carries the remote's name** — `//drive/…`,
+`//git/…` — rather than the literal `//remote/`. `meta["remote"]` is singular today, so
+nothing forces it yet; deciding now is cheap and retrofitting later is not.
+
+**A name already exists and cannot serve as the namespace.** `remote_enable` sets
+`config["name"] = self._remote_display_name(rtype, config)`, a **display** name derived
+best-effort from the remote itself — the Drive folder's name, or the tail of a git URL. Three
+measured reasons it will not do:
+
+1. **It can be `None`.** The function returns `None` on error (Drive unreachable, anomalous
+   URL). A namespace segment cannot be absent.
+2. **It is arbitrary human text.** A Drive folder may be called `50 - execution / final` —
+   spaces, and even a slash inside what must be one segment.
+3. **It moves under your feet.** Being derived from the remote, renaming the Drive folder
+   changes it, and every stored path saying `//<old name>/…` breaks.
+
+So the namespace segment must be an **identifier** chosen at `remote_add`: stable, validated
+(`[a-z0-9-]+`), unique within the topic, and distinct from the display name, which stays for
+the UI. Sensible default: **the type**, when it is the first remote of that type — so
+`//drive/…` remains the common case and `//drive-2/…` appears only when it must.
 
 **On (7) — the definition that closes the worst hole.** Measured:
 
@@ -870,9 +886,6 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
-- **Should the remote namespace carry the remote's name?** (entry 17.6) — `//remote/` is
-  unambiguous while a topic has one remote; a topic holding git *and* Drive would need
-  `//drive/…` / `//git/…`.
 - **Does the mailbox's approval cover egress too, or ingress only?** (entry 17.2) — recorded
   as ingress-only; the other reading re-opens #150.
 - **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
