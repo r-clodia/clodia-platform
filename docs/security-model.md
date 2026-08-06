@@ -34,15 +34,30 @@ A resource is the thing acted upon, and it is **not** always a channel:
 |---|---|---|
 | topic data | files, summary, messages of a channel | participants **and** clearance |
 | mailbox | `devnullboxx`, `studio`, `info@tomato.blue` | none (verb-level only) |
-| Drive subtree | a folder and everything under it | `gdrive_roots` |
+| Drive subtree | a folder and everything under it | **the topic's remote** (per channel), `gdrive_roots` as a ceiling |
 | RAG collection | `eu-normativa` | `rag_read` declarations |
 | filesystem path | the agent's scratch, the workspace | `allowed_paths` (`fs.*`) |
 | external destination | an address, a chat, a URL | destination allowlist (global) |
 
-The channel is the **context** of a call, not the resource. Conflating the two is
-what made "each topic sees a different Drive folder" impossible: the Drive
-confinement is keyed on the *credential*, so two topics sharing one credential
-share one perimeter.
+The channel is the **context** of a call, not the resource — but the context can
+*select* the resource, and for Drive it now does.
+
+**The topic's remote is its perimeter.** A folder set as a topic's Drive remote is
+the confinement root for calls made inside that channel; the account-level
+`gdrive_roots` remains only as a ceiling. Two topics sharing one credential no
+longer share one perimeter, which is what "each topic sees a different folder"
+required and what keying the confinement on the credential made impossible.
+
+This is implementable because the topic arrives in the **signed** `chat` claim
+(`chan:<tier>:<topic>:<agent>`), so an agent cannot claim another topic's
+perimeter. And it is sound only with its consequence: **setting, changing or
+removing a Drive remote is an admin action** (`topic.remote_add|enable|disable`
+are gated, and the webui endpoint demands admin rather than participant).
+Verified before making the change — the endpoint asked only for `_require_member`,
+so any participant could have pointed the remote at a sibling folder and widened
+their own perimeter. A field that carries the boundary must be writable only by
+whoever may move the boundary; `remote_disable` counts, because dropping the
+perimeter falls back to the account roots and that is a widening.
 
 ## 3. The matrix
 
