@@ -1122,6 +1122,39 @@ harmless — it would be the **seventh** declared mechanism that nobody carries,
 the previous six is that whoever reads the file assumes it works. Better that the human seed
 **not have** the field than have it inert.
 
+**Implemented, 7 Aug 2026** — clodia-tools 1.50.0, live on venere.
+
+The two seeds now exist, in code rather than as files: as files an instance could lack them, and
+"there are two seeds" would stop being true everywhere. `config.yaml` can still override them,
+since it stays on the gateway's own volume and the subject cannot rewrite it (#80).
+
+One fact per place. The **role** is per person and stays in their `agent.yaml`; the **matrix** is
+per class and lives in the seed. The person says which class they belong to, the class says what
+they may do. Per precisation 1, `superadmin` is an attribute of the admin spawn
+(`is_instance_owner`) and not a third seed — the field is still spelled `role: superadmin`,
+because renaming it touches authentication and that is not the piece this change had to move.
+
+**What the measurement changed.** The first version gave `member` a wide namespace ceiling. Then
+venere was measured: all three members carried their own `tool_permissions`, and all three lists
+were **identical** — the same eleven topic verbs. Three independent choices converging on one list
+are the policy; three hand-maintained copies of it are how a rule diverges, and it had not
+diverged yet. So the member seed *is* that list. A seed that only sets a ceiling nobody reaches
+does not "define the verbs".
+
+An individual declaration can now only **narrow**. Intersection, never substitution: if it could
+widen, the seed would stop defining anything and we would be back at the drifting per-person
+matrix. The intersection is evaluated on the verb rather than on the lists — intersecting
+`topic.*` with `topic.put` needs a pattern algebra, and every pattern algebra has an edge case
+it gets wrong.
+
+**One contract changed, and it narrows.** A human with no matrix of their own used to fall back to
+"everything not gated"; they now fall back to their seed. Measured on venere: **nobody loses a
+single verb today**, because the individual lists are identical to the seed. And more generally
+nothing is lost yet, because origin enforcement is still `report`. The moment this bites is E1.
+
+**Left alone on purpose.** The individual `tool_permissions` on venere are redundant now, but
+removing them is a write to production data and it is Davide's call.
+
 ---
 
 ## 21 · A human is either a participant of a scope or its owner
