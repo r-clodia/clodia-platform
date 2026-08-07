@@ -806,6 +806,19 @@ and are pushed through the `remoteinclude`/`remoteignore` filter. Only **Drive**
 the requirement is not an exception but a **unification**: a remote is always a second data
 plane, never a replacement.
 
+*Corrected 7 Aug, in production.* «A remote is always a second data plane» is **wrong for git**, and
+the sentence above already contained the reason without my noticing: on git the files live locally
+and are pushed, so the remote is *the same content at another moment* — a synchronisation
+relationship, not a different filesystem. There is nothing to mount.
+
+Mounting it anyway advertised a `remote/` folder that could not be opened — «remote non
+raggiungibile» → 404 → 502 in the UI, minutes after Davide linked a git remote to
+`proof-of-flex-sviluppo`.
+
+So the rule is narrower than first recorded: **only a remote that genuinely is another filesystem
+becomes a mount.** Drive does; git does not. On a git-backed topic the tree shows `local/` alone, and
+that is not a limitation — it is what "the two planes already coexisted" meant.
+
 **The design question this creates, to be decided before implementing: the collision rule.**
 With two planes, `files/preventivo.pdf` can exist in both with different contents. Which one
 answers `topic.read_file`? Today the question cannot arise, because there is one plane.
