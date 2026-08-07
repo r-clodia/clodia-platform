@@ -1976,49 +1976,56 @@ than deleted, because a list that only ever grows stops being read.
 ## Open
 
 
-Questions raised while verifying the above, not yet measured. Each one is a belief we
-do **not** hold.
+Questions raised while verifying the above. Each one is a belief we do **not** hold.
 
-- **Sequence to enforcement** (entry 26): the first three steps shipped on 7 Aug — AGENTS.md to
+**Every item says who it is waiting for**, because a list that mixes the two makes the reader ask —
+and Davide had to ask on 7 Aug:
+
+- **[measure]** — mine. Nothing is blocked on anyone: it needs a measurement or a piece of work.
+- **[decide]** — Davide's. Implementing a guess here is worse than waiting, because the wrong
+  reading would be built, deployed, and only then contradicted.
+- **[decide → measure]** — his call first, then my work.
+
+- **[decide → measure]** **Sequence to enforcement** (entry 26): the first three steps shipped on 7 Aug — AGENTS.md to
   metadata, scope roles, third term in the intersection. Only `CLODIA_ORIGIN_ENFORCE=on` is left,
   and the chain still observes and blocks nothing. Turning it on is the one change today that
   *removes* capability rather than adding it, so it does not happen without saying so first.
-- **Declare "a scope owner is always human" as an invariant with a test** (entry 24) — the rule
+- **[measure]** **Declare "a scope owner is always human" as an invariant with a test** (entry 24) — the rule
   gives owners gate authority, so an agent-owned scope would unlock its own gates. Enforced for the
   configuration topic on 7 Aug, where `owner` would otherwise have defaulted to `clodia`; the
   general invariant, and its test, do not exist.
-- **Re-express the four gating mechanisms as the one boundary rule** (entry 23) — the largest
+- **[measure]** **Re-express the four gating mechanisms as the one boundary rule** (entry 23) — the largest
   simplification available. Half done on 7 Aug: the rule is now *visible* (three classes, read off
   the 28 gated verbs, with a completeness test), but there are still four mechanisms rather than one.
   The route to collapsing them ran through entry 22 — system crossings becoming writes in the
   configuration scope, so that «admin» became the owner of one particular scope — and entry 22 is
   repealed. So `system` stays a class of its own, decided by an admin, and the unification needs a
   new route rather than a later date.
-- **Assert the vault mask from inside, in a test** (entry 22): the agent-server's blindness to the
+- **[measure]** **Assert the vault mask from inside, in a test** (entry 22): the agent-server's blindness to the
   topic store rests on a compose line that is known to drift.
-- **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
+- **[decide → measure]** **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
   empty in production, which is the pre-#77 behaviour.
-- **Should a job scope have participants?** (entry 21) — today it has an owner only, which
+- **[decide]** **Should a job scope have participants?** (entry 21) — today it has an owner only, which
   decides who may see a run's output.
-- **Should the global egress list narrow to infrastructure-only, and should `*` become
+- **[decide]** **Should the global egress list narrow to infrastructure-only, and should `*` become
   inexpressible there?** (entry 18)
-- **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
+- **[decide]** **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
   the widest perimeter and no human at the turn.
-- **Does the mailbox become an element of a scope, or does email get its perimeter from the
+- **[decide]** **Does the mailbox become an element of a scope, or does email get its perimeter from the
   destination axis?** (entry 15) — issues #149, #150.
-- **Retire the `/clodia/channels/…` prefix** (entry 14): the same `(tier, name)` is
+- **[measure]** **Retire the `/clodia/channels/…` prefix** (entry 14): the same `(tier, name)` is
   addressed under four prefixes, and that one is what the UI calls.
-- **Should revoking a scoped override take effect on a live spawn?** (entry 13) — today the
+- **[decide]** **Should revoking a scoped override take effect on a live spawn?** (entry 13) — today the
   spawn must die first, so a withdrawn model/provider stays in use.
-- **A cost ladder within one provider is not expressible** (entry 13, v1 constraint).
-- **`ophelia` is still a super-agent.** `clodia` was removed from both super sets on
+- **[decide]** **A cost ladder within one provider is not expressible** (entry 13, v1 constraint).
+- **[decide]** **`ophelia` is still a super-agent.** `clodia` was removed from both super sets on
   6 Aug; the concept survives in seven places with three independent definitions, two
   of which are not agent authority at all but the agent-server's *service* identity
   (human profiles have no server-side key to mint a token in their own name).
-- **A spawn is not confined to its OWN scratch** (entry 2) — the gateway validates "under
+- **[measure]** **A spawn is not confined to its OWN scratch** (entry 2) — the gateway validates "under
   `/datadir/spawns/<something>/`" but cannot require the caller's own directory: it knows the seed
   (`agent_name()`) while the instance is `"-"` everywhere. So one spawn can still write into
   another's. Closing it needs the spawn identity in the signed claim.
-- **The job's tier must travel in the signed claim** (entries 33 and 28) — a job declares a tier, but
+- **[measure]** **The job's tier must travel in the signed claim** (entries 33 and 28) — a job declares a tier, but
   the gateway does not see it, so a portable topic carried into a job is allowed and merely logged.
   It is the one place where the portability rule is written and not enforced.
