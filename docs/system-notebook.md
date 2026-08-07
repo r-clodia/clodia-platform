@@ -1670,6 +1670,52 @@ structural and the gate for what is occasional.
 
 ---
 
+## 30 · A credential bound to the scope, not to the platform
+
+**Proposal (Davide, 7 Aug 2026).** When a git remote is linked to a channel, ask for **its**
+credentials there and then — so agents are bound to that one egress/ingress instead of to every one
+that belongs to clodia.
+
+**Yes, and it is not a UX change: it is the axis the model has been missing all day.** Measured:
+
+```python
+def _github_token(self):
+    return (vault.read_internal("github_pat") or {}).get("value")
+```
+
+`read_internal` means **no grant check at all** — it is an infrastructure credential, one of them,
+injected into every github remote of every topic. So one token reaches **every repository it has
+scope for, from any room**.
+
+That is the resource axis in its purest form. The census of 5 Aug found twelve mechanisms answering
+«who may do what» and six answering «on which resource»; here the resource is *selected by the
+credential*, and the credential is global.
+
+**What it buys.** Blast radius: a per-topic credential reaches one repository, so a compromised room —
+injection, hostile participant — is bounded by that credential's scope rather than the platform's.
+GitHub's fine-grained PATs scope to a single repository, so the narrowing is real rather than
+theoretical.
+
+Above all it is **entry 29 applied to resources**. Access was just moved from the seed to the scope;
+a credential bound to the scope is the same principle on the other axis — and it would be the
+**first of its kind**, since the vault today knows only `agent → credential`.
+
+**What it costs, stated now rather than discovered later.**
+
+- **Rotation.** One PAT rotates once; N topics rotate N times. Operational, not technical, and real.
+- **A new kind of grant.** `scope → credential` does not exist yet. Small, and in the right direction.
+- **The common case must stay easy.** Most repositories are the owner's own. A link that *always*
+  demands a credential becomes a chore, and chores get worked around. So: **optional, with the
+  platform credential as fallback — and the fallback visible.** A topic must say «uses the platform
+  credential» or «has its own». An invisible fallback is how one comes to believe in an isolation
+  that is not there.
+
+**The extension that follows for free:** the same shape applies to a scope's mailbox (entry 17.2) and
+to its Telegram group. Both are agent-bound today. So this is not a git feature — it is the mechanism
+that makes «resources are elements of a scope» true **for credentials too**.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
