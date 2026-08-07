@@ -1503,6 +1503,64 @@ leave the system working, on **venere** only:
 
 ---
 
+## 28 · The agent's own scope: what a spawn carries with it everywhere
+
+**Definition (Davide, 7 Aug 2026).** There is a third kind of scope: **the agent's own**. A set of
+resources and data every spawn carries — like `MEMORY.md`, except that memory always enters the LLM
+context while the seed's scope holds **databases and RAG collections**. When the agent enters another
+scope (a topic), its personal scope comes in too, but **stays visible only to it**. The case it
+serves: `impiegato-tomato` carrying the company's information into every topic it works in, without
+copying it into each one.
+
+**The container already exists and holds exactly one thing.** Measured:
+
+```
+/datadir/agents/clodia/  →  agent.yaml · system-prompt.md · memory/ · pfp.png
+```
+
+Nothing else — no database, no collection bound to the seed. And the kernel already protects it:
+root-owned, the spawn runs as uid 60000, and the spawn holds no symlink to it (entry 12). So this is
+not a new mechanism but the **filling of a container that exists and is already isolated**.
+
+**The case is right and the alternative is worse.** Copying company information into every topic
+produces N copies with no source of truth and — worse — each copy inherits **that topic's
+participants**. The data spreads where it was not meant to go. This design fixes both at once.
+
+**Three observations, and the second is the one to settle before implementing.**
+
+**1. It is not a third scope in entry 6's sense — it composes.** «Spawns exist in exactly two scopes,
+channel and job» stays true: the spawn does not *live* in its personal scope, it *draws* on it while
+living elsewhere. So it is not a third alternative but a **second simultaneous membership**. Practical
+consequence: entry 15 says resources are elements of a scope, and from here on **two** scopes
+contribute resources to one turn. Every rule written assuming "one turn, one scope" has to be re-read.
+
+**2. It is the first thing in the model that crosses boundaries by design, so the tier must govern
+it.** Everything built so far is bounded by the room; this deliberately is not — the company data
+enters every room the agent works in. If `impiegato-tomato`'s private scope is SEAL-2 and it enters a
+SEAL-0 topic, that data is **in the turn**, and what the turn produces lands in a SEAL-0 room every
+participant reads.
+
+This is entry 17's weakest link applied to a new link. Two ways to close it:
+
+- **per scope**: the private scope has a tier and the agent may not join topics of a lower tier.
+  Simple, but brutal — `impiegato-tomato` could not enter a public room even to say the time.
+- **per item** (recommended): items in the private scope are labelled, and a read is permitted only
+  when the current room's tier ≥ the item's. Finer, and it matches how company information is
+  actually classified — the org chart is not the budget.
+
+**3. «Visible only to it» is true of the STORE, not of what it says.** If the agent reads its private
+database and answers in the channel, that information **is in the channel**, readable by every
+participant. Not a flaw in the design — privacy sits on the source, not on the derivative. The control
+over the derivative is rule 2, not the scope boundary. Worth stating because the phrase, read
+literally, promises more than a boundary can give.
+
+**A symmetry today's work makes free:** the private scope can be a **mount**, exactly like `local/`
+and `remote/` — but in the **spawn's** tree, not the topic's. Appearing among the topic's mounts would
+make it visible to every participant, which is the opposite of the intent. Same mechanism, different
+tree.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1520,6 +1578,8 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
+- **Per-scope or per-item tier on the agent's own scope?** (entry 28) — per-item recommended; per
+  scope would bar a company agent from every public room.
 - **Sequence to enforcement** (entry 26): AGENTS.md to metadata → scope roles → third term in the
   intersection → `CLODIA_ORIGIN_ENFORCE=on`. Today the chain observes and blocks nothing.
 - **Grade membership: owner / contributor / reader** (entry 25) — today it is binary, so an
