@@ -1806,6 +1806,37 @@ the second.
 
 ---
 
+## 32 · A Drive folder is a whitelist entry, not a subtree
+
+**Correction (Davide, 7 Aug 2026).** «Non esiste questo concetto di root per devnullboxx: devnull è un
+account google al quale condivido file e cartelle in modo sparso.»
+
+**This invalidates an assumption in the confinement built on 5 Aug.** `gdrive_roots` is an *account
+ceiling* — a subtree inside which everything is permitted. It presupposes that an account has a root.
+A shared account does not: folders arrive in «Shared with me», each owned by someone else, with **no
+common ancestor**. There is no root to set, and forcing one would either protect nothing (too wide) or
+block everything (too narrow).
+
+**The right shape is the one already built for other resources**: a Drive folder is a **whitelist
+entry**, exactly like a repository (entry 31) and an email destination. The vocabulary has always
+existed — `gdrive:folder/<id>` is an admitted egress URI.
+
+So the work changes character: not «set the ceiling» but «Drive folders pass through the list like
+everything else» — global for infrastructure, per scope for a topic's. It is *less* code, and it
+removes a concept that did not match reality.
+
+**It also unblocks entry 24's second half.** The worry was that an owner allowed to move their scope's
+walls could point a remote at any folder the shared credential reaches — Davide's own case from 30
+Jul: Giovanni creates his own topic, invites clodia, and asks for the documents Davide shared with
+`devnullboxx`. With the list, an owner can point a remote only at **already approved** folders, and
+approving a new one stays an admin act. The perimeter exists, and it is the one already working.
+
+**What survives from 5 Aug**: the per-topic confinement — the remote's folder is the root of the
+perimeter for calls made inside that channel. That was right and is untouched. What was wrong was the
+layer above it: the idea that an account has an outer boundary of its own.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1839,8 +1870,6 @@ do **not** hold.
   topic store rests on a compose line that is known to drift.
 - **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
   empty in production, which is the pre-#77 behaviour.
-- **Set `gdrive_roots` before relaxing the remote guard to owner** (entry 21) — without a
-  ceiling, owner-authority reaches every folder the shared credential can see.
 - **Should a job scope have participants?** (entry 21) — today it has an owner only, which
   decides who may see a run's output.
 - **Does `superadmin` become an attribute of the admin spawn?** (entry 20) — «who owns the
