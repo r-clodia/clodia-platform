@@ -1757,6 +1757,55 @@ unknown.
 
 ---
 
+## 31 · A repository is a whitelist entry, not a remote
+
+**Decision (Davide, 7 Aug 2026).** The concept of a **git remote on a topic disappears**. A remote
+repository is only an **entry in the scope's whitelist**; the **gateway** performs pull, push and pull
+requests. Git stays in the agent's container **only** for scratch-local work — `add`, `diff`,
+`commit`.
+
+**Accepted, and the decomposition is better than the one I argued for.** I had leaned toward a
+credential helper — the agent runs real git, a helper asks the gateway per operation — objecting that
+«whoever develops needs git, not five verbs». Davide answers in exactly the right place: **local git
+stays**, and only what **crosses the boundary** goes through the gateway. That is entry 23 applied to
+git: `add` and `commit` are inside the scope, `clone` and `push` are crossings.
+
+And it is stronger on security than my version: with a helper a short-lived token still **enters the
+agent's process**, and an agent with a shell can exfiltrate it inside the validity window. Here the
+credential never leaves the gateway.
+
+**It also collapses three mechanisms into one.** The mount (removed the same day), the sync with
+`remoteinclude`/`remoteignore`, and the per-scope credential built that morning all existed to make a
+topic's files *be* a git working copy. They are not needed if the repository is a destination rather
+than a plane. The scope credential's rotation cost — which I had flagged as the thing that kills such
+mechanisms six months in — disappears with it.
+
+**The vocabulary already exists.** `egress.py` has `_repo`, which renders a repository as
+`https://github.com/<owner>/<repo>`, and `https` is admitted in **both** lists. There is even a
+`spec_for` branch keyed on a `github.` prefix and a `_GITHUB_WRITE` list — but **no `github.*` verb
+exists**. The slot was built and left empty.
+
+**What this makes concrete:** the per-scope allowlist (entry 18, task C1) gets its first entry type,
+and repositories are the case that motivates building it rather than a general mechanism in search of
+a use.
+
+**Two consequences worth stating before implementing.**
+
+1. **A clone is ingress, a push is egress**, and both belong in the scope's lists. Under entry 19 a
+   repository in the scope's perimeter is *vetted by construction*, so cloning it does not taint —
+   which is coherent, and it is the difference between «code the owner approved for this room» and
+   «code from anywhere».
+2. **The clone lands in the agent's scratch**, so the gateway writes there. The mechanism exists and
+   was measured on 6 Aug: the gateway sees `/datadir/spawns` (227 directories), which is exactly how
+   `topic.fetch` moves bytes without base64 through the model's context.
+
+**A distinction to keep**, or a legitimate use gets deleted with the concept: «this topic **versions
+its own documents** in git» and «this scope **may work on these repositories**» are different things.
+The first was `remote: git`; the second is the whitelist entry. `proof-of-flex-sviluppo` is plainly
+the second.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
