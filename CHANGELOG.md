@@ -18,7 +18,7 @@ Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionament
 
 Where 8.0 enforced the lethal trifecta, 9.0 answers a different question: **what is a scope, and
 what standing do you need to cross its boundary?** It comes out of a full specification dictated
-one definition at a time (`docs/system-notebook.md`, entries 20–33), each recorded with the
+one definition at a time (`docs/decision-record.md`, entries 20–33; the consolidated form is `docs/specification.md`), each recorded with the
 measurement that confirmed or refuted it — and several were refuted.
 
 ### The model

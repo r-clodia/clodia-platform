@@ -1,4 +1,18 @@
-# System notebook
+# Decision record
+
+> **The specification lives in [`specification.md`](specification.md); what is not yet built
+> lives in [`gap-analysis.md`](gap-analysis.md).** This file is the *record*: every definition
+> as it was dictated, with the measurement that confirmed or refuted it, in the order it
+> happened.
+>
+> It is kept, rather than folded into the specification, for two reasons. Six comments in the
+> code cite its entries by number — «system-notebook 23», «system-notebook 7» — and a citation
+> that leads nowhere is worse than a long file. And the arguments that *lost* are here: an
+> argument that lost is usually the one someone reconstructs from scratch a month later.
+>
+> Read the specification to know what the platform is. Read this to know why, and what was
+> measured before believing it.
+
 
 Verified facts about the running platform, one entry per definition, each with the
 measurement that established it.
@@ -1957,116 +1971,11 @@ failure dressed as a decision — the defect that cost three diagnoses on 6 Aug.
 
 ---
 
-## Closed on 7 Aug 2026
-
-Items from the list below that shipped and were measured live on venere. Kept here rather
-than deleted, because a list that only ever grows stops being read.
-
-- **Scope membership evaluated per spawn, not per seed** (entry 29) — shipped and **enforcing**
-  (`_spawn_compartment_mode() == "on"`), unlike the origin chain, which still observes.
-- **Grade membership: owner / contributor / reader** (entry 25) — a legacy list reads as
-  contributor, so nobody was silenced by the migration.
-- **Per-scope authorisation of senders for email** (entry 18) and **perimeter membership counts as
-  vetted** (entry 19) — the second is what stops every topic from duplicating its own participants
-  into the source list.
-- **`superadmin` as an attribute of the admin spawn** (entry 20) — `is_instance_owner()`. The field
-  is still spelled `role: superadmin`: renaming it touches authentication.
-- **Does a Drive folder need an account ceiling?** (entry 32) — no: it is a list entry. The ceiling
-  concept was removed.
-- **A git remote has no tier cap** (entry 16) — it now has a perimeter: a repository is an approved
-  list entry (entry 31).
-- **A job's tier** (entry 33) — a provider that cannot carry it fails the run.
-- **Who writes the 226 files at the top of `/datadir/spawns`, can an agent enumerate them, and where
-  should they live?** — the **gateway** writes them, for an agent that passes a `dest` with no spawn
-  directory in front of it; `_safe_scratch_path` validated "under `spawns/`" and the root passed. An
-  agent **cannot** list them (`drwx--x--x`, `ls` denied) but they are `644`, so whoever knows a name
-  reads them. They belong in the requesting spawn's scratch, and the root is no longer a destination
-  (clodia-tools 1.55.0). The 226 files are left where they are: they are Davide's documents.
-- **Does any seed rely on `memory.*` being implicit?** — all of them: removing the universal
-  namespace would have cost `memory` to **6 agents of 8 on venere and 5 of 5 on marte**, silently.
-  Answered by the archseed (entry 10b): one place instead of the same default written N times.
-- **What is `DEFAULT_CHAT_ID`, and is it a spawn scope?** — it was a live session with `topic: null`,
-  exempt from the reaper, and therefore the one place where the whole per-scope machinery degraded
-  **silently** to the global list. Retired (clodia-logic 6.149.0); DMs cover the use case and are
-  real scopes.
-- **Should the spawn series be unique across instances?** — the defect underneath was worse and is
-  fixed: ordinals were **reusable**, being a `max()` over surviving directories. Now persisted and
-  monotonic (clodia-logic 6.150.0). Across instances uniqueness is not pursued: clones are
-  independent by design, so identity in an audit line is (instance, seed, ordinal).
-- **May a job exist without a scope?** — **no: a job IS a scope** (Davide, 7 Aug). So it must carry
-  its own tier — done, entry 33 — and its own lists, rather than falling back to the global ones.
-  Not "every job must hang off a topic", which would remove cron jobs that belong to no topic.
-- **A cost ladder within one provider** — **the constraint stays, by design** (Davide, 7 Aug): a
-  seed's model is fixed and the provider varies, while different spawns of one seed may run on
-  different providers. The vector carries a security property, not a price preference. Closing this
-  exposed a real hole in the second half of the sentence — see entry 13.
-- **Should a job scope have participants?** — **no, an owner is enough** (Davide, 7 Aug). Confirms
-  today's behaviour: the owner decides who may see a run's output, and a job is not a room people
-  are invited into.
-- **Should the global egress list narrow to infrastructure-only?** — **no** (Davide, 7 Aug): it may
-  hold arbitrary entries the admin decides. So the global list stays a deliberate instrument rather
-  than a residue to be shrunk, and the per-scope lists exist to avoid *needing* it, not to replace
-  it.
-- **Does the mailbox become an element of a scope?** — **no: it is a global resource**, like the
-  Google account or the git credential, while **senders and recipients are the ingress and egress
-  declared by the scope that uses it** (Davide, 7 Aug). Entry 17's point 2 is corrected accordingly.
-- **Should revoking a scoped override take effect on a live spawn?** — **ideally yes, acceptable no**
-  (Davide, 7 Aug). Accepted constraint: today the spawn must die first, so a withdrawn model or
-  provider stays in use until then. Written down so it is a known cost rather than a surprise.
-- **What caps a portable topic?** — the **room**, not the membership: a carried topic travels only
-  where the current room's tier can hold it, and refuses in words rather than degrading silently
-  (clodia-tools 1.56.0, entry 28 revised).
-- **Is the parent seed a ceiling or a default?** (entry 10) — **default**, settled by the archseed
-  of entry 10b: what is inherited is a floor, and containment comes from the gates and the scope's
-  lists rather than from the ancestor.
-
 ---
 
-## Open
+## Where the open questions went
 
-
-Questions raised while verifying the above. Each one is a belief we do **not** hold.
-
-**Every item says who it is waiting for**, because a list that mixes the two makes the reader ask —
-and Davide had to ask on 7 Aug:
-
-- **[measure]** — mine. Nothing is blocked on anyone: it needs a measurement or a piece of work.
-- **[decide]** — Davide's. Implementing a guess here is worse than waiting, because the wrong
-  reading would be built, deployed, and only then contradicted.
-- **[decide → measure]** — his call first, then my work.
-
-- **[decide → measure]** **Sequence to enforcement** (entry 26): the first three steps shipped on 7 Aug — AGENTS.md to
-  metadata, scope roles, third term in the intersection. Only `CLODIA_ORIGIN_ENFORCE=on` is left,
-  and the chain still observes and blocks nothing. Turning it on is the one change today that
-  *removes* capability rather than adding it, so it does not happen without saying so first.
-- **[measure]** **Declare "a scope owner is always human" as an invariant with a test** (entry 24) — the rule
-  gives owners gate authority, so an agent-owned scope would unlock its own gates. Enforced for the
-  configuration topic on 7 Aug, where `owner` would otherwise have defaulted to `clodia`; the
-  general invariant, and its test, do not exist.
-- **[measure]** **Re-express the four gating mechanisms as the one boundary rule** (entry 23) — the largest
-  simplification available. Half done on 7 Aug: the rule is now *visible* (three classes, read off
-  the 28 gated verbs, with a completeness test), but there are still four mechanisms rather than one.
-  The route to collapsing them ran through entry 22 — system crossings becoming writes in the
-  configuration scope, so that «admin» became the owner of one particular scope — and entry 22 is
-  repealed. So `system` stays a class of its own, decided by an admin, and the unification needs a
-  new route rather than a later date.
-- **[measure]** **Assert the vault mask from inside, in a test** (entry 22): the agent-server's blindness to the
-  topic store rests on a compose line that is known to drift.
-- **[decide → measure]** **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
-  empty in production, which is the pre-#77 behaviour.
-- **[measure]** **Retire the `/clodia/channels/…` prefix** (entry 14): the same `(tier, name)` is
-  addressed under four prefixes, and that one is what the UI calls.
-- **[measure]** **A spawn is not confined to its OWN scratch** (entry 2) — the gateway validates "under
-  `/datadir/spawns/<something>/`" but cannot require the caller's own directory: it knows the seed
-  (`agent_name()`) while the instance is `"-"` everywhere. So one spawn can still write into
-  another's. Closing it needs the spawn identity in the signed claim.
-- **[measure]** **The job's tier must travel in the signed claim** (entries 33 and 28) — a job declares a tier, but
-  the gateway does not see it, so a portable topic carried into a job is allowed and merely logged.
-  It is the one place where the portability rule is written and not enforced.
-- **[measure]** **Take `super` away from `ophelia`** (entry 27) — decided by Davide on 7 Aug. `clodia`
-  lost it on 6 Aug and the removal was instructive: two tests went from green to red not because the
-  logic changed but because it was consulted for the first time. The concept survives in **seven
-  places with three independent definitions**, and two of those are not agent authority at all but
-  the agent-server's *service* identity — human profiles have no server-side key to mint a token in
-  their own name, so something has to. Untangling those two is the work; removing a name from a set
-  is not.
+Both lists that used to live here — what was closed, and what was open — have moved to
+[`gap-analysis.md`](gap-analysis.md), which is now the single work list. Two lists of the same
+thing is the duplication this record repeatedly found in the code: they drift, and one of them
+stops being read.
