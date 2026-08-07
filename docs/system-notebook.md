@@ -1561,7 +1561,7 @@ tree.
 
 ---
 
-## 29 · Participants are SPAWNS, not seeds — and today they are seeds
+## 29 · Access belongs to the SPAWN; the list only says who is eligible
 
 **Definition (Davide, 7 Aug 2026).** The participants of a scope are not the **seeds** but the
 **spawns**, and the difference is substantive: a clodia present in several topics would be able to
@@ -1590,6 +1590,31 @@ into the room it stands in.
 participation — but the second compartments only if it is evaluated **per spawn**. Evaluated per
 seed it is a global permission wearing a compartment's clothes: membership says «clodia may read A»,
 never «this clodia, standing in B, may read A».
+
+### What "participants are spawns" means once it has to be stored
+
+*Added 7 Aug, because the heading of this entry promised more than the implementation delivers and
+Davide asked whether it had actually been specified.* The implementation keeps `participants` as a
+list of **seed names** and adds the room condition. That is not a compromise — it is the only form
+of the requirement that can be written down.
+
+**A list containing spawns is not storable.** Spawns are ephemeral: born per chat, destroyed, and
+renumbered. `participants: [clodia-7]` would be rewritten at every materialisation and stale an
+instant later.
+
+So the requirement splits into two things that were previously conflated in one:
+
+- **the seed in the list = eligibility** — «this seed *may stand* in this room»
+- **the spawn's room = access** — «this spawn, *standing here*, acts here»
+
+Access is therefore the spawn's, as required: the list alone grants nothing. Which is exactly the
+difference between «clodia may read A» and «this clodia, standing in B, may read A».
+
+**One case where this form and the literal reading diverge:** two spawns of one seed in the *same*
+room — `avvocato#1` and `avvocato#2`. Literally, one could be granted and the other not; here both
+have access, because access follows the room. No use is known for the distinction, and if one
+appears the mechanism already exists — the scoped grant of entry 8, which lends something to **one**
+spawn for a bounded time.
 
 **It also corrects what I proposed to Davide minutes earlier in the same conversation.** I had
 written that an agent's own scope is «a topic the agent participates in — carried everywhere because
