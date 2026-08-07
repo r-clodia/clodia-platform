@@ -11,6 +11,82 @@ Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionament
 
 ---
 
+## [9.0-rc1] — 2026-08-07
+
+> **Release candidate.** The model is in place and running on venere; the enforcement switch is
+> deliberately still off. Read *Not in rc1* before treating this as 9.0.
+
+Where 8.0 enforced the lethal trifecta, 9.0 answers a different question: **what is a scope, and
+what standing do you need to cross its boundary?** It comes out of a full specification dictated
+one definition at a time (`docs/system-notebook.md`, entries 20–33), each recorded with the
+measurement that confirmed or refuted it — and several were refuted.
+
+### The model
+
+- **A gate is not a property of a verb.** It is what happens when an action crosses a boundary, or
+  when the caller lacks standing. The 28 gated verbs now carry a class — `system` (the rules of the
+  machine), `walls` (the boundary of a scope), `outward` (leaving) — with a completeness test so a
+  new verb cannot be gated by convention again.
+- **The scope's owner unlocks its own gates.** `walls` and `outward` are decided by the owner of the
+  scope being crossed, not by any platform admin. An admin does not substitute the owner: if they
+  did, the owner's authority would be decorative.
+- **Membership is graded** — owner, contributor, reader — and the role is a third term in the
+  authority intersection, alongside the profile matrix and the agent's verbs. A reader reads and
+  speaks; speaking is not mutating.
+- **Access belongs to the spawn, not to the seed.** One seed participating in 135 topics used to
+  mean any of its spawns could read all of them from any room. Now the room you stand in decides,
+  and it arrives in a signed claim.
+- **Humans are spawns of two seeds**, `admin` and `member`, so the verb matrix lives per class
+  instead of per person.
+- **The perimeter is per scope.** Egress and ingress lists gained a second axis, and membership of
+  the perimeter counts as vetted by construction — a participant's mail does not taint, without
+  being listed twice.
+- **Resources are list entries, not attachments.** A repository and a Drive folder are approved
+  entries in the scope's list; neither is a remote bolted onto a topic.
+- **One file view.** `local/` and `remote/` are two mounts in a single tree, and the control plane
+  (`meta.json`, `summary.md`, `AGENTS.md`) has no path inside it.
+- **A job declares a tier**, and a run whose agent sits on a provider that cannot carry it fails
+  with an error instead of degrading silently.
+
+### ⚠️ Migration
+
+1. **`AGENTS.md` moves from a topic's files to its control plane.** On local topics any participant
+   could previously overwrite the instruction file injected into every turn; on Drive topics the UI
+   showed one file while the system injected another. Migration is automatic on first access.
+2. **A human with no matrix of their own now falls back to their seed** rather than to "everything
+   not gated". Measured on venere: nobody loses a verb today. It bites when origin enforcement is
+   turned on.
+3. **Ten channel endpoints became role-guarded.** An invitee could reset a channel's conversational
+   memory and upload the `AGENTS.md`. Legacy participant lists read as `contributor`, so nobody is
+   silenced by the migration.
+4. **The scopeless default chat is retired.** It was a live session with `topic: null`, exempt from
+   the reaper, and the one place where the per-scope machinery degraded silently to the global list.
+   DMs cover the use case and are real scopes.
+5. **Spawn ordinals are persisted and never reused.** On an instance already running, numbering
+   continues above the highest live spawn rather than restarting.
+
+### Shipped and repealed inside this cycle
+
+Stated rather than quietly dropped, because both were deployed and are gone:
+
+- **The per-scope git credential** (tools 1.42.0) — repealed on 7 Aug: the git credential belongs to
+  the platform, and confinement comes from the scope's list of approved repositories instead.
+- **The git remote as a mount** (tools 1.42.1 corrected it to "not a filesystem") — the concept of a
+  git remote on a topic is repealed altogether.
+
+### Not in rc1
+
+- **`CLODIA_ORIGIN_ENFORCE` is still `report`.** The chain observes and blocks nothing. Turning it
+  on is the one change that removes capability rather than adding it, and it does not happen without
+  saying so first.
+- **`source_allow` is empty**, so the taint flag stays on for everything.
+- **The archseed** (notebook entry 10b) is specified and not implemented.
+- **Trello and workflows** are still half-removed; the completeness test added for the gate classes
+  found three `workflows.*` verbs left behind.
+- **The configuration topic** is repealed for now; what shipped of it is inert.
+
+---
+
 ## [8.0] — 2026-08-03
 
 > ⚠️ **Major release: this one changes what agents are allowed to do.** Three
