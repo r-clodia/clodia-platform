@@ -832,6 +832,42 @@ namespaced, so a collision cannot be expressed. Three notes from measurement:
   need `inside()`. Which points at the right division: inside a topic, files are touched via
   `topic.*` paths, and `gdrive.*` is the transport for what lies outside any scope.
 
+**Revised (Davide, 7 Aug 2026): one root with `local/` and `remote/` as siblings**, rather than a
+`//name/` prefix:
+
+```
+/                     ← the topic's DATA root
+├── local/            ← today's files/ directory, without moving a byte
+└── remote/
+    └── drive/        ← the remote's root (or git/, or drive-2/)
+```
+
+Better than the `//` syntax on three counts: it is an ordinary path tree, so `_abs` needs no parse
+at all and `lstrip("/")` stops mattering; it composes with several remotes without inventing
+anything; and it displays as a tree, which is what a file view already knows how to draw.
+
+**It costs almost nothing, because `/local/` is not a new directory — it is a view onto what already
+lives in `files/`.** No migration, no files moved, and provenance keys already stored keep pointing
+at the same things. `files/x.pdf` stays accepted on input as an alias of `/local/x.pdf`: agents write
+it out of habit and it appears in old messages.
+
+**The root must be the DATA root, not the topic root.** If `/` were the topic's root then
+`meta.json`, `summary.md` and `AGENTS.md` would sit at `/meta.json`, `/AGENTS.md` — inside a
+browsable, writable tree, which is exactly what entry 17.7 and task A1 took them out of. The control
+plane has no path in this tree:
+
+```
+control plane (outside the tree):  meta.json · summary.md · AGENTS.md
+data tree:                         /local/…  ·  /remote/<name>/…
+```
+
+Measured on `SEAL-1/proof-of-flex-2`, which has a Drive remote on the folder `50-execution`: the file
+view shows **26** files, all Drive's, while **65** local files sit on disk unseen — the Guide for
+Applicants, the deliverables, the Portuguese pilot deck. They were hidden knowingly: on 4 Aug the
+refusal became an explicit confirmation («collegando Drive, i N file già presenti non saranno più
+visibili») and there were 18 then. After this change both planes are visible, distinguished by folder
+rather than being alternatives.
+
 **Decided (Davide, 6 Aug 2026): the namespace carries the remote's name** — `//drive/…`,
 `//git/…` — rather than the literal `//remote/`. `meta["remote"]` is singular today, so
 nothing forces it yet; deciding now is cheap and retrofitting later is not.
