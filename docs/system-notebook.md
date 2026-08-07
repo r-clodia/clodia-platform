@@ -1612,6 +1612,33 @@ the exception is explicit, countable and readable in a file, instead of implicit
 «may read while standing here». That is the redefinition that makes the compartment real, and it is
 small to write — the decision point is one function.
 
+### The rule, precisely
+
+Let **`here`** be the topic of the room the calling spawn stands in — taken from the **signed** `chat`
+claim, never from an argument, so an agent cannot declare its own location. Let **T** be the topic a
+`topic.*` verb targets. Let **`carries`** be the list of topics the calling agent's *seed* declares it
+brings with it.
+
+```
+T == here            → allowed          (acting inside your own scope)
+T ∈ carries          → allowed          (declared, pre-approved, auditable)
+agent ∈ participants(T) → GATE          ← the change; today: allowed
+otherwise            → GATE             (unchanged)
+```
+
+Three consequences of the shape:
+
+- **`here` comes from the signed claim.** A rule keyed on an argument would be the agent's word about
+  where it is standing, which is not a control.
+- **Membership of T is no longer sufficient**, only *relevant*: it changes who the gate is addressed
+  to (T's owner can approve their own room) but it no longer waives the gate.
+- **Outside a channel** — a job — there is no `here`. Then only `carries` applies, and everything else
+  gates; and since a job is unattended, a gate there is a **denial** (entry 18's corollary). A job
+  that must read a topic declares it, or runs inside it.
+
+**Rolled out like the origin chain**: `CLODIA_SPAWN_COMPARTMENT` = `off | report | on`, default
+`report`, so the change can be observed before it refuses anything.
+
 **The cost to plan for:** clodia, which orchestrates across topics today, will meet gates it does not
 meet now. That is the point, but it is real friction, and the two valves are `carries` for what is
 structural and the gate for what is occasional.
