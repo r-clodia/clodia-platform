@@ -1902,6 +1902,25 @@ approving a new one stays an admin act. The perimeter exists, and it is the one 
 perimeter for calls made inside that channel. That was right and is untouched. What was wrong was the
 layer above it: the idea that an account has an outer boundary of its own.
 
+**Implemented, 7 Aug 2026** — clodia-tools 1.52.0, live on venere.
+
+Approved folders now come from the list in force for the call — global plus the scope's (entry 30) —
+read from the `gdrive:folder/<id>` entries that the vocabulary already admitted. Linking a Drive
+remote refuses a folder that is not approved, and the refusal names the exact entry to add, because
+a refusal that does not show the road only teaches that the system says no.
+
+That is the second half of entry 24 closed: an owner can move their scope's walls, but only inside
+the already-approved perimeter, and approving a new folder stays an administrative act.
+
+**Nothing declared means no confinement.** It is the historic behaviour and the right direction for
+backward compatibility — an empty list that closed everything would be switched off the same day and
+would then protect nothing. Measured on venere: no folder entries, so nothing changes today.
+
+**One error worth recording.** The first version folded the legacy `gdrive_roots` into the approved
+set by looping over every account's roots — so account A's root confined account B, which would have
+confined an account that is unconfined today and broken exactly the compatibility marte requires.
+The existing test for that property caught it. Legacy roots stay with their account.
+
 ---
 
 ## Open
