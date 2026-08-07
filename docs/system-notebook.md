@@ -479,6 +479,83 @@ nothing. If the parent is a ceiling, inheritance becomes a containment tool: `pr
 bounds every profession derived from it. Creating a seed is admin-gated either way, so this
 is a modelling choice rather than a hole.
 
+*Answered 7 Aug 2026 — **default**, see entry 10b.* The archseed makes the choice concrete: what
+is inherited is a floor a seed gets for free, and a derived seed may extend it. Containment does
+not come from the ancestor but from where it has always come — the gates, the scope's lists, and
+the intersection of the origin chain.
+
+---
+
+## 10b · The archseed: one abstract ancestor every seed descends from
+
+**Definition (Davide, 7 Aug 2026).** Declare an **archseed** — an abstract seed that
+**cannot be spawned** and holds the base verbs and attributes. Every seed descends from it and
+acquires them by inheritance.
+
+**Accepted, and it answers entry 10's open question: the parent is a DEFAULT, not a ceiling.**
+Consistent with what Davide said on 6 Aug — «il derivato potrà fare overriding di tutto quello
+che eredita». The archseed is what a seed gets for free; the seed's own declaration is its
+trade.
+
+**It also settles open point 3 in a better shape than the one being built.** `memory` was the
+one **universal namespace**: granted to every agent without appearing anywhere, so unreadable
+from an agent's configuration and impossible to take away from one agent in particular. The fix
+in progress was a migration writing `memory.*` into every agent — explicit, but the same default
+duplicated N times. The archseed puts it in **one** place, which is what a default is for.
+
+### What goes in, derived rather than invented
+
+Measured before proposing anything, across both instances: the intersection of every
+non-wildcard agent on venere is only `topic.open` and `topic.read_document`, and on marte it is
+**empty**. So there is no large common set to lift — and that measurement is the reason the
+archseed must be small.
+
+The rule that decides membership: **a verb belongs in the archseed when its target is the agent
+itself or the room the spawn is already standing in.** Everything else is trade, and trade
+belongs to the seed.
+
+- **`memory.*`** — its own memory, confined to its own folder.
+- **the reading floor of the current scope**: `topic.open`, `topic.files`, `topic.read_file`,
+  `topic.read_document`, `topic.search`, `topic.list`, `topic.fetch`.
+- **`topic.post_message`** — a spawn that cannot speak in its own room cannot do anything.
+  Speaking is not mutating, exactly as for the `reader` role (entry 25).
+
+**Deliberately outside:** writing (`put`, `write_file`, `delete_file`, `save_summary`),
+everything that moves the walls (`add_participant`, `remote_*`), and every namespace that leaves
+the scope (`email`, `gdrive`, `telegram`, `github`, `web`).
+
+### The measurement that constrains the content
+
+Two agents on venere are **deliberately narrow**, and an archseed carrying `topic.*` would widen
+them without anyone having decided so:
+
+```
+segretario         topic.open · topic.read_document · topic.save_summary        (3 verbs)
+security-engineer  7 read-only verbs
+```
+
+`segretario` would gain `put`, `write_file`, `delete_file`, `post_message`;
+`security-engineer` would gain writing. Those are narrownesses, not omissions. Hence the
+archseed's floor is *reading plus speaking*, and hence the first of the three conditions below.
+
+### Three conditions, without which this becomes the seventh declared mechanism nobody carries
+
+1. **Inheritance must be subtractable.** `segretario` has to be able to say «minus
+   `post_message`», or the archseed widens it. `denied_tools` already exists and already beats
+   the allow list — the mechanism is there and only needs connecting.
+2. **`abstract: true` must be enforced at spawn time**, not merely declared. An archseed spawned
+   by accident is an agent with the base verbs and no trade: it works well enough that nobody
+   notices.
+3. **The resolved set must be visible, with provenance.** Today you read one `agent.yaml` and
+   know what an agent may do; with inheritance you no longer can. If `agents.show` does not
+   display the resolved set marking each verb *inherited* or *own*, we will have traded a
+   duplication for an opacity — and the opacity is worse, because a duplication is at least
+   visible.
+
+*Depends on:* `AgentSpec.parents` finally being resolved, in exactly **one** place — it has been
+declared and unresolved since 6 Aug, and a second resolution site is how the two would
+diverge.
+
 ---
 
 ## 11 · Seeds have no rules
@@ -1870,6 +1947,9 @@ than deleted, because a list that only ever grows stops being read.
 - **A git remote has no tier cap** (entry 16) — it now has a perimeter: a repository is an approved
   list entry (entry 31).
 - **A job's tier** (entry 33) — a provider that cannot carry it fails the run.
+- **Is the parent seed a ceiling or a default?** (entry 10) — **default**, settled by the archseed
+  of entry 10b: what is inherited is a floor, and containment comes from the gates and the scope's
+  lists rather than from the ancestor.
 
 ---
 
@@ -1920,8 +2000,6 @@ do **not** hold.
   inexpressible there?** (entry 18)
 - **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
   the widest perimeter and no human at the turn.
-- **What caps a git remote, and is the cap a property of the host rather than of the
-  protocol?** (entry 16)
 - **Does the mailbox become an element of a scope, or does email get its perimeter from the
   destination axis?** (entry 15) — issues #149, #150.
 - **Retire the `/clodia/channels/…` prefix** (entry 14): the same `(tier, name)` is
@@ -1929,8 +2007,6 @@ do **not** hold.
 - **Should revoking a scoped override take effect on a live spawn?** (entry 13) — today the
   spawn must die first, so a withdrawn model/provider stays in use.
 - **A cost ladder within one provider is not expressible** (entry 13, v1 constraint).
-- **Is the parent seed a ceiling or a default?** (entry 10) — decides whether inheritance
-  is containment or convenience.
 - **Where should the 226 files live instead?** (entry 12, condition 2)
 - **`ophelia` is still a super-agent.** `clodia` was removed from both super sets on
   6 Aug; the concept survives in seven places with three independent definitions, two
