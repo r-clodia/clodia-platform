@@ -1152,8 +1152,12 @@ it gets wrong.
 single verb today**, because the individual lists are identical to the seed. And more generally
 nothing is lost yet, because origin enforcement is still `report`. The moment this bites is E1.
 
-**Left alone on purpose.** The individual `tool_permissions` on venere are redundant now, but
-removing them is a write to production data and it is Davide's call.
+**Removed, same day, on Davide's word** («se le tool permission sono ridondanti toglile»).
+Redundancy was verified by **outcome**, not by resemblance: for all 160 gateway verbs, the result was
+identical with and without the individual declaration, for each of the four humans. Each file was
+backed up next to itself, stripped, and re-measured — with an automatic restore had the outcome
+moved. It did not. The seed is now the only source, and `davide` is still admin while `giovanni` is
+not.
 
 ---
 
@@ -1963,6 +1967,33 @@ would then protect nothing. Measured on venere: no folder entries, so nothing ch
 set by looping over every account's roots — so account A's root confined account B, which would have
 confined an account that is unconfined today and broken exactly the compatibility marte requires.
 The existing test for that property caught it. Legacy roots stay with their account.
+
+---
+
+## 33 · A job declares a tier, and a provider that cannot carry it fails the run
+
+**Definition (Davide, 7 Aug 2026).** «Un tier su job: se il provider dell'agente non è conforme al
+tier richiesto, il job fallisce con stato errore e messaggio di errore loggato.»
+
+**Accepted, and it settles the question I had left open.** A job is a scope (entry 23) and can now say
+what level of data it will handle. The reason the answer was not obvious is entry 13: an agent's
+effective SEAL is its **provider's**, not its seed's, because that is where the data goes — the same
+agent is SEAL-3 on Scaleway and SEAL-1 on anthropic-api. So a job's tier cannot *lower* a clearance;
+it can only be a requirement the provider either meets or does not.
+
+**Fails, does not degrade**, and that is the whole content of the decision. Running a job declared for
+SEAL-3 data on a weaker provider would send that data where it must not go and would do it silently —
+the job would report success. A failed run is visible, and it is recorded through `mark_run`, because
+a job that never starts must not look like a job that was never scheduled. The check runs before the
+chat is created, so the refusal does not arrive with data already in flight.
+
+**Three silences, each with its own reason.** No tier declared is no requirement — the state of every
+existing job, and refusing them all would have stopped the scheduler rather than protected anything.
+An unreadable tier is a requirement we cannot enforce, and refusing would pretend a check we did not
+make. An unresolved provider is a doubt of *ours*, not of the job, and refusing there would be a
+failure dressed as a decision — the defect that cost three diagnoses on 6 Aug.
+
+**Implemented, 7 Aug 2026** — clodia-logic 6.148.0, live on venere.
 
 ---
 
