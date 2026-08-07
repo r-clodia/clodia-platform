@@ -1714,6 +1714,34 @@ a credential bound to the scope is the same principle on the other axis — and 
 to its Telegram group. Both are agent-bound today. So this is not a git feature — it is the mechanism
 that makes «resources are elements of a scope» true **for credentials too**.
 
+### Deploy keys: considered, deferred (7 Aug 2026)
+
+Davide asked whether putting a **seed's public key** on GitHub would let its spawns authenticate to
+remote repositories. Technically the keys are Ed25519 — exactly what GitHub accepts for SSH — and the
+private halves are on disk under `/datadir/pki`, root-owned.
+
+**Bound to the seed it would undo entry 29 the day after it was built.** A key registered for `clodia`
+authenticates *any* clodia spawn from *any* room to that repository: «participant of 135 topics»
+transposed onto GitHub. And the spawn is not who would use it — the **gateway** runs git, so the
+gateway would hold the seed's private key, which makes it a credential held on behalf of a name
+rather than an identity. Third, those keys are the agent's identity toward *our* CA, and reusing an
+identity key for a second relying party means a rotation on one side breaks the other and the audit
+trail conflates «authenticated to the gateway» with «pushed to GitHub» — while the PKI's own roadmap
+wants those private keys *out* of the orchestrator's container.
+
+**Per scope, though, it is strictly better than a PAT**, and worth recording for when it is picked up:
+GitHub's **deploy key** is per repository and optionally read-only. The gateway would generate a
+keypair per scope, keep the private half in the vault slot built today, and the owner pastes the
+**public** half into that repository. Three advantages that are not small — per-repo *by
+construction* (a PAT can be created too wide by accident; a deploy key cannot reach a second
+repository at all), read-only is expressible, and **nothing secret ever transits**: you paste a public
+key, so the credential never passes through a browser, a chat or a paste buffer. That last one is not
+theoretical — tokens have already ended up in clear text inside `origin` URLs in `.git/config`.
+
+**Decision: fine-grained PAT for now.** The cost of the deploy key is a step *inside GitHub*, and the
+PAT path is already in production. Recorded so the alternative is known-and-deferred rather than
+unknown.
+
 ---
 
 ## Open
