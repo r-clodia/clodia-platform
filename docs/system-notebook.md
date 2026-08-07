@@ -1947,6 +1947,26 @@ than deleted, because a list that only ever grows stops being read.
 - **A git remote has no tier cap** (entry 16) — it now has a perimeter: a repository is an approved
   list entry (entry 31).
 - **A job's tier** (entry 33) — a provider that cannot carry it fails the run.
+- **Who writes the 226 files at the top of `/datadir/spawns`, can an agent enumerate them, and where
+  should they live?** — the **gateway** writes them, for an agent that passes a `dest` with no spawn
+  directory in front of it; `_safe_scratch_path` validated "under `spawns/`" and the root passed. An
+  agent **cannot** list them (`drwx--x--x`, `ls` denied) but they are `644`, so whoever knows a name
+  reads them. They belong in the requesting spawn's scratch, and the root is no longer a destination
+  (clodia-tools 1.55.0). The 226 files are left where they are: they are Davide's documents.
+- **Does any seed rely on `memory.*` being implicit?** — all of them: removing the universal
+  namespace would have cost `memory` to **6 agents of 8 on venere and 5 of 5 on marte**, silently.
+  Answered by the archseed (entry 10b): one place instead of the same default written N times.
+- **What is `DEFAULT_CHAT_ID`, and is it a spawn scope?** — it was a live session with `topic: null`,
+  exempt from the reaper, and therefore the one place where the whole per-scope machinery degraded
+  **silently** to the global list. Retired (clodia-logic 6.149.0); DMs cover the use case and are
+  real scopes.
+- **Should the spawn series be unique across instances?** — the defect underneath was worse and is
+  fixed: ordinals were **reusable**, being a `max()` over surviving directories. Now persisted and
+  monotonic (clodia-logic 6.150.0). Across instances uniqueness is not pursued: clones are
+  independent by design, so identity in an audit line is (instance, seed, ordinal).
+- **What caps a portable topic?** — the **room**, not the membership: a carried topic travels only
+  where the current room's tier can hold it, and refuses in words rather than degrading silently
+  (clodia-tools 1.56.0, entry 28 revised).
 - **Is the parent seed a ceiling or a default?** (entry 10) — **default**, settled by the archseed
   of entry 10b: what is inherited is a floor, and containment comes from the gates and the scope's
   lists rather than from the ancestor.
@@ -1959,22 +1979,6 @@ than deleted, because a list that only ever grows stops being read.
 Questions raised while verifying the above, not yet measured. Each one is a belief we
 do **not** hold.
 
-- **Who writes the 226 files at the top of `/datadir/spawns` on marte, and why there?**
-  They are root-owned, so a platform component. Until this is answered they are data
-  with no declared owner, in a location the model does not describe.
-- **Does any agent declare `/datadir/spawns` among its `allowed_paths`?** If so, it can
-  enumerate as well as read, and the yard becomes a directory listing of everyone's
-  work.
-- **Does any seed rely on `memory.*` being implicit?** Before removing the universal
-  namespace, every seed that uses memory verbs has to declare them, or removing it
-  breaks agents silently instead of loudly.
-- **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
-  neither channel nor job it is a third leftover to remove (entry 6).
-- **Should the spawn series be unique across instances, not only within one?** (entry 7)
-- **What caps a portable topic?** (entry 28, revised) — contents at SEAL-3 reachable from a SEAL-0
-  room leave their level by way of the spawn. Either the portable topic's tier caps the rooms it may
-  be opened in, or portability is confined to low tiers. The per-item labelling once proposed for the
-  personal scope survives as an option and is finer, since the org chart is not the budget.
 - **Sequence to enforcement** (entry 26): the first three steps shipped on 7 Aug — AGENTS.md to
   metadata, scope roles, third term in the intersection. Only `CLODIA_ORIGIN_ENFORCE=on` is left,
   and the chain still observes and blocks nothing. Turning it on is the one change today that
@@ -2007,8 +2011,14 @@ do **not** hold.
 - **Should revoking a scoped override take effect on a live spawn?** (entry 13) — today the
   spawn must die first, so a withdrawn model/provider stays in use.
 - **A cost ladder within one provider is not expressible** (entry 13, v1 constraint).
-- **Where should the 226 files live instead?** (entry 12, condition 2)
 - **`ophelia` is still a super-agent.** `clodia` was removed from both super sets on
   6 Aug; the concept survives in seven places with three independent definitions, two
   of which are not agent authority at all but the agent-server's *service* identity
   (human profiles have no server-side key to mint a token in their own name).
+- **A spawn is not confined to its OWN scratch** (entry 2) — the gateway validates "under
+  `/datadir/spawns/<something>/`" but cannot require the caller's own directory: it knows the seed
+  (`agent_name()`) while the instance is `"-"` everywhere. So one spawn can still write into
+  another's. Closing it needs the spawn identity in the signed claim.
+- **The job's tier must travel in the signed claim** (entries 33 and 28) — a job declares a tier, but
+  the gateway does not see it, so a portable topic carried into a job is allowed and merely logged.
+  It is the one place where the portability rule is written and not enforced.
