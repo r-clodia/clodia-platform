@@ -1561,6 +1561,63 @@ tree.
 
 ---
 
+## 29 · Participants are SPAWNS, not seeds — and today they are seeds
+
+**Definition (Davide, 7 Aug 2026).** The participants of a scope are not the **seeds** but the
+**spawns**, and the difference is substantive: a clodia present in several topics would be able to
+reveal topic A's secrets to the participants of topic B. If access belongs to the *spawn*, the
+perimeter holds.
+
+**Correct, and it is not hypothetical — it is the current configuration.** Measured:
+
+```python
+def _topic_is_member(meta: dict, caller: str) -> bool:
+    return caller == meta.get("owner") or caller in (meta.get("participants") or [])
+```
+
+`caller` is `agent_name()` — the **seed's** name. Nothing consults the room the call comes from.
+And on marte:
+
+```
+topic totali: 157
+  clodia   participant di 135
+```
+
+So a clodia spawn standing in **any** room can read the files of the other 134 ungated, and post them
+into the room it stands in.
+
+**This is the compartment axis defeated.** The model says access has two axes — clearance **and**
+participation — but the second compartments only if it is evaluated **per spawn**. Evaluated per
+seed it is a global permission wearing a compartment's clothes: membership says «clodia may read A»,
+never «this clodia, standing in B, may read A».
+
+**It also corrects what I proposed to Davide minutes earlier in the same conversation.** I had
+written that an agent's own scope is «a topic the agent participates in — carried everywhere because
+membership does not depend on the room». That property *is* the hole. I was building a feature on top
+of a defect, and presenting it as elegant because it cost nothing to implement: it cost nothing
+precisely because the control was missing.
+
+**The construction his observation produces:**
+
+- **default** — a spawn reaches only the scope it stands in. Reading another topic is a **crossing**
+  (entry 23), so a gate, addressed to the owner of the scope whose data is at risk (entry 24). This
+  holds **even when the seed is a participant** of that topic.
+- **exception** — the topics a seed **declares** it carries: `carries: […]`, which is exactly the
+  agent's own scope of entry 28.
+
+So `carries` stops being an ergonomic hint and becomes **the authorisation itself**. Better in kind:
+the exception is explicit, countable and readable in a file, instead of implicit and 135 wide.
+
+**What changes meaning:** participation stops meaning «may read from anywhere» and starts meaning
+«may read while standing here». That is the redefinition that makes the compartment real, and it is
+small to write — the decision point is one function.
+
+**The cost to plan for:** clodia, which orchestrates across topics today, will meet gates it does not
+meet now. That is the point, but it is real friction, and the two valves are `carries` for what is
+structural and the gate for what is occasional.
+
+---
+
 ## Open
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
@@ -1578,6 +1635,8 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
+- **Scope membership must be evaluated per spawn, not per seed** (entry 29) — today one seed's
+  participation grants every one of its spawns access from any room; on marte that is 135 topics.
 - **Per-scope or per-item tier on the agent's own scope?** (entry 28) — per-item recommended; per
   scope would bar a company agent from every public room.
 - **Sequence to enforcement** (entry 26): AGENTS.md to metadata → scope roles → third term in the
