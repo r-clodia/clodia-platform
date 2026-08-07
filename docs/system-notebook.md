@@ -835,8 +835,11 @@ added the fourth link by giving jobs a tier.
 **Definitions (Davide, 6 Aug 2026), seven at once, with (6) in its final form of 7 Aug.**
 
 1. `job` is a scope like `topic`, and it should have a **tier**.
-2. A **mailbox** becomes part of the scope, enters its perimeter, and as such is an **approved
-   ingress**.
+2. A **mailbox** is a **global resource**, like the Google account or the git credential; the
+   **senders and recipients** are the ingress and egress declared by the **scope that uses it**.
+   *(Revised 7 Aug: the original formulation made the mailbox an element of the scope. The
+   separation matters — one credential cannot belong to every room that reads mail through it,
+   while who may write in and who may be written to are exactly what a scope declares.)*
 3. A **remote inserted by a human** enters the scope's perimeter and is approved as **both ingress
    and egress**.
 4. The **user's terminal** is part of the scope, also an approved ingress, «e tutto quello che entra
@@ -854,11 +857,19 @@ notes.**
 **On (1).** A job had no tier when this was written; entry 33 gave it one, and a job that declares a
 tier its agent's provider cannot carry now fails the run.
 
-**On (2) — a reading fixed, because the formulation is asymmetric.** For the remote Davide said «sia
-come ingress che come egress»; for the mailbox, **ingress only**. Recorded as ingress-only, which is
-the conservative reading and keeps the Giovanni case shut: mail *arriving* into the scope is valid
-input, while *sending* remains subject to the destination axis. If both were meant, that re-opens
-#150.
+**On (2) — settled 7 Aug, and it moved.** The first formulation made the mailbox an element of the
+scope, and I had recorded it as ingress-only — the conservative reading, keeping the Giovanni case
+shut. Davide's revision separates the two things properly: «la mailbox è una risorsa globale come
+l'account Google o le credenziali git, ma mittenti e destinatari sono ingress/egress definiti nello
+scope che la usa».
+
+That is the right cut. A credential cannot belong to every room that reads mail through it, and the
+question a scope actually answers is not «is this mailbox mine» but «who may write into this room,
+and who may this room write to». Both axes therefore live in the scope's lists (entry 18), and
+membership of the perimeter already counts as vetted by construction (entry 19), so a participant's
+mail does not need to be listed twice.
+
+Consequence: issues #149 and #150 are about the lists, not about ownership of the mailbox.
 
 **On (4) — the one objection: authenticity is not trustworthiness.** The terminal certifies *who is
 speaking*, not *where the content came from*. The everyday case: the owner pastes an email or a web
@@ -1964,6 +1975,19 @@ than deleted, because a list that only ever grows stops being read.
   fixed: ordinals were **reusable**, being a `max()` over surviving directories. Now persisted and
   monotonic (clodia-logic 6.150.0). Across instances uniqueness is not pursued: clones are
   independent by design, so identity in an audit line is (instance, seed, ordinal).
+- **Should a job scope have participants?** — **no, an owner is enough** (Davide, 7 Aug). Confirms
+  today's behaviour: the owner decides who may see a run's output, and a job is not a room people
+  are invited into.
+- **Should the global egress list narrow to infrastructure-only?** — **no** (Davide, 7 Aug): it may
+  hold arbitrary entries the admin decides. So the global list stays a deliberate instrument rather
+  than a residue to be shrunk, and the per-scope lists exist to avoid *needing* it, not to replace
+  it.
+- **Does the mailbox become an element of a scope?** — **no: it is a global resource**, like the
+  Google account or the git credential, while **senders and recipients are the ingress and egress
+  declared by the scope that uses it** (Davide, 7 Aug). Entry 17's point 2 is corrected accordingly.
+- **Should revoking a scoped override take effect on a live spawn?** — **ideally yes, acceptable no**
+  (Davide, 7 Aug). Accepted constraint: today the spawn must die first, so a withdrawn model or
+  provider stays in use until then. Written down so it is a known cost rather than a surprise.
 - **What caps a portable topic?** — the **room**, not the membership: a carried topic travels only
   where the current room's tier can hold it, and refuses in words rather than degrading silently
   (clodia-tools 1.56.0, entry 28 revised).
@@ -2005,23 +2029,11 @@ and Davide had to ask on 7 Aug:
   topic store rests on a compose line that is known to drift.
 - **[decide → measure]** **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
   empty in production, which is the pre-#77 behaviour.
-- **[decide]** **Should a job scope have participants?** (entry 21) — today it has an owner only, which
-  decides who may see a run's output.
-- **[decide]** **Should the global egress list narrow to infrastructure-only, and should `*` become
-  inexpressible there?** (entry 18)
 - **[decide]** **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
   the widest perimeter and no human at the turn.
-- **[decide]** **Does the mailbox become an element of a scope, or does email get its perimeter from the
-  destination axis?** (entry 15) — issues #149, #150.
 - **[measure]** **Retire the `/clodia/channels/…` prefix** (entry 14): the same `(tier, name)` is
   addressed under four prefixes, and that one is what the UI calls.
-- **[decide]** **Should revoking a scoped override take effect on a live spawn?** (entry 13) — today the
-  spawn must die first, so a withdrawn model/provider stays in use.
 - **[decide]** **A cost ladder within one provider is not expressible** (entry 13, v1 constraint).
-- **[decide]** **`ophelia` is still a super-agent.** `clodia` was removed from both super sets on
-  6 Aug; the concept survives in seven places with three independent definitions, two
-  of which are not agent authority at all but the agent-server's *service* identity
-  (human profiles have no server-side key to mint a token in their own name).
 - **[measure]** **A spawn is not confined to its OWN scratch** (entry 2) — the gateway validates "under
   `/datadir/spawns/<something>/`" but cannot require the caller's own directory: it knows the seed
   (`agent_name()`) while the instance is `"-"` everywhere. So one spawn can still write into
@@ -2029,3 +2041,10 @@ and Davide had to ask on 7 Aug:
 - **[measure]** **The job's tier must travel in the signed claim** (entries 33 and 28) — a job declares a tier, but
   the gateway does not see it, so a portable topic carried into a job is allowed and merely logged.
   It is the one place where the portability rule is written and not enforced.
+- **[measure]** **Take `super` away from `ophelia`** (entry 27) — decided by Davide on 7 Aug. `clodia`
+  lost it on 6 Aug and the removal was instructive: two tests went from green to red not because the
+  logic changed but because it was consulted for the first time. The concept survives in **seven
+  places with three independent definitions**, and two of those are not agent authority at all but
+  the agent-server's *service* identity — human profiles have no server-side key to mint a token in
+  their own name, so something has to. Untangling those two is the work; removing a name from a set
+  is not.
