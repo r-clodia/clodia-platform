@@ -1997,7 +1997,30 @@ failure dressed as a decision — the defect that cost three diagnoses on 6 Aug.
 
 ---
 
+## Closed on 7 Aug 2026
+
+Items from the list below that shipped and were measured live on venere. Kept here rather
+than deleted, because a list that only ever grows stops being read.
+
+- **Scope membership evaluated per spawn, not per seed** (entry 29) — shipped and **enforcing**
+  (`_spawn_compartment_mode() == "on"`), unlike the origin chain, which still observes.
+- **Grade membership: owner / contributor / reader** (entry 25) — a legacy list reads as
+  contributor, so nobody was silenced by the migration.
+- **Per-scope authorisation of senders for email** (entry 18) and **perimeter membership counts as
+  vetted** (entry 19) — the second is what stops every topic from duplicating its own participants
+  into the source list.
+- **`superadmin` as an attribute of the admin spawn** (entry 20) — `is_instance_owner()`. The field
+  is still spelled `role: superadmin`: renaming it touches authentication.
+- **Does a Drive folder need an account ceiling?** (entry 32) — no: it is a list entry. The ceiling
+  concept was removed.
+- **A git remote has no tier cap** (entry 16) — it now has a perimeter: a repository is an approved
+  list entry (entry 31).
+- **A job's tier** (entry 33) — a provider that cannot carry it fails the run.
+
+---
+
 ## Open
+
 
 Questions raised while verifying the above, not yet measured. Each one is a belief we
 do **not** hold.
@@ -2014,30 +2037,26 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
-- **Scope membership must be evaluated per spawn, not per seed** (entry 29) — today one seed's
-  participation grants every one of its spawns access from any room; on marte that is 135 topics.
 - **Per-scope or per-item tier on the agent's own scope?** (entry 28) — per-item recommended; per
   scope would bar a company agent from every public room.
-- **Sequence to enforcement** (entry 26): AGENTS.md to metadata → scope roles → third term in the
-  intersection → `CLODIA_ORIGIN_ENFORCE=on`. Today the chain observes and blocks nothing.
-- **Grade membership: owner / contributor / reader** (entry 25) — today it is binary, so an
-  invitee can wipe a channel's memory and write the file injected every turn.
+- **Sequence to enforcement** (entry 26): the first three steps shipped on 7 Aug — AGENTS.md to
+  metadata, scope roles, third term in the intersection. Only `CLODIA_ORIGIN_ENFORCE=on` is left,
+  and the chain still observes and blocks nothing. Turning it on is the one change today that
+  *removes* capability rather than adding it, so it does not happen without saying so first.
 - **Declare "a scope owner is always human" as an invariant with a test** (entry 24) — the rule
-  gives owners gate authority, so an agent-owned scope would unlock its own gates.
+  gives owners gate authority, so an agent-owned scope would unlock its own gates. Enforced for the
+  configuration topic on 7 Aug, where `owner` would otherwise have defaulted to `clodia`; the
+  general invariant, and its test, do not exist.
 - **Re-express the four gating mechanisms as the one boundary rule** (entry 23) — the largest
-  simplification available, and it depends on entry 22 shipping first.
+  simplification available. Half done on 7 Aug: the rule is now *visible* (three classes, read off
+  the 28 gated verbs, with a completeness test), but there are still four mechanisms rather than
+  one, and collapsing them depends on entry 22 shipping first.
 - **Assert the vault mask from inside, in a test** (entry 22): the agent-server's blindness to the
   topic store rests on a compose line that is known to drift.
 - **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
   empty in production, which is the pre-#77 behaviour.
 - **Should a job scope have participants?** (entry 21) — today it has an owner only, which
   decides who may see a run's output.
-- **Does `superadmin` become an attribute of the admin spawn?** (entry 20) — «who owns the
-  instance» is not «who may administer it», and two seeds collapse them.
-- **Does perimeter membership count as vetted by construction?** (entry 19) — otherwise every
-  topic duplicates its own resources into the source list.
-- **Per-scope authorisation of senders for email** (entry 18) — Telegram has it, email does
-  not, so an authorised mailbox is an ingress open to the world.
 - **Should the global egress list narrow to infrastructure-only, and should `*` become
   inexpressible there?** (entry 18)
 - **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
