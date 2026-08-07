@@ -17,6 +17,20 @@ stops being true is a defect, not a documentation gap.
 Facts decay. Each entry says what it depends on, so that when the dependency changes
 the entry can be re-checked instead of quietly becoming false.
 
+**Revised 7 Aug 2026.** Entries **16**, **28** and **30** were repealed and **22** was
+suspended, on Davide's review of the whole file; **17**, **27**, **29** and **31** were
+rewritten so that they state the settled model rather than the sequence of drafts that
+led to it. A repealed entry is kept, marked, and says what replaced it — deleting it
+would leave the notes reading as though the question had never been asked, and the
+argument that lost is usually the one someone reconstructs from scratch a month later.
+
+What changed, in one line each: **a topic has no git remote** (16), a repository is a
+whitelist entry and the git credential belongs to the platform (30, 31); there is **one
+file view** with `local/` and `remote/` as mounts (17); there is **no personal agent
+scope** — a topic may instead declare itself **portable** (28); the **configuration
+topic** is withdrawn for now (22); and **marte is pinned at `v7.0`** while 9.0 lives on
+venere (27).
+
 ---
 
 ## 1 · Seeds are types, spawns are live instances
@@ -718,197 +732,118 @@ type-check.
 
 ---
 
-## 16 · A git remote has no tier cap
+## 16 · REPEALED — there are no git remotes to cap
 
-**Measured 6 Aug 2026, while checking entry 15.** The weakest-link doctrine is written
-verbatim in an error message — «anello più debole: min(dati, provider, storage, channel)» —
-and enforced on three links: provider (entry 13), storage (`_DRIVE_SEAL_CAP = 2`), channel
-(`_CHANNEL_SEAL_CAP = {"telegram": 1}`).
+**Repealed (Davide, 7 Aug 2026).** «La 16 è abrogata. Togliamo proprio i remote di tipo git.»
 
-A **git remote is capped by nothing**. The guard exists only for Drive:
+This entry recorded that a git remote was capped by nothing, so a SEAL-4 topic could have a remote on
+github.com while Drive was held at SEAL-2. The finding was right and the question it left open —
+«what is the right cap, and does it belong to the host rather than to the word *git*?» — is answered
+by removing its subject. **A topic has no git remote.** There is nothing to cap.
 
-```python
-if tgt_type == "drive" and tier_n > self._DRIVE_SEAL_CAP:
-```
+What replaces it is entry 31, in one shape rather than two: the platform holds **one** git
+credential, a scope authorises a **list of repositories** as ingress and egress, actions that cross
+the boundary are performed by the **gateway**, and inside its scratch a spawn uses real git for `add`,
+`diff` and `commit`.
 
-So a **SEAL-4 topic may have a remote on github.com**, and the vault's PAT is injected to
-make it work (`service.py:666`). The `remoteinclude`/`remoteignore` filter limits *what*
-leaves, never *from which tier* — the same asymmetry that for Telegram was closed with a cap
-at SEAL-1.
-
-Not asserted: what the right cap is. GitHub private repos are not obviously SEAL-1, and a
-self-hosted git on the minipc is not the same resource as github.com — which suggests the cap
-belongs to the **remote host**, not to the word "git".
+**Kept, because it does not depend on git.** The weakest-link doctrine measured here — «anello più
+debole: min(dati, provider, storage, channel)», enforced on provider (entry 13), storage
+(`_DRIVE_SEAL_CAP = 2`) and channel (`_CHANNEL_SEAL_CAP = {"telegram": 1}`) — stands, and entry 33
+added the fourth link by giving jobs a tier.
 
 ---
 
-## 17 · The anatomy of a scope: tier*, metadata*, data (local fs and remote fs)
+## 17 · The anatomy of a scope: tier*, metadata*, and one file view with two mounts
 
-**Definitions (Davide, 6 Aug 2026), seven at once.**
+**Definitions (Davide, 6 Aug 2026), seven at once, with (6) in its final form of 7 Aug.**
 
 1. `job` is a scope like `topic`, and it should have a **tier**.
-2. A **mailbox** becomes part of the scope, enters its perimeter, and as such is an
-   **approved ingress**.
-3. A **remote inserted by a human** enters the scope's perimeter and is approved as **both
-   ingress and egress**.
-4. The **user's terminal** is part of the scope, also an approved ingress, «e tutto quello
-   che entra è valido».
-5. A scope has: `tier`\*, `metadata`\*, and `data` articulated into **local fs** and
-   **remote**. Starred = mandatory; a job, for instance, has no fs.
-6. A topic may have a local fs **and** a remote fs — **both coexist**. *Revised 7 Aug: not a
-   view each, but* **one single fs view** *in which `local/` and `remote/` are two folders, one
-   mounting the local filesystem and the other the remote one.*
-7. `AGENTS.md` is **not** part of the local fs but of the **metadata**, as are the `summary`
-   and the `TLDR`.
+2. A **mailbox** becomes part of the scope, enters its perimeter, and as such is an **approved
+   ingress**.
+3. A **remote inserted by a human** enters the scope's perimeter and is approved as **both ingress
+   and egress**.
+4. The **user's terminal** is part of the scope, also an approved ingress, «e tutto quello che entra
+   è valido».
+5. A scope has: `tier`\*, `metadata`\*, and `data`. Starred = mandatory; a job, for instance, has no
+   fs.
+6. A topic has **one single file view**, in which `local/` and `remote/` are two folders: one mounts
+   the local filesystem, the other the remote one.
+7. `AGENTS.md` is **not** part of the local fs but of the **metadata**, as are the `summary` and the
+   `TLDR`.
 
-**Six accepted; one objected to in a single place; and (7) closes the worst hole recorded in
-these notes.**
+**Six accepted; one objected to in a single place; and (7) closes the worst hole recorded in these
+notes.**
 
-**On (1).** Today a job has **no tier**. So of the two mandatory elements, the job subtype
-carries only `metadata` (name, mode, plan, cron, agent, and `topic_tier`/`topic_name` when
-`mode == "topic_trigger"`). Giving it a tier fills entry 15 §3: a job then enters the
-weakest-link formula instead of standing outside it.
+**On (1).** A job had no tier when this was written; entry 33 gave it one, and a job that declares a
+tier its agent's provider cannot carry now fails the run.
 
-**On (2) — a reading fixed, because the formulation is asymmetric.** For the remote Davide
-said «sia come ingress che come egress»; for the mailbox, **ingress only**. Recorded as
-ingress-only, which is the conservative reading and keeps the Giovanni case shut: mail
-*arriving* into the scope is valid input, while *sending* remains subject to the destination
-axis. If both were meant, that re-opens #150.
+**On (2) — a reading fixed, because the formulation is asymmetric.** For the remote Davide said «sia
+come ingress che come egress»; for the mailbox, **ingress only**. Recorded as ingress-only, which is
+the conservative reading and keeps the Giovanni case shut: mail *arriving* into the scope is valid
+input, while *sending* remains subject to the destination axis. If both were meant, that re-opens
+#150.
 
-**On (4) — the one objection: authenticity is not trustworthiness.** The terminal certifies
-*who is speaking*, not *where the content came from*. The everyday case: the owner pastes an
-email or a web page into the terminal and asks «what do you think?». That content is
-third-party, and it arrives wearing the owner's authentication. If everything entering the
-terminal is valid, paste-injection is trusted by definition.
+**On (4) — the one objection: authenticity is not trustworthiness.** The terminal certifies *who is
+speaking*, not *where the content came from*. The everyday case: the owner pastes an email or a web
+page into the terminal and asks «what do you think?». That content is third-party, and it arrives
+wearing the owner's authentication. If everything entering the terminal is valid, paste-injection is
+trusted by definition.
 
-The system already draws this distinction in the two places Davide asked for it: `AGENTS.md`
-is injected wrapped as «materiale di CONTESTO, **NON istruzioni di sistema**», and feedback
-carries a `_FEEDBACK_UNTRUSTED_NOTE`. So the rule recorded is: the terminal is an approved
-ingress **as a channel** — unspoofable, and what the owner himself says needs no per-item
-approval — but the trifecta's `tainted` bit belongs to the **provenance of the content**, not
-to the channel it arrives on.
+The system already draws this distinction in the two places Davide asked for it: `AGENTS.md` is
+injected wrapped as «materiale di CONTESTO, **NON istruzioni di sistema**», and feedback carries a
+`_FEEDBACK_UNTRUSTED_NOTE`. So the rule recorded is: the terminal is an approved ingress **as a
+channel** — unspoofable, and what the owner himself says needs no per-item approval — but the
+trifecta's `tainted` bit belongs to the **provenance of the content**, not to the channel it arrives
+on.
 
-**On (6) — this reverses a documented design, and the measurement argues in its favour.**
-`DRIVE_REMOTE.md`, verbatim:
-
-> «Quando un topic è collegato a una cartella Google Drive, **Drive è la source of truth**.
-> […] I file locali del topic **spariscono dalla vista**: non vengono mostrati, non
-> sincronizzati, non caricati.»
-
-There is even a guard named *anti-nascondimento* that **refuses** `remote_enable` when files
-exist only locally — precisely because they would become invisible. (The Drive layer's caches
-are 5-second read caches, not a local mirror: the XOR is real.)
-
-Two consequences, both favourable. First, **this model removes the reason that guard exists**:
-with two coexisting planes and a view each, nothing becomes invisible, so the refusal is no
-longer needed. Second, for **git the coexistence already holds today** — files live locally
-and are pushed through the `remoteinclude`/`remoteignore` filter. Only **Drive** is XOR. So
-the requirement is not an exception but a **unification**: a remote is always a second data
-plane, never a replacement.
-
-*Corrected 7 Aug, in production.* «A remote is always a second data plane» is **wrong for git**, and
-the sentence above already contained the reason without my noticing: on git the files live locally
-and are pushed, so the remote is *the same content at another moment* — a synchronisation
-relationship, not a different filesystem. There is nothing to mount.
-
-Mounting it anyway advertised a `remote/` folder that could not be opened — «remote non
-raggiungibile» → 404 → 502 in the UI, minutes after Davide linked a git remote to
-`proof-of-flex-sviluppo`.
-
-So the rule is narrower than first recorded: **only a remote that genuinely is another filesystem
-becomes a mount.** Drive does; git does not. On a git-backed topic the tree shows `local/` alone, and
-that is not a limitation — it is what "the two planes already coexisted" meant.
-
-**The design question this creates, to be decided before implementing: the collision rule.**
-With two planes, `files/preventivo.pdf` can exist in both with different contents. Which one
-answers `topic.read_file`? Today the question cannot arise, because there is one plane.
-
-**The collision rule, resolved (Davide, 6 Aug 2026).** «non potrà mai essere lo stesso path,
-i path locali saranno `/path`, i path remoti saranno `//remote/path/`.» The two planes are
-namespaced, so a collision cannot be expressed. Three notes from measurement:
-
-- **One line currently annuls it.** `local_fs._abs` does
-  `(self.root / str(path).lstrip("/")).resolve()` — `lstrip("/")` removes *every* leading
-  slash, so today `//remote/x`, `/remote/x` and `remote/x` are the same path and all land in
-  the local plane. The scheme requires that strip to become a **parse**: choose the plane
-  first, normalise within it second. Good news: that function is the single choke point for
-  every file verb.
-- **`remote` becomes a reserved name in the local plane.** Nothing today forbids a local
-  folder named `remote/`, and after the change `/remote/x` and `//remote/x` would differ by a
-  slash a human mistypes. Better to refuse *creating* a local top-level entry named `remote`
-  than to rely on the distinction: the failure here is silent and in the wrong direction — you
-  write into the plane you did not mean and the operation succeeds.
-- **Containment becomes syntactic — but only for `topic.*`.** The Drive confinement built
-  5 Aug must *walk* the ancestor chain with API calls and fail closed on error, because an
-  agent passes a Drive **file id** that may sit anywhere in the tree. With a path rooted in
-  the plane, containment holds **by construction**: no walk, no fail-open risk, no cache to
-  invalidate. It holds only for verbs that take a path; `gdrive.*` verbs take ids and still
-  need `inside()`. Which points at the right division: inside a topic, files are touched via
-  `topic.*` paths, and `gdrive.*` is the transport for what lies outside any scope.
-
-**Revised (Davide, 7 Aug 2026): ONE file view, with `local/` and `remote/` as mount points.** Not
-two views side by side — a single tree in which two folders mount two filesystems, rather than a
-`//name/` prefix:
+**On (6) — one tree, two mounts.** This supersedes every earlier organisation of the file view
+recorded in these notes: not two views side by side, not a `//remote/` prefix namespacing two planes,
+not Drive replacing the local files.
 
 ```
 /                     ← the topic's DATA root
 ├── local/            ← today's files/ directory, without moving a byte
 └── remote/
-    └── drive/        ← the remote's root (or git/, or drive-2/)
+    └── drive/        ← the remote's root (or drive-2/ …)
 ```
 
-Better than the `//` syntax on three counts: it is an ordinary path tree, so `_abs` needs no parse
-at all and `lstrip("/")` stops mattering; it composes with several remotes without inventing
-anything; and it displays as a tree, which is what a file view already knows how to draw.
-
 **It costs almost nothing, because `/local/` is not a new directory — it is a view onto what already
-lives in `files/`.** No migration, no files moved, and provenance keys already stored keep pointing
-at the same things. `files/x.pdf` stays accepted on input as an alias of `/local/x.pdf`: agents write
-it out of habit and it appears in old messages.
+lives in `files/`.** No migration, no files moved, and stored provenance keys keep pointing at the
+same things. `files/x.pdf` stays accepted on input as an alias of `/local/x.pdf`: agents write it out
+of habit and it appears in old messages.
 
-**The root must be the DATA root, not the topic root.** If `/` were the topic's root then
-`meta.json`, `summary.md` and `AGENTS.md` would sit at `/meta.json`, `/AGENTS.md` — inside a
-browsable, writable tree, which is exactly what entry 17.7 and task A1 took them out of. The control
-plane has no path in this tree:
+**It reverses a documented design, and the measurement argues for the reversal.** `DRIVE_REMOTE.md`
+said Drive was the source of truth and «i file locali del topic spariscono dalla vista», with a guard
+named *anti-nascondimento* refusing to link Drive when files existed only locally — precisely because
+they would become invisible. Measured on `SEAL-1/proof-of-flex-2`, whose remote is the Drive folder
+`50-execution`: the view showed **26** files, all Drive's, while **65** local files sat on disk unseen
+— the Guide for Applicants, the deliverables, the Portuguese pilot deck. With one tree both are
+visible, and the guard has nothing left to protect against.
+
+**The mount framing is not decoration: it fixes what a path means.** A file is at `/local/x` or at
+`/remote/drive/x`, and those are different files that may share a name. That is why the collision
+question — which plane answers `topic.read_file` for `files/preventivo.pdf`? — dissolves instead of
+needing a rule. Under two separate views the same `x` would appear in both with no way to say which
+one an agent meant.
+
+**The root is the DATA root, not the topic root.** If `/` were the topic's root then `meta.json`,
+`summary.md` and `AGENTS.md` would sit at `/meta.json`, `/AGENTS.md` — inside a browsable, writable
+tree, which is exactly what (7) takes them out of. The control plane has no path in this tree:
 
 ```
 control plane (outside the tree):  meta.json · summary.md · AGENTS.md
 data tree:                         /local/…  ·  /remote/<name>/…
 ```
 
-Measured on `SEAL-1/proof-of-flex-2`, which has a Drive remote on the folder `50-execution`: the file
-view shows **26** files, all Drive's, while **65** local files sit on disk unseen — the Guide for
-Applicants, the deliverables, the Portuguese pilot deck. They were hidden knowingly: on 4 Aug the
-refusal became an explicit confirmation («collegando Drive, i N file già presenti non saranno più
-visibili») and there were 18 then. After this change one tree shows both, `/local/` and
-`/remote/drive/` being two mounts rather than two alternatives — and the distinction that matters is
-that nobody has to choose which view to open, because there is one.
-
-**The mount framing is not decoration: it fixes what a path means.** A file is at `/local/x` or at
-`/remote/drive/x`, and those are different files that may share a name — which is precisely why the
-collision question dissolved. Under two separate views the same `x` would appear in both with no way
-to say which one an agent meant.
-
-**Decided (Davide, 6 Aug 2026): the namespace carries the remote's name** — `//drive/…`,
-`//git/…` — rather than the literal `//remote/`. `meta["remote"]` is singular today, so
-nothing forces it yet; deciding now is cheap and retrofitting later is not.
-
-**A name already exists and cannot serve as the namespace.** `remote_enable` sets
-`config["name"] = self._remote_display_name(rtype, config)`, a **display** name derived
-best-effort from the remote itself — the Drive folder's name, or the tail of a git URL. Three
-measured reasons it will not do:
-
-1. **It can be `None`.** The function returns `None` on error (Drive unreachable, anomalous
-   URL). A namespace segment cannot be absent.
-2. **It is arbitrary human text.** A Drive folder may be called `50 - execution / final` —
-   spaces, and even a slash inside what must be one segment.
-3. **It moves under your feet.** Being derived from the remote, renaming the Drive folder
-   changes it, and every stored path saying `//<old name>/…` breaks.
-
-So the namespace segment must be an **identifier** chosen at `remote_add`: stable, validated
-(`[a-z0-9-]+`), unique within the topic, and distinct from the display name, which stays for
-the UI. Sensible default: **the type**, when it is the first remote of that type — so
-`//drive/…` remains the common case and `//drive-2/…` appears only when it must.
+**The mount's name must be an identifier, not the remote's display name.** `remote_enable` sets
+`config["name"]` from a **display** name derived best-effort from the remote itself — the Drive
+folder's name. Three measured reasons it cannot be the path segment: it can be `None` (the function
+returns `None` when Drive is unreachable); it is arbitrary human text (a folder called `50 -
+execution / final` has spaces and a slash inside what must be one segment); and it moves under your
+feet (renaming the folder breaks every stored path). So the segment is chosen at link time,
+validated (`[a-z0-9-]+`), unique within the topic, and distinct from the display name, which stays
+for the UI. Sensible default: **the type**, so `/remote/drive/` is the common case and
+`/remote/drive-2/` appears only when it must.
 
 **On (7) — the definition that closes the worst hole.** Measured:
 
@@ -916,21 +851,22 @@ the UI. Sensible default: **the type**, when it is the first remote of that type
 agents_md = self.s.read(f"{d}/files/AGENTS.md")
 ```
 
-*Corrected 6 Aug while implementing A1: the original claim here was wrong.* `self.s` is **always
-the local control plane**, not the file backend — `_files_backend()` returns Drive only for the
-files plane, and the `agents_md` read does not use it. So the real picture is the opposite of what
-was first recorded, and worse in a different way:
+*Corrected 6 Aug while implementing A1: the original claim here was wrong.* `self.s` is **always the
+local control plane**, not the file backend — `_files_backend()` returns Drive only for the files
+plane, and the `agents_md` read does not use it. So the real picture is the opposite of what was
+first recorded, and worse in a different way:
 
 - **local topic** (the majority): `put_file` writes `files/AGENTS.md` in the same store the reader
   reads → **any participant can write the instruction file injected every turn**. The vulnerability
   is real, and it is here.
 - **Drive topic**: the upload goes to Drive while the read stays local, so the file the UI shows is
   **not** the file being injected, and the injected one cannot be reached by any normal verb. Not a
-  write path — a silent inconsistency. Moving it to the control-plane root takes it out of the data
-plane: no longer writable by a participant's upload, and no longer split between two locations
-depending on the storage backend. It also
-settles the question left open in entry 9 — whether writing it is an act of authority: yes,
-and metadata is where authority-bearing writes live, behind the version lock like the summary.
+  write path — a silent inconsistency.
+
+Moving it to the control-plane root takes it out of the data plane: no longer writable by a
+participant's upload, and no longer split between two locations depending on the storage backend. It
+also settles the question left open in entry 9 — whether writing it is an act of authority: yes, and
+metadata is where authority-bearing writes live, behind the version lock like the summary.
 
 ---
 
@@ -1202,9 +1138,12 @@ gdrive_roots: NON IMPOSTATO
 ```
 
 So the ceiling does not exist, and until it does, relaxing the guard would hand every owner the
-whole Drive. **Order of work: account roots first, then the guard from admin to owner.** That is
-also what makes the ceiling load-bearing instead of decorative — today that branch of the code
-protects nothing, because it has no entries.
+whole Drive. **Order of work: the perimeter first, then the guard from admin to owner.**
+
+*Resolved 7 Aug, in the opposite direction to the one assumed here.* The «account ceiling» was
+repealed — a shared Google account has no root to set (entry 32) — so what came first was not
+`gdrive_roots` but the **list of approved folders**, and the guard did move from admin to owner
+(entry 24, implemented). The ordering was right; the thing being ordered was not.
 
 **From the same measurement, something more urgent than this definition** (belongs to entry 19):
 
@@ -1221,99 +1160,54 @@ everything gates — so there it is noise, not risk.
 
 ---
 
-## 22 · A configuration topic: admin-only, whose files are the system's config
+## 22 · REPEALED FOR NOW — the configuration topic
 
-**Definition (Davide, 6 Aug 2026).** There should be a **special topic** which only **admins**
-enter, and whose **files are in fact the system's configurations**. A read/write on a file there
-modifies agent behaviour **live**. The simplest case: the `AGENTS.md` of this topic is
-**inherited by all new topics**.
+**Repealed (Davide, 7 Aug 2026), for now.** «La 22 abrogata per ora.»
 
-**The design works, and the objection I first raised was wrong.** *Correction, same day.* I read
-the mount **destinations** without their **sources** and concluded that topic files live on a
-volume the agent-server mounts. Davide corrected it; the sources decide:
+The proposal was a special topic that only admins enter, whose files *are* the system's
+configuration, so that a write there changes agent behaviour live — with the simplest case being an
+`AGENTS.md` inherited by every new topic. It is withdrawn from the specification, not refuted: the
+analysis below is kept because it is what would have to be true if it returns.
 
-```
-agent-server:  /datadir/clodia-vault  ←  clodia-personal/.vault-mask        ← a MASK
-gateway:       /datadir/clodia-vault  ←  clodia-personal-sensitive/…        ← the real one
-```
+**What was found while implementing the simplest case, and it matters beyond this entry.** The only
+real control is that no agent may be a participant: an agent participant would hold `topic.put` over
+the configuration — the confused deputy in its purest form, where the agent has the verb, the admin
+has the authority, and the file is the config. Measuring it showed the danger was **worse than
+written, in two independent ways**:
 
-The agent-server mounts a **mask** directory over the vault path. Verified from inside:
+- **terraforming would have added agents by itself**, since every new topic receives the edition's
+  default participants;
+- **the owner would have been an agent too**, because `owner` defaults to `contact_agent`, i.e.
+  `clodia` — and an agent owning a scope unlocks its own gates (entry 24).
 
-```
-agent-server → entries in /datadir/clodia-vault: 0     (and /datadir/topics does not exist)
-gateway      → spawn dirs visible: 227
-```
+So the topic would have been born already violated without anyone doing anything wrong. That is a
+lesson about **defaults**, not about configuration topics, and it survives the repeal.
 
-So topic files are unreachable from the agent-server, every access goes through the gateway, and
-the **scratch** directories are visible **to** the gateway. The asymmetry runs in the direction
-that is needed: it is exactly what lets `topic.put` / `topic.fetch` move bytes **without** base64
-passing through the model's context.
+**Two other findings that outlive this entry.**
 
-**Consequence for this design: the condition I posed is already satisfied.** The ordinary topic
-store already sits on a gateway-only volume, so the configuration topic needs no special storage
-backend and can live where the others live. Exactly **one** control remains, and it is the one
-Davide stated from the outset: **who is a participant, and with which verbs.** With no agent
-participants, `topic.put` over the config exists for nobody but an admin in the webui.
+*The protection of the topic store from the agent-server is a line of compose, not a kernel
+permission.* The agent-server mounts a `.vault-mask` over the vault path; verified from inside, it
+sees **0** entries while the gateway sees 227 spawn directories. The asymmetry runs in the direction
+needed — it is what lets `topic.put`/`topic.fetch` move bytes without base64 through the model's
+context — but a control resting on a compose line, on a host whose compose is a local copy known to
+drift, deserves a test asserting it **from inside** («from here the vault must be empty») rather than
+being inferred by reading mounts, which is precisely the mistake made in the first draft of this
+entry.
 
-**A fragility the measurement exposes, though.** The protection of the topic store from the
-agent-server is **not a kernel permission: it is a line of compose** — the `.vault-mask` mount.
-And the minipc's compose is a local copy already known to drift from the repo. If that line
-disappears in an update, the agent-server silently acquires the whole vault, and no test notices.
-A control resting on a config line that drifts deserves a test asserting it **from inside** —
-«from here the vault must be empty» — rather than being inferred by reading mounts, which is
-precisely the mistake made above.
+*Live writes would have had to go through `save_config`, not through bytes.* The clobber of 5 Aug —
+clodia going from 53 to 130 verbs on venere — was two writers with no arbiter. A config file written
+directly and re-read by another process reintroduces exactly that.
 
-**Four consequences, in order of how hard they bite.**
+**One consequence for entry 23.** That entry's plan to collapse the four gating mechanisms into one
+rested on this one: crossings of the *system* boundary would have become writes in the configuration
+scope, so «admin» would stop being a separate category and become the owner of one particular scope.
+Without entry 22 that step does not exist, `system` stays a class of its own decided by an admin, and
+the unification has to be rethought rather than merely sequenced.
 
-1. **The only real control: if an agent is a participant, it holds `topic.put` over the
-   configuration.** The confused
-   deputy in its purest form: the agent has the verb, the admin has the authority, and the file
-   is the config. «Only admins enter» resolves it — but that means **zero agent participants**,
-   so this topic has no channel: it is a config view with a topic's ergonomics. A legal but
-   unusual shape, worth stating because `contact_agent` is mandatory on topics.
-2. **«Inherited by all new topics» has two readings with different security profiles.**
-   *Copy-at-creation* = a template: existing topics never receive it and a later change does not
-   propagate. *Read live every turn* = the metascope of entry 9: it propagates everywhere at
-   once, and is a single file able to change every agent's behaviour in every room in the same
-   instant. Davide's word is «nuovi», which is the first. If the second is meant, it is the most
-   powerful surface in the system and deserves a gate of its own.
-3. **Live writes must go through `save_config`, not through bytes.** The clobber fixed on 5 Aug —
-   clodia going from 53 to 130 verbs on venere — was two writers with no arbiter. A config file
-   written directly and re-read by another process reintroduces exactly that. Reading may be the
-   file; **writing** must pass through the function that merges.
-4. **This topic's tier makes entry 16 load-bearing.** It should be the highest tier, and then a
-   Drive remote is already barred by the SEAL-2 cap. But a **git remote has no cap at all**, so
-   today an instance's configuration could be pushed to github.com with no guard objecting.
-   Config-as-code is desirable; this is the worst possible topic on which to have that gap.
-
-**On the introspection verbs Davide cites:** `runtime.*` is **read-only by design** — state and
-metadata, never secrets, P3 excluded. This configuration topic is their **write** counterpart,
-which today deliberately does not exist. That is the whole value of the proposal, and its whole
-risk.
-
-**Partly implemented, 7 Aug 2026** — clodia-tools 1.54.0, live on venere.
-
-The simplest case landed — `SEAL-4/configuration`, and its `AGENTS.md` inherited by new topics — plus
-consequence 1, which everything else here depends on.
-
-Consequence 1 was **worse than written**. Not only would an agent participant hold `topic.put` over
-the configuration: terraforming would have put agents there *by itself*, since every new topic
-receives the edition's default participants. And the `owner` defaults to `contact_agent`, i.e.
-`clodia` — an agent owning a scope unlocks its own gates (entry 24, precisation 2). Without both
-exceptions this topic would have been born already violated, in two independent ways. The owner now
-resolves to the instance owner (`davide` on venere); with no human owner the field is left empty
-rather than falling back to an agent, because a topic with no owner is visible and a topic owned by
-its own subject is not.
-
-Consequence 2 is settled the way the definition reads: **copy at creation**, with both readings
-pinned by tests so which one is in force is readable rather than inferred.
-
-Consequence 4 is closed by entry 31's perimeter: a git remote is no longer uncapped, so the
-configuration can no longer be pushed to an arbitrary repository.
-
-**Still open**: consequence 3 — files as *live* configuration, where writes must pass through
-`save_config` rather than through bytes. The 5 Aug clobber was two writers with no arbiter, and a
-config file written directly and re-read by another process reintroduces exactly that.
+**Shipped before the repeal and now unattached**: `SEAL-4/configuration` exists in the gateway
+(clodia-tools 1.54.0), excluded from default participants, with its owner resolved to the instance
+owner, and its `AGENTS.md` inherited by new topics. It is inert — nothing happens unless that topic
+is created, and it has not been on venere — but it is code without an entry behind it.
 
 ---
 
@@ -1578,13 +1472,21 @@ it should permit in the job he owns, and permitting things it should block in `p
 **6 Aug 2026 — Davide declares the specification complete** and asks for the plan and the
 implementation. Three decisions were needed and were taken:
 
-1. **Marte freezes at `v8.1`, it is not rolled back to `v8.0`.** Measured first: `v8.0` was the
-   current tag on all four repos and HEAD was 15–34 commits ahead, so a rollback would have
-   discarded two days of security work — per-topic Drive confinement, the human verb matrices, the
-   vault refusal messages, and the `save_config` clobber fix, which is a *live* bug that took clodia
-   from 53 to 130 verbs on venere. `v8.1` was tagged at HEAD on all four repos and marte's webui was
-   rebuilt to it, so on that instance **running == tag**. Cost accepted: marte receives nothing more
-   until 9.0, save cherry-picked fixes on the 8.1 line.
+1. **Marte freezes, and 9.0 lives on venere.** *Settled 7 Aug: marte is pinned at `v7.0`, the most
+   stable version.* Measured on that day: `GIT_BRANCH=v7.0`, agent-server 6.96.0, gateway 0.97.0.
+
+   The route there is worth keeping, because the reasoning that argued against it still holds and
+   someone will meet it again. On 6 Aug I froze marte at `v8.1` rather than roll back, having
+   measured that `v8.0` was the current tag while HEAD was 15–34 commits ahead: a rollback would
+   have discarded two days of security work — per-topic Drive confinement, the human verb matrices,
+   the vault refusal messages, and the `save_config` clobber fix, a *live* bug that took clodia from
+   53 to 130 verbs on venere. Davide then took marte further back, to `v7.0`.
+
+   **So the clobber fix is not on marte.** If verbs ever appear to change by themselves on that
+   instance, this is where it comes from. Stability was preferred to the fix, which is a legitimate
+   trade — but it is a trade, and it should not be rediscovered as a mystery.
+
+   Cost accepted either way: marte receives nothing more until 9.0.
 2. **The inherited `AGENTS.md` is a template at creation**, not a live read every turn. Bounded
    blast radius: a later change does not propagate to existing topics. The live reading remains
    describable but would be the most powerful surface in the system and would need a gate of its own.
@@ -1599,73 +1501,72 @@ shape (`//<remote>/…`), `AGENTS.md` changes place (`files/` → metadata, migr
 **The plan, in the order of entry 26** (inverting it does harm), delivered as increments that each
 leave the system working, on **venere** only:
 
-- **A — schema and data (breaking):** `AGENTS.md` to metadata · two data planes with the
-  `//<remote-name>/` namespace, `_abs` from strip to parse · `participants` list → map
+- **A — schema and data (breaking):** `AGENTS.md` to metadata · one file view with `local/` and
+  `remote/` as mounts · `participants` list → map — **done**
 - **B — authority:** `admin`/`member` seeds, `superadmin` as an attribute · third term in the
   intersection (seed matrix ∩ scope role) · the owner unlocks their scope's boundary gates · the gate
-  re-expressed as standing rather than a list of verbs
-- **C — perimeter:** per-scope egress *and* ingress lists with the gate offering the scope list ·
-  perimeter membership counts as vetted · tier on jobs · git remote capped by host · account roots set
-- **D — configuration as a scope:** the configuration topic, which collapses gate class 3
-- **E — enforcement:** `CLODIA_ORIGIN_ENFORCE=on` and `source_allow` populated
+  re-expressed as standing rather than a list of verbs — **done**
+- **C — perimeter:** per-scope egress *and* ingress lists · perimeter membership counts as vetted ·
+  tier on jobs · repositories and Drive folders as whitelist entries — **done**
+- **D — configuration as a scope:** **repealed** on 7 Aug (entry 22), together with the collapse of
+  the gate classes it was to enable
+- **E — enforcement:** `CLODIA_ORIGIN_ENFORCE=on` and `source_allow` populated — **not done, and not
+  to be done without saying so first**: it is the one step that removes capability rather than adding
+  it
+
+*Two items in C changed shape while being built, both because Davide corrected a premise.* «Git
+remote capped by host» became «a repository is a whitelist entry» once the remote itself was repealed
+(entries 16 and 31), and «account roots set» became «a Drive folder is a whitelist entry» once it was
+established that a shared Google account has no root to set (entry 32). Neither was a
+re-prioritisation: in both cases the original item described a control over a thing that does not
+exist.
 
 ---
 
-## 28 · The agent's own scope: what a spawn carries with it everywhere
+## 28 · REPEALED — no personal agent scope; a topic may instead be portable
 
-**Definition (Davide, 7 Aug 2026).** There is a third kind of scope: **the agent's own**. A set of
-resources and data every spawn carries — like `MEMORY.md`, except that memory always enters the LLM
-context while the seed's scope holds **databases and RAG collections**. When the agent enters another
-scope (a topic), its personal scope comes in too, but **stays visible only to it**. The case it
-serves: `impiegato-tomato` carrying the company's information into every topic it works in, without
-copying it into each one.
+**Repealed and replaced (Davide, 7 Aug 2026).** «Non esiste un personal agent scope. Al massimo sarà
+costruito uno scope di tipo topic che consente `carries`: consente ai suoi participant di accedere ai
+contenuti dello scope carried anche se lo spawn è in un altro topic o scope. È un topic con un
+attributo di portabilità.»
 
-**The container already exists and holds exactly one thing.** Measured:
+**The replacement, stated positively.** There is no third kind of scope. There is a **topic with a
+portability attribute**: its participating seeds and their spawns can reach its contents **from any
+other scope**. The case entry 28 was written for — `impiegato-tomato` carrying the company's
+information into every topic it works in, without copying it into each one — is served by an ordinary
+topic that declares itself portable.
 
-```
-/datadir/agents/clodia/  →  agent.yaml · system-prompt.md · memory/ · pfp.png
-```
+**Why this is better than the scope it replaces.** A portable topic inherits everything already built
+for topics, for free: a tier that enters the weakest link, a **human owner** who can inspect it,
+per-scope egress lists, its own `AGENTS.md`, the version lock, the bin, and one file view with
+`local/` and `remote/` mounts — so a company archive can literally be a mounted Drive folder. A third
+kind of scope would have had none of it, and entry 15 (`scope` is the type; topic *isA* scope) would
+have had a fourth exception.
 
-Nothing else — no database, no collection bound to the seed. And the kernel already protects it:
-root-owned, the spawn runs as uid 60000, and the spawn holds no symlink to it (entry 12). So this is
-not a new mechanism but the **filling of a container that exists and is already isolated**.
+**Portability is declared by the TOPIC, not by the agent.** The mechanism shipped on 7 Aug declares
+`carries` on the **seed** (`main.py:_carries`), and that is the wrong side: an agent that adds a topic
+to its own list gives itself a channel. Declared by the topic, portability is a decision of whoever
+owns the contents. The implementation has to be turned around.
 
-**The case is right and the alternative is worse.** Copying company information into every topic
-produces N copies with no source of truth and — worse — each copy inherits **that topic's
-participants**. The data spreads where it was not meant to go. This design fixes both at once.
+**Two consequences to state, because they are where this interacts with what is already enforced.**
 
-**Three observations, and the second is the one to settle before implementing.**
+**1. Portability is the named exception to entry 29.** Entry 29 fixed that access belongs to the
+**spawn** and not to the seed, precisely so that a clodia present in topics A and B cannot reveal A in
+B — and it is enforced today (`_spawn_compartment_mode() == "on"`). A portable topic says the opposite
+about itself: participating seeds *and their spawns* reach it from anywhere. That is coherent only if
+portability is an exception **by name** — it opens that topic and no other — rather than a general
+weakening of the compartment.
 
-**1. It is not a third scope in entry 6's sense — it composes.** «Spawns exist in exactly two scopes,
-channel and job» stays true: the spawn does not *live* in its personal scope, it *draws* on it while
-living elsewhere. So it is not a third alternative but a **second simultaneous membership**. Practical
-consequence: entry 15 says resources are elements of a scope, and from here on **two** scopes
-contribute resources to one turn. Every rule written assuming "one turn, one scope" has to be re-read.
+**2. A portable topic is a channel between rooms, so the weakest link acquires a new edge.** Contents
+at SEAL-3 carried into a SEAL-0 room leave their level by way of the spawn. Either the portable
+topic's tier caps the rooms it may be opened in, or portability is restricted to low tiers. Not
+decided here.
 
-**2. It is the first thing in the model that crosses boundaries by design, so the tier must govern
-it.** Everything built so far is bounded by the room; this deliberately is not — the company data
-enters every room the agent works in. If `impiegato-tomato`'s private scope is SEAL-2 and it enters a
-SEAL-0 topic, that data is **in the turn**, and what the turn produces lands in a SEAL-0 room every
-participant reads.
-
-This is entry 17's weakest link applied to a new link. Two ways to close it:
-
-- **per scope**: the private scope has a tier and the agent may not join topics of a lower tier.
-  Simple, but brutal — `impiegato-tomato` could not enter a public room even to say the time.
-- **per item** (recommended): items in the private scope are labelled, and a read is permitted only
-  when the current room's tier ≥ the item's. Finer, and it matches how company information is
-  actually classified — the org chart is not the budget.
-
-**3. «Visible only to it» is true of the STORE, not of what it says.** If the agent reads its private
-database and answers in the channel, that information **is in the channel**, readable by every
-participant. Not a flaw in the design — privacy sits on the source, not on the derivative. The control
-over the derivative is rule 2, not the scope boundary. Worth stating because the phrase, read
-literally, promises more than a boundary can give.
-
-**A symmetry today's work makes free:** the private scope can be a **mount**, exactly like `local/`
-and `remote/` — but in the **spawn's** tree, not the topic's. Appearing among the topic's mounts would
-make it visible to every participant, which is the opposite of the intent. Same mechanism, different
-tree.
+**Surviving from the repealed entry, because it does not depend on the personal scope.** «Visible only
+to it» would have been true of the **store**, not of what the agent says: if the agent reads private
+material and answers in the channel, that information *is* in the channel, readable by every
+participant. Privacy sits on the source, never on the derivative — worth keeping written down,
+because the phrase read literally promises more than any boundary can give.
 
 ---
 
@@ -1735,11 +1636,17 @@ precisely because the control was missing.
 - **default** — a spawn reaches only the scope it stands in. Reading another topic is a **crossing**
   (entry 23), so a gate, addressed to the owner of the scope whose data is at risk (entry 24). This
   holds **even when the seed is a participant** of that topic.
-- **exception** — the topics a seed **declares** it carries: `carries: […]`, which is exactly the
-  agent's own scope of entry 28.
+- **exception** — the topics **declared portable**, reachable from any room.
 
-So `carries` stops being an ergonomic hint and becomes **the authorisation itself**. Better in kind:
-the exception is explicit, countable and readable in a file, instead of implicit and 135 wide.
+So the exception stops being an ergonomic hint and becomes **the authorisation itself**. Better in
+kind: it is explicit, countable and readable in a file, instead of implicit and 135 wide.
+
+*Corrected 7 Aug, on which side declares it.* This was first built as `carries` on the **seed**
+(`main.py:_carries`), and shipped that way. Davide's revision of entry 28 puts portability on the
+**topic** instead, and that is the right side: an agent that adds a topic to its own list gives
+itself a channel, while a topic that declares itself portable is a decision of whoever owns the
+contents. The mechanism is unchanged — a named exception, never a general weakening — only the
+declaring party moves, and the implementation has to be turned around.
 
 **What changes meaning:** participation stops meaning «may read from anywhere» and starts meaning
 «may read while standing here». That is the redefinition that makes the compartment real, and it is
@@ -1778,133 +1685,77 @@ structural and the gate for what is occasional.
 
 ---
 
-## 30 · A credential bound to the scope, not to the platform
+## 30 · REPEALED — the git credential belongs to the platform, not to the scope
 
-**Proposal (Davide, 7 Aug 2026).** When a git remote is linked to a channel, ask for **its**
-credentials there and then — so agents are bound to that one egress/ingress instead of to every one
-that belongs to clodia.
+**Repealed (Davide, 7 Aug 2026).** «La 30 è praticamente abrogata. La credenziale git non è dello
+scope ma della platform.»
 
-**Yes, and it is not a UX change: it is the axis the model has been missing all day.** Measured:
+This entry recorded the first credential in the system bound to a scope rather than to an agent: a PAT
+valid only for one topic, so that a compromised room reached one repository instead of everything the
+platform token can see. It shipped that morning (clodia-tools 1.42.0) and is withdrawn the same day,
+because entry 16's repeal removes what it was protecting: **there is no git remote on a topic**, so
+there is nothing for a per-topic credential to authenticate.
 
-```python
-def _github_token(self):
-    return (vault.read_internal("github_pat") or {}).get("value")
-```
+**The confinement does not disappear, it moves.** One platform credential, and the perimeter is the
+scope's **list of approved repositories** (entry 31). The protection is now on the resource rather
+than on the secret, which is the same shape used for Drive folders (entry 32) and email addresses.
 
-`read_internal` means **no grant check at all** — it is an infrastructure credential, one of them,
-injected into every github remote of every topic. So one token reaches **every repository it has
-scope for, from any room**.
+**Two things this repeal removes, and both are gains.** The **rotation cost** — N credentials nobody
+renews, which I had flagged as the thing that kills such mechanisms six months in — disappears with
+the N. And the **visible fallback**, the panel always saying whether a topic used its own credential
+or the platform's, is no longer needed: with one credential there is no fallback to hide, and a silent
+fallback is how one becomes convinced of an isolation that is not there.
 
-That is the resource axis in its purest form. The census of 5 Aug found twelve mechanisms answering
-«who may do what» and six answering «on which resource»; here the resource is *selected by the
-credential*, and the credential is global.
-
-**What it buys.** Blast radius: a per-topic credential reaches one repository, so a compromised room —
-injection, hostile participant — is bounded by that credential's scope rather than the platform's.
-GitHub's fine-grained PATs scope to a single repository, so the narrowing is real rather than
-theoretical.
-
-Above all it is **entry 29 applied to resources**. Access was just moved from the seed to the scope;
-a credential bound to the scope is the same principle on the other axis — and it would be the
-**first of its kind**, since the vault today knows only `agent → credential`.
-
-**What it costs, stated now rather than discovered later.**
-
-- **Rotation.** One PAT rotates once; N topics rotate N times. Operational, not technical, and real.
-- **A new kind of grant.** `scope → credential` does not exist yet. Small, and in the right direction.
-- **The common case must stay easy.** Most repositories are the owner's own. A link that *always*
-  demands a credential becomes a chore, and chores get worked around. So: **optional, with the
-  platform credential as fallback — and the fallback visible.** A topic must say «uses the platform
-  credential» or «has its own». An invisible fallback is how one comes to believe in an isolation
-  that is not there.
-
-**The extension that follows for free:** the same shape applies to a scope's mailbox (entry 17.2) and
-to its Telegram group. Both are agent-bound today. So this is not a git feature — it is the mechanism
-that makes «resources are elements of a scope» true **for credentials too**.
-
-### Deploy keys: considered, deferred (7 Aug 2026)
-
-Davide asked whether putting a **seed's public key** on GitHub would let its spawns authenticate to
-remote repositories. Technically the keys are Ed25519 — exactly what GitHub accepts for SSH — and the
-private halves are on disk under `/datadir/pki`, root-owned.
-
-**Bound to the seed it would undo entry 29 the day after it was built.** A key registered for `clodia`
-authenticates *any* clodia spawn from *any* room to that repository: «participant of 135 topics»
-transposed onto GitHub. And the spawn is not who would use it — the **gateway** runs git, so the
-gateway would hold the seed's private key, which makes it a credential held on behalf of a name
-rather than an identity. Third, those keys are the agent's identity toward *our* CA, and reusing an
-identity key for a second relying party means a rotation on one side breaks the other and the audit
-trail conflates «authenticated to the gateway» with «pushed to GitHub» — while the PKI's own roadmap
-wants those private keys *out* of the orchestrator's container.
-
-**Per scope, though, it is strictly better than a PAT**, and worth recording for when it is picked up:
-GitHub's **deploy key** is per repository and optionally read-only. The gateway would generate a
-keypair per scope, keep the private half in the vault slot built today, and the owner pastes the
-**public** half into that repository. Three advantages that are not small — per-repo *by
-construction* (a PAT can be created too wide by accident; a deploy key cannot reach a second
-repository at all), read-only is expressible, and **nothing secret ever transits**: you paste a public
-key, so the credential never passes through a browser, a chat or a paste buffer. That last one is not
-theoretical — tokens have already ended up in clear text inside `origin` URLs in `.git/config`.
-
-**Decision: fine-grained PAT for now.** The cost of the deploy key is a step *inside GitHub*, and the
-PAT path is already in production. Recorded so the alternative is known-and-deferred rather than
-unknown.
+**Kept, because it outlives the mechanism.** The name of a scope-bound resource must be **derived from
+the scope**, never chosen by whoever deposits it: if it were free, two topics could point at the same
+credential without anyone seeing it, and the confinement would be a convention instead of a property.
+Tier aliases (`P1` and `SEAL-1`) must resolve to one name, or a scope ends up with two of something of
+which one is orphaned — the same defect found and fixed in the per-scope allowlists on the same
+day.
 
 ---
 
-## 31 · A repository is a whitelist entry, not a remote
+## 31 · A repository is a whitelist entry, and there are no git remotes
 
-**Decision (Davide, 7 Aug 2026).** The concept of a **git remote on a topic disappears**. A remote
-repository is only an **entry in the scope's whitelist**; the **gateway** performs pull, push and pull
-requests. Git stays in the agent's container **only** for scratch-local work — `add`, `diff`,
-`commit`.
+**Decision (Davide, 7 Aug 2026), in its settled form.** A topic has **no git remote**. A remote
+repository is an **entry in the scope's whitelist**, authorised as ingress and egress. The platform
+holds **one** git credential. Actions that cross the boundary — clone, pull, push, pull request — are
+performed by the **gateway**. Git stays in the agent's container **only** for scratch-local work:
+`add`, `diff`, `commit`.
 
-**Accepted, and the decomposition is better than the one I argued for.** I had leaned toward a
-credential helper — the agent runs real git, a helper asks the gateway per operation — objecting that
-«whoever develops needs git, not five verbs». Davide answers in exactly the right place: **local git
-stays**, and only what **crosses the boundary** goes through the gateway. That is entry 23 applied to
-git: `add` and `commit` are inside the scope, `clone` and `push` are crossings.
+**This is entry 23 applied to git.** `add` and `commit` are inside the scope; `clone` and `push` are
+crossings. My own counter-proposal — a credential helper, with the agent running real git and a
+helper asking the gateway per operation — was worse on exactly that axis and worse on security: with
+a helper a short-lived token still **enters the agent's process**, and an agent with a shell can
+exfiltrate it inside the validity window. Here the credential never leaves the gateway.
 
-And it is stronger on security than my version: with a helper a short-lived token still **enters the
-agent's process**, and an agent with a shell can exfiltrate it inside the validity window. Here the
-credential never leaves the gateway.
+**It collapses four mechanisms into one.** The mount (removed 6 Aug), the sync with
+`remoteinclude`/`remoteignore`, the per-scope credential (entry 30, repealed) and the tier cap the
+remote never had (entry 16, repealed) all existed to make a topic's files *be* a git working copy.
+None is needed once the repository is a destination rather than a plane.
 
-**It also collapses three mechanisms into one.** The mount (removed the same day), the sync with
-`remoteinclude`/`remoteignore`, and the per-scope credential built that morning all existed to make a
-topic's files *be* a git working copy. They are not needed if the repository is a destination rather
-than a plane. The scope credential's rotation cost — which I had flagged as the thing that kills such
-mechanisms six months in — disappears with it.
-
-**The vocabulary already exists.** `egress.py` has `_repo`, which renders a repository as
-`https://github.com/<owner>/<repo>`, and `https` is admitted in **both** lists. There is even a
+**The vocabulary already existed.** `egress.py` renders a repository as
+`https://github.com/<owner>/<repo>`, and `https` is admitted in **both** lists. There was even a
 `spec_for` branch keyed on a `github.` prefix and a `_GITHUB_WRITE` list — but **no `github.*` verb
 exists**. The slot was built and left empty.
 
-**What this makes concrete:** the per-scope allowlist (entry 18, task C1) gets its first entry type,
-and repositories are the case that motivates building it rather than a general mechanism in search of
-a use.
-
-**Two consequences worth stating before implementing.**
+**Two consequences worth stating.**
 
 1. **A clone is ingress, a push is egress**, and both belong in the scope's lists. Under entry 19 a
    repository in the scope's perimeter is *vetted by construction*, so cloning it does not taint —
-   which is coherent, and it is the difference between «code the owner approved for this room» and
-   «code from anywhere».
+   which is the difference between «code the owner approved for this room» and «code from anywhere».
 2. **The clone lands in the agent's scratch**, so the gateway writes there. The mechanism exists and
    was measured on 6 Aug: the gateway sees `/datadir/spawns` (227 directories), which is exactly how
    `topic.fetch` moves bytes without base64 through the model's context.
 
-**A distinction to keep**, or a legitimate use gets deleted with the concept: «this topic **versions
-its own documents** in git» and «this scope **may work on these repositories**» are different things.
-The first was `remote: git`; the second is the whitelist entry. `proof-of-flex-sviluppo` is plainly
-the second.
+**A distinction that dies with the remote, and should not be mourned by accident.** «This topic
+**versions its own documents** in git» and «this scope **may work on these repositories**» were
+different things: the first was `remote: git`, the second is the whitelist entry. Only the second
+survives. `proof-of-flex-sviluppo` was plainly the second all along.
 
-**Partly implemented, 7 Aug 2026** — clodia-tools 1.53.0, live on venere.
-
-The full redesign (the remote disappears, the gateway does pull/push/PR, `github.*` verbs) is #28.
-What landed now is the perimeter, because until #28 the remote still exists and whoever can link one
-can point it anywhere the platform credential reaches: linking a git remote refuses a repository that
-is not an approved entry.
+**Partly implemented, 7 Aug 2026** — clodia-tools 1.53.0, live on venere. The perimeter landed before
+the redesign, because until the remote is gone whoever can link one can point it anywhere the platform
+credential reaches: linking a repository that is not an approved entry is refused.
 
 **By repository, not by host.** A host cap would say only «github yes», which with a platform
 credential means every repository that token reaches — a nominal perimeter. For the same reason a
@@ -1917,6 +1768,9 @@ entry counts as a repository only if it has the shape of one, and matching is on
 gives room B no perimeter at all, so B stays unconfined. That is the price of «nothing declared means
 no confinement», and better than the alternative — an approval given in A confining B would impose on
 B a perimeter nobody chose for it. The remedy is a global entry.
+
+**Still to build**: the removal of `remote: git` itself, the `github.*` verbs in the gateway, and the
+gateway-side clone into the spawn's scratch.
 
 ---
 
@@ -2037,8 +1891,10 @@ do **not** hold.
 - **What is `DEFAULT_CHAT_ID` at server start, and is it a spawn scope?** If it is
   neither channel nor job it is a third leftover to remove (entry 6).
 - **Should the spawn series be unique across instances, not only within one?** (entry 7)
-- **Per-scope or per-item tier on the agent's own scope?** (entry 28) — per-item recommended; per
-  scope would bar a company agent from every public room.
+- **What caps a portable topic?** (entry 28, revised) — contents at SEAL-3 reachable from a SEAL-0
+  room leave their level by way of the spawn. Either the portable topic's tier caps the rooms it may
+  be opened in, or portability is confined to low tiers. The per-item labelling once proposed for the
+  personal scope survives as an option and is finer, since the org chart is not the budget.
 - **Sequence to enforcement** (entry 26): the first three steps shipped on 7 Aug — AGENTS.md to
   metadata, scope roles, third term in the intersection. Only `CLODIA_ORIGIN_ENFORCE=on` is left,
   and the chain still observes and blocks nothing. Turning it on is the one change today that
@@ -2049,8 +1905,11 @@ do **not** hold.
   general invariant, and its test, do not exist.
 - **Re-express the four gating mechanisms as the one boundary rule** (entry 23) — the largest
   simplification available. Half done on 7 Aug: the rule is now *visible* (three classes, read off
-  the 28 gated verbs, with a completeness test), but there are still four mechanisms rather than
-  one, and collapsing them depends on entry 22 shipping first.
+  the 28 gated verbs, with a completeness test), but there are still four mechanisms rather than one.
+  The route to collapsing them ran through entry 22 — system crossings becoming writes in the
+  configuration scope, so that «admin» became the owner of one particular scope — and entry 22 is
+  repealed. So `system` stays a class of its own, decided by an admin, and the unification needs a
+  new route rather than a later date.
 - **Assert the vault mask from inside, in a test** (entry 22): the agent-server's blindness to the
   topic store rests on a compose line that is known to drift.
 - **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
