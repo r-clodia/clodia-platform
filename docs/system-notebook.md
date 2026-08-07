@@ -1362,6 +1362,40 @@ form, and this time legitimised by the design.
 configuration scope. So «admin» stops being a separate category and becomes **the owner of one
 particular scope**. One rule, and the admin role turns into a membership property like every other.
 
+**Implemented, 7 Aug 2026** — clodia-tools 1.48.1, clodia-logic 6.147.0, live on venere.
+
+The rule follows the classes made visible by B4: `system` gates are decided by an admin — the
+rules of the machine are owned by no room — while `walls` and `outward` are decided by the **owner
+of the scope being crossed**. An admin does **not** substitute the owner: if they did, the owner's
+authority would be decorative, which is the recurring defect of this week (declared, and nobody
+carries it — found seven times).
+
+Two measurements are worth keeping, because both were worse than this entry assumed:
+
+- approval was `admin.is_admin(principal)` for **every** class, so a gate moving the boundary of
+  `proof-of-flex` was unlocked by any platform admin rather than by its owner;
+- `deny` had **no check at all**. Anyone authenticated could deny anyone's gate — not a data leak,
+  but the cheapest available way to stop someone else's work. It now needs the same standing as
+  approval.
+
+The class and the room travel with the request from the gateway, which records `chat` from
+`current_chat()` — a signed claim. Re-deriving the class on the deciding side would be a duplicated
+rule, and a duplicated rule drifts.
+
+Three outcomes, not two: allowed, refused, and **we don't know** (503). A failure dressed as a
+refusal sends the user to ask the wrong person; reading the topic fails closed, so an unreadable
+topic makes nobody an owner.
+
+**On point 3, the ceiling.** The account ceiling this entry asked for was invalidated on 7 Aug
+(«non esiste questo concetto di root per devnullboxx»). What replaced it is per-scope and narrower:
+the scope's own egress/ingress lists (entry 30) plus the repository and the Drive folder as
+whitelist entries (entries 31 and 32). So `walls` is no longer «owner + a ceiling that does not
+exist», but owner + the scope's own declared perimeter. The repository half is still open.
+
+**Still open.** The inline gate card in the channel derives everything from its marker and does not
+know the class, so a non-owner sees an Approve button that will refuse — with a clear reason, but
+only after the click.
+
 ---
 
 ## 25 · Not every human in a scope is its owner: membership needs grades
