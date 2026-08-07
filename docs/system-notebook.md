@@ -1287,6 +1287,30 @@ metadata, never secrets, P3 excluded. This configuration topic is their **write*
 which today deliberately does not exist. That is the whole value of the proposal, and its whole
 risk.
 
+**Partly implemented, 7 Aug 2026** — clodia-tools 1.54.0, live on venere.
+
+The simplest case landed — `SEAL-4/configuration`, and its `AGENTS.md` inherited by new topics — plus
+consequence 1, which everything else here depends on.
+
+Consequence 1 was **worse than written**. Not only would an agent participant hold `topic.put` over
+the configuration: terraforming would have put agents there *by itself*, since every new topic
+receives the edition's default participants. And the `owner` defaults to `contact_agent`, i.e.
+`clodia` — an agent owning a scope unlocks its own gates (entry 24, precisation 2). Without both
+exceptions this topic would have been born already violated, in two independent ways. The owner now
+resolves to the instance owner (`davide` on venere); with no human owner the field is left empty
+rather than falling back to an agent, because a topic with no owner is visible and a topic owned by
+its own subject is not.
+
+Consequence 2 is settled the way the definition reads: **copy at creation**, with both readings
+pinned by tests so which one is in force is readable rather than inferred.
+
+Consequence 4 is closed by entry 31's perimeter: a git remote is no longer uncapped, so the
+configuration can no longer be pushed to an arbitrary repository.
+
+**Still open**: consequence 3 — files as *live* configuration, where writes must pass through
+`save_config` rather than through bytes. The 5 Aug clobber was two writers with no arbiter, and a
+config file written directly and re-read by another process reintroduces exactly that.
+
 ---
 
 ## 23 · A gate is not a property of a verb: it is what happens at the boundary of a scope
@@ -1870,6 +1894,25 @@ a use.
 its own documents** in git» and «this scope **may work on these repositories**» are different things.
 The first was `remote: git`; the second is the whitelist entry. `proof-of-flex-sviluppo` is plainly
 the second.
+
+**Partly implemented, 7 Aug 2026** — clodia-tools 1.53.0, live on venere.
+
+The full redesign (the remote disappears, the gateway does pull/push/PR, `github.*` verbs) is #28.
+What landed now is the perimeter, because until #28 the remote still exists and whoever can link one
+can point it anywhere the platform credential reaches: linking a git remote refuses a repository that
+is not an approved entry.
+
+**By repository, not by host.** A host cap would say only «github yes», which with a platform
+credential means every repository that token reaches — a nominal perimeter. For the same reason a
+host-only entry approves nothing: `https` lives in the same list for the web, so a
+`https://github.com/` allowed for a fetch would otherwise approve every repository on that host. An
+entry counts as a repository only if it has the shape of one, and matching is on a path boundary
+(`clodia-tools-segreto` does not sit inside `clodia-tools`).
+
+**A consequence stated rather than hidden**, with its own test: a repository approved only for room A
+gives room B no perimeter at all, so B stays unconfined. That is the price of «nothing declared means
+no confinement», and better than the alternative — an approval given in A confining B would impose on
+B a perimeter nobody chose for it. The remedy is a global entry.
 
 ---
 
