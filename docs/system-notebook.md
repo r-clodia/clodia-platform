@@ -679,10 +679,28 @@ opencode). Two measured limits:
 2. Same defect as entry 8: the scope is the **topic** (the ordinal is discarded), so where
    multi-spawn is enabled **every** instance of that seed in that topic receives it.
 
-**v1 constraint:** a provider may appear in **at most one** stack, because the runtime
-identity of the selection is the provider id. Two models on the same provider — opus and
-haiku both on `anthropic-api` — cannot be declared, which is precisely the shape a
-cost ladder *within* one provider would need.
+**A constraint by design, not a limitation** *(settled 7 Aug)*. A provider may appear in **at most
+one** stack, because the runtime identity of a selection is the provider id. Two models on the same
+provider — opus and haiku both on `anthropic-api` — cannot be declared, which is precisely the shape
+a cost ladder *within* one provider would need. Davide: «il modello per un seed è sempre lo stesso,
+ma può cambiare il provider; tuttavia spawn diversi dello stesso seed possono girare su provider
+diversi».
+
+So the vector carries a **security** property — where the data goes — and not a price preference.
+Keeping cost out of it keeps two axes separate that have been useful apart; if cost becomes a
+problem it deserves its own mechanism rather than widening the one that guards the perimeter.
+
+**The second half of that sentence exposed a hole, closed the same day** (clodia-logic 6.151.0).
+Different spawns of one seed *can* run on different providers — `scoped_overrides.resolve()` returns
+a `provider` — but the clearance minted into the session token was computed from `self.kind`, i.e.
+from the **seed**. A spawn moved onto a weaker provider kept the seed's clearance: it could open a
+SEAL-3 topic and send its data to a SEAL-1 provider. This entry's own doctrine, bypassed by the
+mechanism that should have honoured it.
+
+The information was not missing: the same call site already holds the override and uses it two lines
+above, for the token TTL and for `scoped_tools`. It simply was not carried the extra step — the same
+shape found seven times on 6 and 7 Aug, this time on a value that protects data rather than
+actions.
 
 **Consequence for the seed/spawn model as a whole:** this is the fourth thing a seed
 declares (verbs, skills, prompt+memory, inference vector) and the second that a spawn may
@@ -1975,6 +1993,13 @@ than deleted, because a list that only ever grows stops being read.
   fixed: ordinals were **reusable**, being a `max()` over surviving directories. Now persisted and
   monotonic (clodia-logic 6.150.0). Across instances uniqueness is not pursued: clones are
   independent by design, so identity in an audit line is (instance, seed, ordinal).
+- **May a job exist without a scope?** — **no: a job IS a scope** (Davide, 7 Aug). So it must carry
+  its own tier — done, entry 33 — and its own lists, rather than falling back to the global ones.
+  Not "every job must hang off a topic", which would remove cron jobs that belong to no topic.
+- **A cost ladder within one provider** — **the constraint stays, by design** (Davide, 7 Aug): a
+  seed's model is fixed and the provider varies, while different spawns of one seed may run on
+  different providers. The vector carries a security property, not a price preference. Closing this
+  exposed a real hole in the second half of the sentence — see entry 13.
 - **Should a job scope have participants?** — **no, an owner is enough** (Davide, 7 Aug). Confirms
   today's behaviour: the owner decides who may see a run's output, and a job is not a room people
   are invited into.
@@ -2029,11 +2054,8 @@ and Davide had to ask on 7 Aug:
   topic store rests on a compose line that is known to drift.
 - **[decide → measure]** **Populate `source_allow`, or the taint flag stays on for everything** (entry 21) — measured
   empty in production, which is the pre-#77 behaviour.
-- **[decide]** **May a job exist without a scope?** (entry 15) — today it can, and that is the case with
-  the widest perimeter and no human at the turn.
 - **[measure]** **Retire the `/clodia/channels/…` prefix** (entry 14): the same `(tier, name)` is
   addressed under four prefixes, and that one is what the UI calls.
-- **[decide]** **A cost ladder within one provider is not expressible** (entry 13, v1 constraint).
 - **[measure]** **A spawn is not confined to its OWN scratch** (entry 2) — the gateway validates "under
   `/datadir/spawns/<something>/`" but cannot require the caller's own directory: it knows the seed
   (`agent_name()`) while the instance is `"-"` everywhere. So one spawn can still write into
