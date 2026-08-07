@@ -755,8 +755,9 @@ belongs to the **remote host**, not to the word "git".
    che entra è valido».
 5. A scope has: `tier`\*, `metadata`\*, and `data` articulated into **local fs** and
    **remote**. Starred = mandatory; a job, for instance, has no fs.
-6. A topic may have a local fs **and** a remote fs — **both coexist**, with a **view for
-   each**.
+6. A topic may have a local fs **and** a remote fs — **both coexist**. *Revised 7 Aug: not a
+   view each, but* **one single fs view** *in which `local/` and `remote/` are two folders, one
+   mounting the local filesystem and the other the remote one.*
 7. `AGENTS.md` is **not** part of the local fs but of the **metadata**, as are the `summary`
    and the `TLDR`.
 
@@ -832,7 +833,8 @@ namespaced, so a collision cannot be expressed. Three notes from measurement:
   need `inside()`. Which points at the right division: inside a topic, files are touched via
   `topic.*` paths, and `gdrive.*` is the transport for what lies outside any scope.
 
-**Revised (Davide, 7 Aug 2026): one root with `local/` and `remote/` as siblings**, rather than a
+**Revised (Davide, 7 Aug 2026): ONE file view, with `local/` and `remote/` as mount points.** Not
+two views side by side — a single tree in which two folders mount two filesystems, rather than a
 `//name/` prefix:
 
 ```
@@ -865,8 +867,14 @@ Measured on `SEAL-1/proof-of-flex-2`, which has a Drive remote on the folder `50
 view shows **26** files, all Drive's, while **65** local files sit on disk unseen — the Guide for
 Applicants, the deliverables, the Portuguese pilot deck. They were hidden knowingly: on 4 Aug the
 refusal became an explicit confirmation («collegando Drive, i N file già presenti non saranno più
-visibili») and there were 18 then. After this change both planes are visible, distinguished by folder
-rather than being alternatives.
+visibili») and there were 18 then. After this change one tree shows both, `/local/` and
+`/remote/drive/` being two mounts rather than two alternatives — and the distinction that matters is
+that nobody has to choose which view to open, because there is one.
+
+**The mount framing is not decoration: it fixes what a path means.** A file is at `/local/x` or at
+`/remote/drive/x`, and those are different files that may share a name — which is precisely why the
+collision question dissolved. Under two separate views the same `x` would appear in both with no way
+to say which one an agent meant.
 
 **Decided (Davide, 6 Aug 2026): the namespace carries the remote's name** — `//drive/…`,
 `//git/…` — rather than the literal `//remote/`. `meta["remote"]` is singular today, so
