@@ -51,7 +51,8 @@ Three states, and the middle one is the dangerous one:
 | 2.5 | the terminal is a channel, not a provenance | **built** | `AGENTS.md` and feedback are both wrapped as untrusted context |
 | 2.6 | one file view | **built** | tools 1.40.0–1.41.1 |
 | 2.6 | **many** remote mounts, each of a kind | **gap** | `meta["remote"]` is a single object. One mount only, and its name still defaults from the kind — which cannot survive two mounts of one kind |
-| 2.6 | mount kinds are open (Drive, Samba, …) | **gap** | only Drive is implemented |
+| 2.6 | a kind exists for a scope only if an integration exists | **partial** | integrations exist as a concept and Drive works through one; nothing ties "which kinds a scope may mount" to "which integrations are enabled" — the link is by convention, not by check |
+| 2.7 | the gateway holds a **list** of scope credentials per integration | **partial** | the vault keys credentials by agent; the scope-derived naming shipped and was removed with the rest of 1.42.0 |
 | 2.7 | the owner supplies the credential at mount time | **partial** | shipped for git on 7 Aug (tools 1.42.0), then removed the same day when the credential was made a platform one. **The code is in git history and is recovered rather than rewritten.** For Drive it does not exist: Drive runs on a platform OAuth credential, and per-scope means a consent flow, not a pasted token |
 | 2.7 | no fallback to a platform credential | **gap** | today the platform credential is the only path |
 | 2.7 | adding/removing a mount is an owner's act | **built** | it is a `walls` gate |
