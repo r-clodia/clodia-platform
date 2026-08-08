@@ -24,9 +24,16 @@ attivo: contiene difetti noti, alcuni con impatto sulla sicurezza.
 1. **[Issue aperte con label `security`](https://github.com/r-clodia/clodia-platform/issues?q=is%3Aissue+is%3Aopen+label%3Asecurity)** — difetti di sicurezza noti e non ancora risolti.
 2. **[Tutte le issue aperte](https://github.com/r-clodia/clodia-platform/issues?q=is%3Aissue+is%3Aopen)** — limiti funzionali e bug noti.
 3. **[`SECURITY.md`](SECURITY.md)** — stato dei controlli tecnici, controllo per controllo, e clausola as-is completa.
-4. **[`SECURITY-MODEL.md`](SECURITY-MODEL.md)** — da quale attacco ci si difende
-   (la *lethal trifecta*) e come, con i limiti noti dichiarati. Da leggere prima
-   di `SECURITY.md`: dice *perché* i controlli sono quelli.
+4. **[`docs/threat-model.md`](docs/threat-model.md)** — da quale attacco ci si difende
+   (la *lethal trifecta*) e come. Da leggere prima di `SECURITY.md`: dice *perché* i
+   controlli sono quelli.
+5. **[`docs/gap-analysis.md`](docs/gap-analysis.md)** — cosa la specifica richiede e cosa la
+   piattaforma fa davvero, misurato. Include i limiti noti.
+
+
+**Per capire com'è fatta:** [`docs/specification.md`](docs/specification.md) è il modello —
+attori, scope, autorità, gate, perimetro, tier. [`docs/decision-record.md`](docs/decision-record.md)
+è come ci si è arrivati, con le misure che l'hanno stabilito.
 
 I difetti noti sono tracciati **pubblicamente e in chiaro**: la loro assenza da
 questo README non significa che non esistano — significa che devi guardare nel
