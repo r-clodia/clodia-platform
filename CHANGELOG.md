@@ -11,6 +11,74 @@ Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionament
 
 ---
 
+## [9.0-rc2] — 2026-08-08
+
+> Milestone 1 of the gap analysis: **what a seed declares, and where that
+> declaration is read**.
+
+### The archseed
+
+Every seed now descends from an **abstract seed that cannot be spawned** and
+holds the base verbs — its own memory, the reading floor of the scope it stands
+in, and speaking there. Writing, moving the walls and leaving stay trade, and
+trade belongs to the seed. The parent is a **default, not a ceiling**;
+containment comes from the gates, the scope's lists and the chain's
+intersection.
+
+Measured on venere before and after: everyone gains **reading and speaking
+only**. Nobody gained a write or a crossing verb — `segretario` went from 4 to
+10, all reads plus `post_message`. That the floor is reading rather than
+`topic.*` is exactly why.
+
+`abstract: true` is enforced in the single creation choke point, so it covers
+chats and jobs together, and it fires before anything is allocated.
+
+**Every verb says where it comes from** — `own`, the ancestor that contributes
+it, or `archseed` — and a denied verb stays visible and marked rather than
+disappearing. Without provenance, inheritance would have traded a duplication for
+an opacity, and the opacity is worse: a duplication you can see.
+
+### The finding that mattered more than the feature
+
+The verb matrix was read in **three** places and they did not agree —
+`main._declared_tools`, `origin._agent_may` and `whitelist.tool_allowed`, and the
+third did not consult `denied_tools` at all. It answered "allowed" on a verb the
+other two refused. Grafting inheritance onto one would have produced a verb
+allowed by one path and refused by another, invisibly, because nobody compared
+the three. They now share one function, and a test compares the three outcomes
+verb by verb.
+
+The universal namespace is gone with its reason: `memory.*` comes from the
+archseed, which makes it **visible** and **subtractable** — neither of which was
+possible while it was implicit.
+
+### ⚠️ Migration
+
+**Agents narrow on purpose become wider by the archseed's floor.** Reading and
+speaking only, but it is a change: if a seed must stay narrower, `denied_tools`
+subtracts and beats inheritance. Measured per agent on venere; no verb of
+consequence was gained.
+
+### Fixed
+
+- **The baked `config.yaml` is read-only.** Running the config loader locally had
+  rewritten it through `yaml.safe_dump`, dropping 109 lines of comments that
+  documented `gdrive_roots`, the super wildcard and the deliberate cost on
+  `gcalendar`; `git add -A` then carried the stripped file — and an abandoned
+  migration with it — into an unrelated PR (1.56.0). Comments restored, the
+  default now refuses to be written and says so, and the residue the migration
+  had written into venere's runtime config was cleaned with the outcome verified
+  unchanged for all eight agents.
+
+### Not in rc2
+
+`ophelia` losing `super` is built and **not deployed**, pending an explicit
+go-ahead: it is the one step that could stop the instance from starting. It moves
+to rc3. Measured meanwhile: the risk was smaller than flagged — the *service*
+identity that mints tokens for humans is `clodia`, not `ophelia`.
+
+---
+
 ## [9.0-rc1] — 2026-08-07
 
 > **Release candidate.** The model is in place and running on venere; the enforcement switch is
