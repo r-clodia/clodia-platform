@@ -70,8 +70,15 @@ an ordinal would mean nothing.
 One **abstract seed**, which cannot be spawned, holds the base verbs and attributes. Every
 seed descends from it and acquires them by inheritance.
 
-A verb belongs in the archseed when **its target is the agent itself or the room the spawn
-is already standing in**. Everything else is trade, and trade belongs to the seed.
+The floor is what it takes to **participate**: reading what is in the room the spawn stands
+in, and speaking there. What an agent **produces** is its trade, and trade belongs to the
+seed.
+
+The line is not "inside or outside the room" — `topic.put` writes inside the very room the
+spawn is standing in, and stays out of the archseed anyway. It is *participate or produce*,
+and the evidence is empirical: `segretario` exists **precisely** to write a topic's state,
+and declares `topic.save_summary` to say so. If writing sat in the floor, that seed would say
+nothing at all, and "what does this agent do" would stop being answerable from its file.
 
 - `memory.*` — its own memory, confined to its own folder.
 - the reading floor of the current scope: `topic.open`, `topic.files`, `topic.read_file`,
@@ -81,6 +88,12 @@ is already standing in**. Everything else is trade, and trade belongs to the see
 
 Outside it: writing, everything that moves the walls, and every namespace that leaves the
 scope.
+
+*The alternative was considered and not taken.* Making the floor "everything that does not
+cross a boundary" would put writing in, and let narrow seeds subtract it with `denied_tools`
+— which works now and did not before. It was rejected because it **inverts the default**:
+today a seed says what it *can* do, and there a narrow seed would have to say what it
+*cannot*. The risk moves onto forgetting to subtract, which is the worse direction.
 
 **The measurement that constrains this.** The intersection of every non-wildcard agent is
 two verbs on one instance and **empty** on the other, and two agents are deliberately
