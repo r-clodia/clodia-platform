@@ -15,6 +15,27 @@ the running platform. What is specified but **not yet built** is not marked here
 
 ---
 
+## 0. The single invariant
+
+**One gateway, both decision point and enforcement point.** Every access to data, secrets or
+tools is a **call to the gateway**, which authorises it against the caller's signed identity.
+The caller's filesystem holds **only the data of its own execution** — never the real data.
+
+The rule is identical along two axes that were historically treated differently:
+
+- **who** — an artificial agent *or* a human. Both are a principal with a signed identity,
+  and the same decision applies (§3.0).
+- **from where** — an agentic call *or* the user interface. Same choke point, same engine.
+  **The UI is not a privileged backend**: it is a client of the gateway exactly like an
+  agent, carrying a human identity.
+
+Corollary: **there are no service doors.** The filesystem is not a channel to the data, it is
+the scratch of an execution. Everything that matters passes through the gateway's verbs —
+which is what makes every other rule in this document enforceable in one place rather than
+in many.
+
+---
+
 ## 1. Actors
 
 ### 1.1 Seeds and spawns

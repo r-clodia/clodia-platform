@@ -1,8 +1,13 @@
-# Security model
+# Threat model — the lethal trifecta
 
-What this platform defends against, and how. Written after the model shipped, so
-it describes what runs — not what was planned. Where a control is not yet
-effective, it says so.
+What this platform defends **against**, and how each leg of the triangle is contained.
+Written after the model shipped, so it describes what runs.
+
+Companion to [`specification.md`](specification.md), which says what the platform *is* — this
+one says what it is defending from, and it is the detail behind that document's §5.3. What is
+specified and **not yet built** is in [`gap-analysis.md`](gap-analysis.md), which is where the
+"known limits" section of this file went: two lists of unfinished work drift, and one of them
+stops being read.
 
 Reference: `#104` (the integrated spec), `#77` (the risk analysis), `#102` (the
 measurement on the seeds).
@@ -233,40 +238,9 @@ page, a job). Deny beats allow, super-agents included.
 
 ## 6 · Observation before enforcement
 
-`CLODIA_DANGEROUSLY_SKIP_GATES=1` makes every gate decide, record and let
-through. It exists because the model shipped in a day and its tuning — which
-destinations are needed, how often a gate fires, whether tainting on `web.fetch`
-is too aggressive — is otherwise guesswork. In this mode the owner works as
-before and the register fills with `would_gate` / `would_deny`.
-
-It skips the gates and the supervision-driven refusals. It does **not** skip the
-tool whitelist, the tier clearance, topic membership or the network confinement:
-those are not gates, they are the boundary of what an agent *is*, and disabling
-them would not restore "as before" — it would produce a state the platform has
-never been in.
-
-Observing does **not** populate the destination whitelist: nobody approved, and a
-whitelist that fills itself while the gates are off is a whitelist written by the
-agents.
-
-**The register** is metadata only — verb, agent, channel, outcome, context flags,
-and refusal reasons as a *class* rather than a message. Never arguments: an
-address is an argument, and the reason the register exists does not justify
-turning it into an address book.
-
----
+New enforcement lands in observation first — see `specification.md` §8, where this is stated
+once as a general failure direction rather than repeated per control.
 
 ## 7 · Known limits
 
-- **Prompt injection is not solved**, only made unable to close a flow.
-- **Inference is an egress** this model does not cover (§1).
-- **Agents with a shell** are only contained because the network is closed. Gating
-  their verbs alone would be theatre.
-- **Fine-grained credentials** are not in place, so repo confinement is
-  policy-level and does not survive a `git push` from a shell.
-- **No trusted-source list**, so bit 1 is coarser than bit 3.
-- **Clodia Primal** — the instance running on the owner's own machine — is
-  **outside this perimeter**: unconfined shell, secrets in the clear, no taint.
-  While it is interactive the owner is the control, which is a *procedural*
-  guarantee: it depends on someone watching. The day it runs a job unattended,
-  this reasoning must be redone from scratch.
+Moved to [`gap-analysis.md`](gap-analysis.md).
