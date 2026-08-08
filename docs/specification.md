@@ -237,9 +237,19 @@ topic — not the remote's display name, which can be absent, can contain a slas
 when the folder is renamed. With more than one mount this stops being a convenience: the
 name cannot be derived from the kind, because two mounts may share a kind.
 
-**The kinds are open.** Drive and Samba are examples, not the set. A mount is anything that
-presents a filesystem, and the storage backend is therefore pluggable per mount rather than
-per platform.
+**A kind exists for a scope only if an integration exists for it.** Two levels, and they
+belong to different people:
+
+- the **integration** is a platform capability, enabled by an admin. If there is a Google
+  Drive / Workspace integration, scopes may import Drive folders; if there is a git
+  integration, scopes may import repositories. **Samba is available to no scope until
+  somebody builds a Samba integration.**
+- the **credential** is the owner's, and instantiates that capability inside their scope
+  (§2.7).
+
+So the set of kinds is extensible but never improvised: adding one is an explicit act of the
+platform, not something an owner can invent at mount time. The storage backend is pluggable
+per **integration**, and a mount is an instance of one.
 
 ### 2.7 An owner extends their own scope, with their own credential
 
@@ -261,6 +271,19 @@ the person who can fix it.
 connect. With a fallback the common case becomes "nobody supplies anything and it works
 anyway", which is the previous model with one extra field — and a silent fallback is how one
 becomes convinced of an isolation that is not there.
+
+**Where the credential lives.** The consent flow is per scope, but the resulting tokens are
+held by the **gateway**, which therefore keeps a **list** rather than a single credential per
+integration. Two properties follow, and both are load-bearing:
+
+- **The credential never enters the agent's process.** It is why the gateway performs the
+  crossing itself: a token handed to an agent, even short-lived, can be exfiltrated by an
+  agent with a shell inside its validity window.
+- **The name of a scope-bound credential is derived from the scope**, never chosen by
+  whoever deposits it. If it were free, two scopes could point at the same credential with
+  nobody seeing it, and the confinement would be a convention instead of a property. Tier
+  aliases must resolve to one name, or a scope ends up with two of something of which one is
+  orphaned.
 
 Consequences:
 
