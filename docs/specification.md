@@ -214,26 +214,67 @@ filesystem.
   `tainted` bit belongs to the **provenance of the content**, not to the channel it arrives
   on. Otherwise pasting a web page into the terminal makes it trusted by definition.
 
-### 2.6 One file view, two mounts
+### 2.6 One file view, many mounts
 
-A topic has **one** file view: `local/` and `remote/` are two folders, one mounting the
-local filesystem and the other the remote.
+A topic has **one** file view. `local/` is one mount; a scope may have **any number** of
+remote mounts, each of a different kind.
 
 ```
-/                     ← the topic's DATA root
-├── local/            ← the topic's files, without moving a byte
+/                        ← the topic's DATA root
+├── local/               ← the topic's own files, without moving a byte
 └── remote/
-    └── drive/        ← the remote's root (or drive-2/ …)
+    ├── contratti/       ← a Drive folder
+    ├── archivio/        ← a Samba share
+    └── …
 ```
 
-The mount framing fixes what a path means: `/local/x` and `/remote/drive/x` are different
-files that may share a name, so the collision question dissolves rather than needing a rule.
+The mount framing fixes what a path means: `/local/x` and `/remote/contratti/x` are
+different files that may share a name, so the collision question dissolves rather than
+needing a rule.
 
 The mount's name is an **identifier** chosen at link time, validated, unique within the
 topic — not the remote's display name, which can be absent, can contain a slash, and moves
-when the folder is renamed.
+when the folder is renamed. With more than one mount this stops being a convenience: the
+name cannot be derived from the kind, because two mounts may share a kind.
 
-### 2.7 The control plane
+**The kinds are open.** Drive and Samba are examples, not the set. A mount is anything that
+presents a filesystem, and the storage backend is therefore pluggable per mount rather than
+per platform.
+
+### 2.7 An owner extends their own scope, with their own credential
+
+A scope is extended by its **owner**, who adds a repository they trust or mounts a folder
+they trust. **The credential is supplied by the owner at that moment**; the platform does
+not lend its own.
+
+Why this way round. A platform credential reaches everything it has ever been granted, so
+every scope using it inherits a perimeter nobody chose for that scope — which is what the
+approved-resource lists existed to bound. An owner-supplied credential reaches only what its
+owner already had, so the confinement is a property of the credential rather than a rule
+layered on top of it.
+
+It also puts the **rotation cost** on the person who chose the resource. A credential nobody
+renews is how such mechanisms die six months in; here the person who feels the breakage is
+the person who can fix it.
+
+**No fallback to a platform credential.** A scope with no credential of its own does not
+connect. With a fallback the common case becomes "nobody supplies anything and it works
+anyway", which is the previous model with one extra field — and a silent fallback is how one
+becomes convinced of an isolation that is not there.
+
+Consequences:
+
+- **Adding, changing or removing a mount is a `walls` act** (§4.2): it moves the boundary of
+  the scope, so it belongs to the owner and to nobody else in the room.
+- **Reading is every member's**, including exporting the scope's files as an archive. What
+  is graded is moving the walls, not looking at what is inside them (§2.8).
+- **The approved-resource lists change role.** They were the load-bearing control while the
+  credential was shared. With an owner-supplied credential the confinement is already in the
+  credential, and the lists remain as a readable declaration — "this scope works on these
+  repositories" — rather than as the thing that stops an over-reach. Worth stating, so they
+  are not defended as though they were still the control.
+
+### 2.8 The control plane
 
 `AGENTS.md`, the `summary` and the `TLDR` are **metadata**, not files. They have no path
 inside the data tree:
@@ -249,7 +290,7 @@ injected into every turn.
 
 A scope's `AGENTS.md` is injected as **context, not system instructions**.
 
-### 2.8 Membership is graded
+### 2.9 Membership is graded
 
 Three roles, a closed set: **owner**, **contributor**, **reader**.
 
@@ -423,26 +464,25 @@ counts).
 
 ### 5.2 A resource is a list entry
 
-A **repository** is a whitelist entry, not a remote. A topic has **no git remote**. The
-platform holds **one** git credential; actions that cross the boundary — clone, pull, push,
-pull request — are performed by the **gateway**; git stays in the agent's container only for
-scratch-local work: `add`, `diff`, `commit`.
+A **repository** is a resource an owner brings into their scope (§2.7), not a remote bolted
+onto a topic. A topic has **no git remote**. Actions that cross the boundary — clone, pull,
+push, pull request — are performed by the **gateway**, with the credential the owner supplied;
+git stays in the agent's container only for scratch-local work: `add`, `diff`, `commit`.
 
 That is §4.1 applied to git: `add` and `commit` are inside the scope, `clone` and `push` are
-crossings. And the credential never enters the agent's process, so an agent with a shell
-cannot exfiltrate it.
+crossings. And the credential **never enters the agent's process**, so an agent with a shell
+cannot exfiltrate it inside a validity window.
 
-Matching is **by repository, not by host**: a host cap would say only "github yes", which
-with a platform credential means every repository that token reaches — a nominal perimeter.
-
-A **Drive folder** is a whitelist entry, not a subtree. A shared account has **no root**:
+A **Drive folder** is mounted, not owned by a subtree rule. A shared account has **no root**:
 folders arrive from "Shared with me", each owned by someone else, with no common ancestor.
 There is no ceiling to set, and forcing one would either protect nothing or block
-everything.
+everything — which is why the confinement belongs to the credential (§2.7) rather than to a
+boundary drawn around an account.
 
-An owner may point a scope only at **already approved** resources; approving a new one is an
-administrative act. **Nothing declared means no confinement** — an empty list that closed
-everything would be switched off the same day, and would then protect nothing.
+Where a resource list is declared, matching is **by repository, not by host**: a host entry
+would say only "github yes", which is a nominal perimeter. **Nothing declared means no
+confinement** — an empty list that closed everything would be switched off the same day, and
+would then protect nothing.
 
 ### 5.3 Taint
 

@@ -49,7 +49,13 @@ Three states, and the middle one is the dangerous one:
 | 2.4 | a carried topic obeys the room's tier, and says so | **built** | tools 1.56.0 |
 | 2.5 | the mailbox is global, senders/recipients per scope | **partial** | the lists carry both axes (tools 1.43.0); the mailbox is not modelled as a global resource anywhere — it is a credential, which is the same thing by accident rather than by declaration |
 | 2.5 | the terminal is a channel, not a provenance | **built** | `AGENTS.md` and feedback are both wrapped as untrusted context |
-| 2.6 | one file view, `local/` and `remote/` as mounts | **built** | tools 1.40.0–1.41.1 |
+| 2.6 | one file view | **built** | tools 1.40.0–1.41.1 |
+| 2.6 | **many** remote mounts, each of a kind | **gap** | `meta["remote"]` is a single object. One mount only, and its name still defaults from the kind — which cannot survive two mounts of one kind |
+| 2.6 | mount kinds are open (Drive, Samba, …) | **gap** | only Drive is implemented |
+| 2.7 | the owner supplies the credential at mount time | **partial** | shipped for git on 7 Aug (tools 1.42.0), then removed the same day when the credential was made a platform one. **The code is in git history and is recovered rather than rewritten.** For Drive it does not exist: Drive runs on a platform OAuth credential, and per-scope means a consent flow, not a pasted token |
+| 2.7 | no fallback to a platform credential | **gap** | today the platform credential is the only path |
+| 2.7 | adding/removing a mount is an owner's act | **built** | it is a `walls` gate |
+| 2.7 | export for every member | **built** | reading is every member's |
 | 2.7 | the control plane has no path in the data tree | **built** | tools 1.39.0; migration automatic |
 | 2.8 | graded membership | **built** | tools 1.44.0, logic 6.146.x; legacy lists read as contributor |
 | 2.8 | a reader agent cannot mutate | **built** | tools 1.45.0 — it did nothing before: the role was enforced only on the human path |
@@ -83,7 +89,7 @@ Three states, and the middle one is the dangerous one:
 |---|---|---|---|
 | 5.1 | two lists, two axes | **built** | tools 1.43.0 |
 | 5.2 | a repository is a list entry | **partial** | the perimeter is enforced at link time (tools 1.53.0), but `remote: git` **still exists**, the `github.*` verbs do not, and the gateway does not clone into the spawn's scratch |
-| 5.2 | one platform git credential | **partial** | the per-scope credential shipped and was repealed; its code is still present |
+| 5.2 | the credential is the owner's, not the platform's | **gap** | reversed on 7 Aug back to the per-scope model; see §2.7 |
 | 5.2 | a Drive folder is a list entry | **built** | tools 1.52.0 |
 | 5.3 | membership of the perimeter is vetted | **built** | tools 1.51.0 |
 | 5.3 | an undeclared source taints | **built**, **inert** | `source_allow` is **empty** in production, so everything taints — which is the pre-#77 behaviour, not the intended one |
@@ -127,8 +133,12 @@ Ordered by what unblocks what, not by size.
 4. **Portability declared by the topic** (§2.4) — turning `carries` around.
 5. **Two invariants that do not exist**: a scope owner is always human (§2.8), and the vault
    mask asserted from inside (§7.8).
-6. **Finish the repository redesign** (§5.2) — remove `remote: git` and the repealed
-   per-scope credential, add the `github.*` verbs, clone into the spawn's scratch.
+6. **Mounts, plural, with the owner's own credential** (§2.6, §2.7, §5.2) — the largest
+   piece left. `meta["remote"]` becomes a collection; the mount name stops being derived
+   from the kind; the per-scope git credential is restored from git history rather than
+   rewritten; the `github.*` verbs land and the gateway clones into the spawn's scratch.
+   Drive needs a per-scope consent flow, which is product work rather than a vault change,
+   and can follow git rather than block it.
 7. **`super` away from `ophelia`** — the concept survives in seven places with three
    independent definitions, two of which are not agent authority at all but the
    agent-server's service identity. Untangling those is the work.
