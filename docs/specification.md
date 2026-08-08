@@ -248,6 +248,33 @@ scope would unlock its own gates — the confused deputy legitimised by the desi
 
 ## 3. Authority
 
+### 3.0 One kind of principal
+
+A human and an agent are both entries in the registry, both carry a clearance, and both are
+authorised by the **same** decision point — the gateway. Nothing distinguishes "a user did
+it" from "an agent did it" except the contents of their matrices. Principals are written
+`human:<name>` and `agent:<name>`.
+
+This is not symmetry for elegance. **Every place where humans were authorised by a different
+rule has produced a defect**: the on-behalf exemption, the binary «gated ⇒ admin, else
+allow», and the assumption that "authenticated" means "trusted" — true while the only user
+was the owner, false the day a second person logged in.
+
+The authorisation question has the shape:
+
+```
+(resource, verb, channel) → permission
+```
+
+where **channel** is a predicate and not an identifier — `isParticipant(principal, scope)
+AND clearance(principal) ≥ tier(scope)` — and **permission** has three values, not two:
+`allow`, `deny` (which beats every allow, including a wildcard), and `gate`, which **defers
+to a human**.
+
+`gate` is where the model lives. Least authority by *removal* breaks the agent's trade;
+least authority by *supervision* keeps the trade and inserts a human at the moment the
+authority is used.
+
 ### 3.1 What decides
 
 Effective authority is the **intersection** of:
@@ -297,6 +324,24 @@ a TTL. This is the mechanism for lending something to one spawn rather than to a
 Revoking a scoped override **need not** reach a live spawn: today the spawn must die first,
 so a withdrawn model or provider stays in use until then. Accepted cost, written down so it
 is known rather than discovered.
+
+### 3.5 Where authority may live
+
+**Authority must be unreachable by its subject.** Two placements are valid, and both are
+load-bearing:
+
+- **The gateway's own volume.** The agent-server does not mount it. This is why matrices,
+  gates and allowlists live there and not in an agent's file or a topic's metadata: whoever
+  can rewrite a boundary self-grants what it bounds.
+- **Root-owned files on the datadir.** A seed's directory is `drwx------ root` while spawns
+  run unprivileged — measured: a spawn can neither read nor write a human's seed. Here the
+  boundary is the **kernel**, not application logic, which is why reading a human's role and
+  matrix from there is sound.
+
+**A control implemented in application code is only as strong as the absence of an
+alternative path.** The Drive confinement is defensible because the credential never leaves
+the gateway — no shell, no `curl`, no second client. A filter applied *after* the data has
+been produced is not, because its fail-open branch is the only live path.
 
 ---
 
@@ -473,13 +518,22 @@ Choices about which way to be wrong, made once and applied throughout.
 - **Nothing declared means no confinement**, for every list. An empty list that closed
   everything would be switched off the same day.
 - **Reading fails closed.** An unreadable topic makes nobody an owner and vouches for
-  nobody: degrading to "authorised" on a read error turns a fault into a permission.
+  nobody: degrading to "authorised" on a read error turns a fault into a permission. The
+  controls that failed did so by failing **open** in a branch nobody tested — an incomplete
+  Drive ancestry walk must mean *outside*; an unreadable member list must mean *no rows*,
+  not all rows; a row that cannot **prove** it is not a shortcut is verified, not believed.
 - **A failure is not a decision.** Allowed, refused, and *we do not know* are three
   outcomes; a 5xx reported as a refusal sends the user to the wrong person.
 - **A refusal names the road.** Which term blocked, who can change it, and what to do
   instead. A refusal that only says no teaches that the system says no.
 - **`None` and `[]` are different.** Absent means "no opinion" and falls back; empty means
   "nothing" and is a decision. Conflating them either disconnects every existing user or
-  makes a read-only user impossible to declare.
+  makes a read-only user impossible to declare — and once did: a client sending `[]`
+  unconditionally removed a super-agent's gates during a pack update meant only to change a
+  prompt.
+- **New enforcement arrives in observation first.** It decides, records what it *would* have
+  refused, and blocks nothing. The destination allowlist and the gates both shipped this
+  way, and both times the **recorded traffic** — not the design — produced the correct list.
+  Enforcement follows measurement.
 - **A silent degradation is worse than a refusal.** An agent that knows it cannot see asks;
   one that believes it has seen everything answers badly.
