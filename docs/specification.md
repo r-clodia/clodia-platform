@@ -595,10 +595,18 @@ one failed once, or would fail silently if it broke.
    in the scope role, and in the gate.
 6. **A spawn ordinal is never reused.**
 7. **No spawn lives outside a scope.**
-8. **The agent-server cannot see the topic store.** This rests on a mount line in a compose
-   file that is known to drift between the repository and the host; it must be asserted
-   **from inside** — "from here the vault must be empty" — rather than inferred by reading
-   mounts.
+8. **A spawn cannot reach the vault, the topic store, or the seeds.** *Reformulated 8 Aug
+   after measuring it.* It used to read "the agent-server cannot see the topic store",
+   measured once on the personal stack where a compose mask hides it. **On venere that line
+   is not there**: the process runs as root and does see the vault. A test written on the old
+   wording would have gone red and sent someone chasing a configuration difference instead of
+   a security property.
+
+   What holds on both, measured as the spawn's own uid, is that the vault, the topic store
+   and the seeds are all **denied** — and it is the **kernel** that holds it (`drwx------
+   root` against an unprivileged uid), which is the only kind of boundary that does not
+   disappear in a compose update. Asserted **from inside**, at boot, with three outcomes kept
+   distinct: reachable, denied, and *not verifiable* — "I don't know" is not "safe".
 9. **The clearance in a token is the provider's**, for the provider that spawn runs on.
 10. **Every authority-bearing write goes through the function that merges**, never through
     raw bytes: two writers with no arbiter is how a configuration silently doubles.
