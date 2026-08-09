@@ -50,11 +50,11 @@ Three states, and the middle one is the dangerous one:
 | 2.5 | the mailbox is global, senders/recipients per scope | **partial** | the lists carry both axes (tools 1.43.0); the mailbox is not modelled as a global resource anywhere — it is a credential, which is the same thing by accident rather than by declaration |
 | 2.5 | the terminal is a channel, not a provenance | **built** | `AGENTS.md` and feedback are both wrapped as untrusted context |
 | 2.6 | one file view | **built** | tools 1.40.0–1.41.1 |
-| 2.6 | **many** remote mounts, each of a kind | **gap** | `meta["remote"]` is a single object. One mount only, and its name still defaults from the kind — which cannot survive two mounts of one kind |
+| 2.6 | **many** remote mounts, each of a kind | **built**, **unexercised** | tools 1.67.0: `meta["mounts"]` is a collection, the legacy singular converted on read, the mount name an identifier rather than a derivation of the kind. Measured on venere 9 Aug: **no topic has a second mount yet** — the shape is right and nobody has used it in anger |
 | 2.6 | a kind exists for a scope only if an integration exists | **partial** | integrations exist as a concept and Drive works through one; nothing ties "which kinds a scope may mount" to "which integrations are enabled" — the link is by convention, not by check |
-| 2.7 | the gateway holds a **list** of scope credentials per integration | **partial** | the vault keys credentials by agent; the scope-derived naming shipped and was removed with the rest of 1.42.0 |
-| 2.7 | the owner supplies the credential at mount time | **partial** | shipped for git on 7 Aug (tools 1.42.0), then removed the same day when the credential was made a platform one. **The code is in git history and is recovered rather than rewritten.** For Drive it does not exist: Drive runs on a platform OAuth credential, and per-scope means a consent flow, not a pasted token |
-| 2.7 | no fallback to a platform credential | **gap** | today the platform credential is the only path |
+| 2.7 | the gateway holds a **list** of scope credentials per integration | **built** | tools 1.68.0/1.70.0: names derived from `(tier, name, kind, mount)`, one per mount, for git and for Drive. Derived and not chosen: a free name would let two mounts point at one credential without anyone seeing it |
+| 2.7 | the owner supplies the credential at mount time | **partial** | git: done (tools 1.68.0). Drive: the **credential** is done (1.70.0, web 0.134.0 pastes the OAuth bundle) but the **consent flow** is not — and it is blocked on one measurement Google's public documentation does not settle: whether picking a folder under `drive.file` grants access to its contents or only to the chosen file. Needs real credentials |
+| 2.7 | no fallback to a platform credential | **deliberately not** | the fallback exists and is **visible**: `mount → scope → platform`, with the provenance on the card («credenziale della piattaforma · è un account Google intero, non questa cartella»). Removing it would strand every mount connected before 9 Aug. It stops being a gap and becomes a decision the day a real credential is attached to each mount |
 | 2.7 | adding/removing a mount is an owner's act | **built** | it is a `walls` gate |
 | 2.7 | export for every member | **built** | reading is every member's |
 | 2.7 | the control plane has no path in the data tree | **built** | tools 1.39.0; migration automatic |
@@ -77,7 +77,7 @@ Three states, and the middle one is the dangerous one:
 
 | § | requirement | state | evidence / what is missing |
 |---|---|---|---|
-| 4.1 | a gate is a crossing, not a verb property | **partial** | the rule is **visible** — three classes over the 28 gated verbs, with a completeness test (tools 1.48.0) — but there are still **four** gating mechanisms rather than one. The route to collapsing them ran through the configuration topic, which is repealed, so it needs a new one |
+| 4.1 | a gate is a crossing, not a verb property | **partial** | the rule is **visible and now said out loud** — the request carries what it crosses and who has standing, from one function (logic 6.160.0). Still **four** gating mechanisms rather than one: the route to collapsing them ran through the configuration topic, which is repealed, so it needs a new one |
 | 4.1 | no gate on ordinary work inside a scope | **built** | asserted by test |
 | 4.2 | the class travels with the request | **built** | tools 1.48.1 |
 | 4.3 | the scope owner decides `walls` and `outward` | **built** | logic 6.147.0 |
@@ -158,6 +158,39 @@ Ordered by what unblocks what, not by size.
     rather than adding it. Before flipping it, read what `report` mode has collected — that
     log is precisely the list of who would lose what.
 
+7bis. ~~**Trello and workflows removed for real**~~ — **done** in rc5 (tools 1.71.0, logic
+   6.159.0, web 0.135.0). Measured before removing: no Trello credential in the vault, zero
+   workflow runs. Two couplings made the removal dangerous and were found by measuring:
+   `gate_public` also served **job** proposals while being mounted behind the workflow
+   feature flag, and the gate badge on a topic card counted **run** gates — it would have
+   sat at zero forever. Both repointed rather than deleted.
+
+7ter. ~~**The gate card says what it crosses and who decides**~~ (§4.3) — **done** in rc5
+   (logic 6.160.0, web 0.136.0). One function serves both the check and the explanation: a
+   second copy written in the frontend had already diverged, telling an owner they could
+   approve a **system** gate they cannot.
+
 **Out of scope, repealed rather than pending**: the configuration topic, the account
 ceiling for Drive, and the per-scope git credential. What shipped of the first is inert.
-Also still half-removed: trello and workflows, found by the gate-class completeness test.
+
+---
+
+## Is v9 ready? — measured 9 Aug 2026 on venere
+
+**No.** Not because something is broken: because three things that the specification calls
+load-bearing have never been exercised.
+
+1. **Enforcement is off** (§3.3, §5.3). `CLODIA_ORIGIN_ENFORCE` is unset and `source_allow`
+   is empty: the origin chain observes and blocks nothing, and everything taints. These are
+   step 10, and step 10 is the only one that removes capability — it is not to be flipped
+   without saying so first.
+2. **Nothing has been tested with a real credential.** The mount work, the `github.*` verbs
+   and the Drive credential all run against mocks and local git repositories by agreement:
+   the real-credential pass was deferred to the end and has not happened.
+3. **The new shapes are unexercised in production.** No topic on venere has a second mount;
+   the two Drive/git topics still carry the legacy singular, converted on read. The code is
+   right and no one has used it in anger.
+
+What is honestly finished is the **model**: scopes, authority, gates, tiers, the perimeter,
+and the identity that reaches the gateway. What is not finished is the **evidence** that it
+holds outside the test suite.
