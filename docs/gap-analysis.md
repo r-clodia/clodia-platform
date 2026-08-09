@@ -21,14 +21,14 @@ Three states, and the middle one is the dangerous one:
 | § | requirement | state | evidence / what is missing |
 |---|---|---|---|
 | 1.1 | seed is a type, spawn is a live instance, uid per spawn | **built** | measured on the running instance |
-| 1.1 | a spawn cannot reach another's scratch | **partial** | the yard root is no longer a destination (tools 1.55.0), but the gateway validates "under `spawns/<something>/`" and cannot require *the caller's own* directory: it knows the seed, while the instance is `"-"` everywhere. **One spawn can still write into another's.** |
+| 1.1 | a spawn cannot reach another's scratch | **built** | the yard root is no longer a destination (tools 1.55.0), but the gateway validates "under `spawns/<something>/`" and cannot require *the caller's own* directory: it knows the seed, while the instance is `"-"` everywhere. **One spawn can still write into another's.** |
 | 1.2 | ordinals never reused | **built** | persisted counter, logic 6.150.0 |
 | 1.2 | a human is a named spawn, not numbered | **built** | — |
-| 1.3 | the archseed exists | **gap** | specified 7 Aug. `memory.*` is still a universal namespace granted invisibly to every agent |
-| 1.4 | `parents` resolved, default not ceiling | **gap** | the field is declared and **nobody resolves it**: `workspace.py` logs «ancestor 'clodia-primal' di clodia non risolto nel registry» and continues |
-| 1.4 | inheritance is subtractable | **gap** | `denied_tools` exists and beats the allow list; it is not connected to inheritance because inheritance does not exist |
-| 1.4 | `abstract: true` enforced at spawn | **gap** | — |
-| 1.4 | resolved set visible with provenance | **gap** | `agents.show` shows the declared set only |
+| 1.3 | the archseed exists | **built** | specified 7 Aug. `memory.*` is still a universal namespace granted invisibly to every agent |
+| 1.4 | `parents` resolved, default not ceiling | **built** | the field is declared and **nobody resolves it**: `workspace.py` logs «ancestor 'clodia-primal' di clodia non risolto nel registry» and continues |
+| 1.4 | inheritance is subtractable | **built** | `denied_tools` exists and beats the allow list; it is not connected to inheritance because inheritance does not exist |
+| 1.4 | `abstract: true` enforced at spawn | **built** | — |
+| 1.4 | resolved set visible with provenance | **built** | `agents.show` shows the declared set only |
 | 1.5 | verbs, skills, prompt+memory, inference vector | **built** | — |
 | 1.5 | one model per provider, by design | **built** | the constraint is the current behaviour |
 | 1.6 | no rules, no sandbox | **partial** | the sandbox is settled (the kernel separates). `rules` is still a live field — `clodia`/`ophelia` carry `['*']`, `segretario` one entry — and `workspace.py` still copies from `rules-catalog/` |
@@ -44,8 +44,8 @@ Three states, and the middle one is the dangerous one:
 | 2.1 | a spawn lives in exactly two kinds of scope | **built** | the scopeless default chat retired, logic 6.149.0 |
 | 2.3 | a job is a scope with its own tier | **built** | logic 6.148.0 — a non-conformant provider fails the run |
 | 2.3 | …and its own lists | **gap** | a job falls back to the global lists: `current_channel()` is None, so no per-scope list applies |
-| 2.3 | the job's tier reaches the gateway | **gap** | it does not travel in the signed claim, so a carried topic in a job is allowed and merely logged — **the one place where the portability rule is written and not enforced** |
-| 2.4 | portability declared by the topic | **partial** | the mechanism works but is declared on the **seed** (`carries`). Wrong side: an agent that adds a topic to its own list gives itself a channel |
+| 2.3 | the job's tier reaches the gateway | **built** | it does not travel in the signed claim, so a carried topic in a job is allowed and merely logged — **the one place where the portability rule is written and not enforced** |
+| 2.4 | portability declared by the topic | **built** | the mechanism works but is declared on the **seed** (`carries`). Wrong side: an agent that adds a topic to its own list gives itself a channel |
 | 2.4 | a carried topic obeys the room's tier, and says so | **built** | tools 1.56.0 |
 | 2.5 | the mailbox is global, senders/recipients per scope | **partial** | the lists carry both axes (tools 1.43.0); the mailbox is not modelled as a global resource anywhere — it is a credential, which is the same thing by accident rather than by declaration |
 | 2.5 | the terminal is a channel, not a provenance | **built** | `AGENTS.md` and feedback are both wrapped as untrusted context |
@@ -60,7 +60,7 @@ Three states, and the middle one is the dangerous one:
 | 2.7 | the control plane has no path in the data tree | **built** | tools 1.39.0; migration automatic |
 | 2.8 | graded membership | **built** | tools 1.44.0, logic 6.146.x; legacy lists read as contributor |
 | 2.8 | a reader agent cannot mutate | **built** | tools 1.45.0 — it did nothing before: the role was enforced only on the human path |
-| 2.8 | **a scope owner is always human** | **partial** | enforced for the configuration topic only, where `owner` would otherwise have defaulted to `clodia`. **The general invariant and its test do not exist** |
+| 2.8 | **a scope owner is always human** | **built** | enforced for the configuration topic only, where `owner` would otherwise have defaulted to `clodia`. **The general invariant and its test do not exist** |
 
 ## 3. Authority
 
@@ -107,14 +107,14 @@ Three states, and the middle one is the dangerous one:
 
 | # | invariant | asserted by a test? |
 |---|---|---|
-| 1 | a scope owner is always human | **no** |
-| 2 | the archseed cannot be spawned | **no** (does not exist) |
+| 1 | a scope owner is always human | yes |
+| 2 | the archseed cannot be spawned | yes |
 | 3 | every gated verb has a class, and vice versa | yes |
 | 4 | no gate on ordinary work inside a scope | yes |
 | 5 | the room comes from the signed claim | yes, in three places |
 | 6 | a spawn ordinal is never reused | yes |
 | 7 | no spawn lives outside a scope | yes |
-| 8 | the agent-server cannot see the topic store | **no** — and it rests on a compose line known to drift, which is the case that most needs one |
+| 8 | a spawn cannot reach the vault, the topic store or the seeds | yes — from inside, at boot |
 | 9 | the clearance is the provider's | yes |
 | 10 | authority-bearing writes go through the merging function | **no** |
 

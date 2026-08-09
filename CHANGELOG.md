@@ -11,6 +11,81 @@ Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionament
 
 ---
 
+## [9.0-rc3] — 2026-08-09
+
+> Milestone 2: **the identity arrives where the decision is taken**, and the two
+> invariants that nothing asserted now hold somewhere that can fail.
+
+### Identity in the signed claim
+
+- **A spawn writes in its own scratch, and in nobody else's.** The token had
+  carried an `execution_id` field from the beginning and **nobody filled it** —
+  so the gateway knew the seed and not the instance, and any spawn could write
+  into any other's directory, including another spawn of the same seed. Entry 2
+  of the record promised this; the code did not deliver it.
+- **A job's tier travels**, and with it the last line of the model that was
+  *written and not enforced*: for a job `current_channel()` is None, so "a
+  carried topic travels only where the room can hold it" simply did not apply
+  there. It allowed and logged — because the gateway did not know the tier, not
+  because the case was harmless.
+
+### Portability changes sides
+
+Declared by the **topic**, not by the seed. `carries` on a seed meant "the topics
+this agent takes with it", and an agent that adds a topic to its own list **gives
+itself a channel** between rooms. Two conditions now, not one: the topic declares
+itself portable **and** the caller participates in it. Declaring it is an act on
+the walls, so it belongs to the owner.
+
+Measured before moving: **nobody used `carries`** on either instance, so this
+migrates nothing.
+
+### The two invariants
+
+- **A scope owner is always human.** Since rc2 the owner unlocks their scope's
+  gates, so an agent-owned scope would unlock its own. What is known to be an
+  agent is refused; what is not recognised is not — refusing the unknown would
+  turn a gap in the registry into a topic with no owner.
+- **A spawn cannot reach the vault, the topic store or the seeds** — and
+  measuring it showed the invariant was **formulated wrong**. It said "the
+  agent-server cannot see the topic store", true on the personal stack where a
+  compose mask hides it and **false on venere**, where the process runs as root.
+  A test on that wording would have gone red over a configuration difference
+  rather than a security property. What holds on both is the spawn-level
+  boundary, and the **kernel** holds it. Now asserted from inside, at boot, with
+  three outcomes: reachable, denied, and *not verifiable*.
+
+### Also in this cycle
+
+- The **archseed** became a real seed of the base-pack rather than a tuple in the
+  gateway — a seed is a file, read, diffed and reviewed in a pull request.
+- The **fourth sync**: seeds now arrive from the pack on an instance already
+  running. Skills, rules and constitutions did; seeds did not, and it showed the
+  hour the archseed was deployed and did not appear.
+- `parents` stopped being genealogy. `sysadmin` declared `parents: [clodia]`,
+  written when nothing resolved the field; the moment inheritance became real
+  that line granted it **33 verbs**. A dangling ancestor is now refused: one
+  missing today is a permission arriving tomorrow.
+- The **trifecta scored declarations rather than effective verbs**, so tidying the
+  seeds dropped `segretario`'s risk from 2 to 0 — a safety signal falling because
+  a file got cleaner.
+- **Nobody bypasses the whitelist by name any more.** `ophelia` left the last two
+  super sets; while even one name stays in, the matrix is never really the
+  document that decides.
+
+### ⚠️ Migration
+
+`ophelia` drops from the wildcard to the archseed's base verbs. `[]` means "no
+trade declared yet", not "no verbs": reading, speaking and its own memory arrive
+by inheritance. The seed-by-seed review is separate work.
+
+### Not in rc3
+
+`CLODIA_ORIGIN_ENFORCE` is still `report` and `source_allow` is still empty. Five
+gaps remain, the largest being mounts with the owner's own credential.
+
+---
+
 ## [9.0-rc2] — 2026-08-08
 
 > Milestone 1 of the gap analysis: **what a seed declares, and where that
