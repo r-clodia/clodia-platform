@@ -1,86 +1,87 @@
-# Installare un'istanza su macOS (Apple Silicon)
+# Installing an instance on macOS (Apple Silicon)
 
-Percorso **validato** su un Mac mini M1 (macOS 14.5, 8 GB) il 5 agosto 2026:
-build nativo arm64, 332 test della suite del gateway verdi dentro l'immagine, con
-le sole 3 rotture preesistenti anche su x86 — **nessun fallimento di
-architettura**.
+A path **validated** on an M1 Mac mini (macOS 14.5, 8 GB) on 5 August 2026:
+native arm64 build, 332 of the gateway's tests green inside the image, with only
+the 3 breakages that also fail on x86 — **no architecture-related failure**.
 
-La piattaforma assume un host Linux. Su un Mac ci si arriva con una VM, e la
-scelta della VM è meno importante di due dettagli che seguono.
+The platform assumes a Linux host. On a Mac you get there through a VM, and the
+choice of VM matters less than the two details that follow.
 
-## Runtime container
+## Container runtime
 
-**Colima** (Apache-2.0) è la scelta consigliata per una macchina amministrata da
-remoto: è nativamente da riga di comando, e la VM che crea è un Linux normale in
-cui uid mappati, `root:root 700` e `setpriv` si comportano come su un host Linux
-vero — cioè le difese della piattaforma valgono quello che dichiarano.
+**Colima** (Apache-2.0) is the recommended choice for a remotely administered
+machine: it is command-line native, and the VM it creates is an ordinary Linux
+in which mapped uids, `root:root 700` and `setpriv` behave as they do on a real
+Linux host — which is to say the platform's defences are worth what they claim.
 
-Si installa **senza privilegi di amministratore e senza Homebrew**, dai binari di
-release in `~/bin`: `colima`, `limactl` (con il suo `share/lima` accanto) e il
-client `docker` standalone. Con `--vm-type vz` usa Virtualization.framework e non
-serve QEMU.
+It installs **without administrator privileges and without Homebrew**, from the
+release binaries into `~/bin`: `colima`, `limactl` (with its `share/lima`
+alongside) and the standalone `docker` client. With `--vm-type vz` it uses
+Virtualization.framework and needs no QEMU.
 
 ```bash
 colima start --vm-type vz --cpu 6 --memory 5 --disk 60 --mount-type virtiofs
 ```
 
-**OrbStack** è più veloce sull'I/O dei volumi e più comodo da GUI, ma richiede una
-licenza per uso commerciale: sceglierlo è legittimo, ma va deciso, non ereditato.
+**OrbStack** is faster on volume I/O and more convenient from a GUI, but needs a
+licence for commercial use: choosing it is perfectly legitimate — it should be a
+decision rather than something inherited.
 
-**Budget di memoria.** Su un Mac la VM è annidata: macOS + VM + stack condividono
-la stessa RAM. Misurato su 8 GB con la sola VM accesa (5 GB assegnati): a macOS
-restavano 0,1 GB liberi più 3,5 GB inattivi riciclabili, swap a zero. Dentro la VM
-4,4 GB disponibili — che sono il budget **totale** dell'istanza, subprocess degli
-agenti compresi. Su 8 GB: topologia ridotta (si può omettere la `pwa`) e
-`multi_spawn` spento in partenza.
+**Memory budget.** On a Mac the VM is nested: macOS, the VM and the stack share
+the same RAM. Measured on 8 GB with only the VM running (5 GB assigned): macOS
+was left with 0.1 GB free plus 3.5 GB inactive and reclaimable, swap at zero.
+Inside the VM, 4.4 GB available — which is the instance's **total** budget, the
+agents' subprocesses included. On 8 GB: a reduced topology (the `pwa` can be left
+out) and `multi_spawn` off from the start.
 
-## Due dettagli che costano tempo se si scoprono dopo
+## Two details that cost time if you find them afterwards
 
-### 1. La datadir non va in una cartella del Mac
+### 1. The datadir does not belong in a folder of the Mac
 
-Con un mount virtiofs i permessi sono **asimmetrici**. Misurato:
+With a virtiofs mount the permissions are **asymmetric**. Measured:
 
 ```
-dentro la VM:  drwx------ root root   → un uid di spawn è negato dal kernel ✓
-dall'host:     -rw-r--r-- <utente>    → `cat` legge il contenuto            ✗
+inside the VM:  drwx------ root root   → a spawn's uid is denied by the kernel ✓
+from the host:  -rw-r--r-- <user>      → `cat` reads the content              ✗
 ```
 
-Quindi la vault dell'istanza (provider, token, chiavi) sarebbe leggibile da
-chiunque abbia una shell sul Mac. Usa un percorso **interno alla VM**:
+The instance's vault — providers, tokens, keys — would then be readable by
+anyone with a shell on the Mac. Use a path **inside the VM**:
 
 ```
 CLODIA_DATA=/var/clodia-data
 CLODIA_GATEWAY_STATE=/var/clodia-gateway-state
 ```
 
-Colima monta soltanto la home dell'utente, quindi `/var/...` è nel disco della VM
-e da macOS **non esiste**. Conseguenza da accettare: il backup diventa il disco
-della VM invece di una cartella sfogliabile — il job `restic` gira comunque dentro
-il container, quindi non cambia nulla di sostanziale.
+Colima mounts only the user's home, so `/var/...` lives on the VM's disk and does
+not exist from macOS at all. The consequence to accept: your backup becomes the
+VM's disk rather than a browsable folder — the `restic` job runs inside the
+container either way, so nothing substantial changes.
 
-### 2. Login remoto: macOS ha una lista a parte
+### 2. Remote login: macOS keeps a separate list
 
-Su macOS non basta `authorized_keys`: l'utente deve appartenere al gruppo di
-controllo accessi, altrimenti sshd **accetta la chiave e poi chiude la sessione** —
-un sintomo che non assomiglia a un problema di autorizzazione.
+On macOS `authorized_keys` is not enough: the user must belong to the access
+control group, or sshd **accepts the key and then closes the session** — a
+symptom that does not look like an authorisation problem.
 
 ```bash
-dseditgroup -o checkmember -m <utente> com.apple.access_ssh   # verifica
-sudo dseditgroup -o edit -a <utente> -t user com.apple.access_ssh
+dseditgroup -o checkmember -m <user> com.apple.access_ssh   # check
+sudo dseditgroup -o edit -a <user> -t user com.apple.access_ssh
 ```
 
-## Avvio automatico
+## Starting automatically
 
-Una VM avviata a mano non sopravvive a un riavvio. I runtime container su macOS
-appartengono a una **sessione utente**, quindi l'avvio al boot richiede l'auto-login
-(un LaunchAgent utente parte al login, non al boot). Con FileVault attivo questo è
-in tensione: un Mac headless che si sblocca da sé è un disco non protetto a riposo,
-e senza auto-login un riavvio imprevisto resta alla schermata di pre-boot — che su
-una macchina senza tastiera significa un intervento fisico.
+A VM started by hand does not survive a reboot. Container runtimes on macOS
+belong to a **user session**, so starting at boot requires auto-login — a user
+LaunchAgent starts at login, not at boot. With FileVault on, that is in tension:
+a headless Mac that unlocks itself is a disk that is not protected at rest, and
+without auto-login an unexpected reboot stops at the pre-boot screen, which on a
+machine with no keyboard means a physical visit.
 
-Non c'è una risposta giusta in astratto: dipende da dove sta la macchina. Va scelto
-e scritto, perché è una decisione che un domani va motivata.
+There is no right answer in the abstract: it depends on where the machine lives.
+Choose, and write the choice down, because it is a decision that will have to be
+justified later.
 
-**Il test che chiude la questione**, qualunque runtime si scelga: si riavvia la
-macchina e **non si fa login**. Se lo stack torna su e risponde, va bene per la
-produzione; se serve sbloccare il Mac, va bene per lo sviluppo.
+**The test that settles it**, whichever runtime you choose: reboot the machine
+and **do not log in**. If the stack comes back and answers, it is fit for
+production; if you have to unlock the Mac, it is fit for development.

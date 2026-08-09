@@ -12,6 +12,13 @@
 >
 > Read the specification to know what the platform is. Read this to know why, and what was
 > measured before believing it.
+>
+> **On the Italian in these pages.** Everything in this repository is written in English.
+> The passages between «guillemets» are the exception: they are the owner's own words, in
+> the language he said them, at the moment a question was settled. Translating them would
+> replace what somebody said with a rendering of it — and the value of a record is that the
+> ruling is quoted rather than summarised. Each is set in a sentence that says what it
+> settled, so the surrounding English carries the meaning.
 
 
 Verified facts about the running platform, one entry per definition, each with the

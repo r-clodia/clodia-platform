@@ -1,11 +1,11 @@
 # Changelog — Clodia Platform
 
-Changelog centrale della **piattaforma Clodia**, prodotto modulare unico composto da quattro moduli versionati con **tag globali coordinati**:
+The central changelog of the **Clodia platform**: one modular product made of four modules, versioned with **coordinated global tags**:
 
-- **`clodia-logic`** — backend / agent-server (agenti, job, topic & canali, routing, auth/PKI, API)
-- **`clodia-tools`** — gateway (MCP tools, vault/credenziali, connettori, provider di inferenza)
+- **`clodia-logic`** — backend / agent-server (agents, jobs, topics and channels, routing, auth/PKI, API)
+- **`clodia-tools`** — gateway (MCP verbs, vault and credentials, connectors, inference providers)
 - **`clodia-web`** — web UI (SvelteKit)
-- **`clodia-pwa`** — app installabile (PWA)
+- **`clodia-pwa`** — installable app (PWA)
 
 Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionamento SemVer a livello di piattaforma. ⚠️ = breaking / migrazione richiesta.
 
@@ -599,7 +599,7 @@ contenimento keyless/M3++ già in rc0, ora in produzione (personal).
   normalizzati; vocabolario status coerente su backend/UI. Migrazione con
   **backup** pre-flight; `minutes/` non più negli snapshot (spostate in
   `.migrated-from-v1/`, recuperabili). Migrati 153 topic in produzione, 0 errori.
-- **Read-path tollerante**: un `meta` legacy non conforme viene **coerciato**
+- **Tolerant read path**: a non-conformant legacy `meta` is **coerced**
   (status→`active`, deadline→`null`), mai un errore — un topic non diventa più
   invisibile/non-apribile. La validazione stretta resta ai soli endpoint di
   scrittura `set_status`/`set_deadline`.
@@ -649,7 +649,7 @@ contenimento keyless/M3++ già in rc0, ora in produzione (personal).
   plugin solo da fonti **trusted** (update first-party); gli import esterni
   restano opt-in (pending) — barriera Prima Legge. `rag_collections` dichiarate
   dal pack.
-- Forward degli **embedded text resource** MCP dal gateway; pin `mcp<2`.
+- Forward MCP **embedded text resources** from the gateway; pin `mcp<2`.
 
 ### 🔑 Clearance & contenimento
 - **SEAL effettiva** di un agente = SEAL del **provider** che usa (non quella
@@ -668,12 +668,12 @@ contenimento keyless/M3++ già in rc0, ora in produzione (personal).
 **Release candidate.** Runtime **keyless** + gateway **trust-anchor** + document
 store per-seed. Il contenimento M3++ (volume-split) è **validato end-to-end su
 testbed** (`clodia-test`); la migrazione in produzione (personal) è il passo
-successivo. Tag RC come punto di ripristino prima della migrazione.
+next. An RC tag as the restore point before the migration.
 
 ### 🔑 Runtime keyless + gateway trust-anchor
 - **Minting** dei token di sessione (`ckt1`) e delle capability (`ccap1`) spostato nel **gateway** (`/internal/mint`), autenticato dal **secret di bootstrap** `CLODIA_ORCHESTRATOR_SECRET` (non ckt1: sarebbe circolare). L'orchestrator **delega** con cache per-identità e fallback locale (rollout reversibile via flag).
 - **Issuance** certificati (enrollment umani/agenti) e **PKI bootstrap** (`init-ca` + `issue-all`) spostati nel gateway, unico detentore di CA key e identity key. `entrypoint`: in modalità keyless agent-server **salta** la PKI bootstrap (evita CA divergente nel volume runtime).
-- `child_env` degli spawn: **strip** di `CLODIA_ORCHESTRATOR_SECRET` e `GIT_TOKEN` (un agent via bash non li legge).
+- A spawn's `child_env` **strips** `CLODIA_ORCHESTRATOR_SECRET` and `GIT_TOKEN`, so an agent with a shell cannot read them.
 
 ### 📦 Contenimento M3++ — volume-split ⚠️
 - Topologia **two-dir**: `runtime` (condiviso agent-server↔gateway) vs `sensitive` (solo-gateway: `topics`/`secrets`/`clodia-vault`). agent-server **non monta più** i dati sensibili → bash dell'agente contenuta a livello filesystem. `pki/` (certi pubblici) resta in runtime. Validato su testbed; **personal pending**.
@@ -688,7 +688,7 @@ successivo. Tag RC come punto di ripristino prima della migrazione.
 
 Release di **sicurezza & governance**: l'RBAC passa da *convenzione* a *confine
 reale*, dal gateway come unico punto di autorizzazione (umani e agenti, UI e
-agentico) fino al contenimento del runtime degli agenti. ~74 commit sui quattro
+agentic) through to containing the agents' runtime. ~74 commits across the four
 moduli. La sicurezza-pack (security-auditor + install-pack) è rinviata a v6.4.
 
 ### 🔐 M-sudo — least-privilege + escalation
@@ -701,7 +701,7 @@ moduli. La sicurezza-pack (security-auditor + install-pack) è rinviata a v6.4.
 ### 🛂 M-authz — RBAC unica per agenti e umani ⚠️
 - Il **gateway diventa il PDP unico**: claim firmati `on_behalf`/`human_role`, facade `/internal/tool`+`/internal/authorize`; RBAC identica per agente/umano e UI/agentico.
 - Enforcement su **tutti** gli endpoint privilegiati REST (packs/providers/agents/workflows/plugins) — chiusa la Broken Access Control (un non-admin/anonimo poteva terraformare).
-- `/tools/*` (integrations/credenziali/backup) → **admin-only** (chiuso il buco della rimozione MCP).
+- `/tools/*` (integrations, credentials, backup) → **admin-only**, closing the hole in MCP removal.
 - **topic status/archive → owner-only**; **jobs con owner** e azioni owner-only.
 
 ### 🧱 M3 — contenimento del runtime (perms-based)
@@ -739,7 +739,7 @@ Release ricostruita dai ~212 commit `v6.1..v6.2` sui quattro moduli e sintetizza
 - **Whitelist mittenti in `MEMORY.md`** con fallback **fail-closed** (assente/rotta → tutti negati); handle autenticati via **uid numerico** dall'API (anti-spoofing).
 - **ACK/deny immediati** al mittente; **long-poll** su `getUpdates` → latenza da ~45s a ~0.
 - **Allegati bidirezionali** (download inbound in `files/` con nome sanitizzato; invio con `chat_id`+`path`).
-- Binding `chat_id ↔ istanza messaggero` in `telegram-bindings.json` (`telegram.listen/unlisten`), sganciato dal `meta` del topic; `send` senza più lease per-chat, accetta chat_id o nome gruppo.
+- `chat_id ↔ messaggero instance` binding in `telegram-bindings.json` (`telegram.listen`/`unlisten`), decoupled from the topic's `meta`; `send` no longer takes a per-chat lease and accepts a chat id or a group name.
 
 ### 🧵 Topic, Canali & Canvas
 - **Canvas live inline**: appare da solo quando un agente produce `artifact.html` (nuovo verbo `artifact.render`), iframe sandbox + fit-to-window, **toggle show/hide** e modalità wide.
@@ -750,7 +750,7 @@ Release ricostruita dai ~212 commit `v6.1..v6.2` sui quattro moduli e sintetizza
 ### ⚙️ Workflow (ex *Kanban*) — motore dichiarativo ⚠️
 - **Workflow dichiarativi dai pack** (`stages: [{lane, skill, human_gate}]`), store file-per-run, assegnazione lane per capability (specialisti prima, super in fallback), protocollo `ESITO: OK|BLOCCATO|FALLITO`. La feature `kanban` è rinominata `workflows` (alias legacy retrocompatibile).
 - **Run conversazionali → interazione inline sulla board** (pills/campo testo sotto la card; il topic resta infrastruttura di audit).
-- **Gate** con notifica Telegram + email e **link monouso firmato** (HMAC, TTL, nonce) alla pagina `/gate/{token}` senza login; possibilità di **"Torna a &lt;stadio&gt;"** (rework indietro).
+- **Gates** with a Telegram and email notification and a **signed one-time link** (HMAC, TTL, nonce) to the login-free `/gate/{token}` page, including **"back to &lt;stage&gt;"** for rework.
 - **Job: `propose` → approve owner** (Prima Legge) con popup di conferma in chat o link firmato — un agente non crea più job direttamente.
 - **Workspace repo per-run**: clona repo privati via PAT dal vault, passa il path agli stadi, cancella a fine run.
 - Catalogo `/workflows`, pagina di dettaglio, board per lane, step navigabile (input/output per stadio), Stop/Delete, nomi auto-incrementali, recupero run orfani post-restart.
@@ -762,8 +762,8 @@ Release ricostruita dai ~212 commit `v6.1..v6.2` sui quattro moduli e sintetizza
 
 ### 🤖 Agenti & Seed di sistema
 - **Rename seed** ⚠️: `mercuria → messaggero`, `saimon → sysadmin`, `wainston → janitor` (stesso ruolo/capability; richiede migrazione istanze).
-- **`sysadmin` → platform-ops**: osservazione/controllo runtime, jobs, packs, workflows, providers, mcp, settings — con confini hard (mai topic/SEAL-2/segreti) e lettura **read-only** dei sorgenti della platform.
-- **`memory.*` universale**: ogni agente scrive la propria memoria senza grant per-agente; **tab Memories** in webui + endpoint `GET /{name}/memories`.
+- **`sysadmin` → platform-ops**: runtime observation and control, jobs, packs, workflows, providers, MCP, settings — with hard boundaries (never topics, SEAL-2 or secrets) and **read-only** access to the platform sources.
+- **Universal `memory.*`**: every agent writes its own memory without a per-agent grant; a **Memories tab** in the web UI plus `GET /{name}/memories`.
 - **/agents come tabella** con colonna **costo /1M token** (in/out) o "abbonamento"; rimosse colonne Stato/Skill.
 
 ### 🧠 Provider di inferenza
@@ -788,12 +788,12 @@ Release ricostruita dai ~212 commit `v6.1..v6.2` sui quattro moduli e sintetizza
 - **Sidebar collassabile** (solo iconcina in modalità collapsed).
 
 ### 🔑 Auth & Backup
-- **Sessione PWA valida 30 giorni** (niente ri-pairing; la masterkey non viene mai trasmessa al telefono).
+- **PWA sessions valid for 30 days** — no re-pairing, and the masterkey is never transmitted to the phone.
 - Backup: `status` distingue **ultimo backup eseguito** (anche fallito, con errore) da **ultimo snapshot valido** (restic); Settings più informativo.
 
 ### 🚑 Stabilità & performance
 - Risolto **deadlock sync-in-async** gateway↔agent-server (dispatch offloadato su threadpool).
-- **Incidente 17 lug**: il polling della webui saturava il gateway (~60 chiamate HTTP sincrone per poll) fino al blocco → cache TTL sui provider + handler caldi fuori dall'event loop; `/internal/topics` con cache 6s (basta read-timeout MCP a 15s).
+- **Incident, 17 Jul**: the web UI's polling saturated the gateway — about 60 synchronous HTTP calls per poll — until it stalled. Fixed with a TTL cache on providers, hot handlers moved off the event loop, and a 6s cache on `/internal/topics` (a 15s MCP read timeout is then enough).
 - Recupero sessioni OpenCode morte (404 → nuova sessione); download filename non-ASCII (RFC 5987); no-cache sull'HTML in preview (UI stale); fix proxy `/gate`.
 
 ### ⚖️ Legale
