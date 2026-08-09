@@ -1,49 +1,48 @@
 # Licensing — Clodia Platform
 
-## Modello: dual licensing
+## The model: dual licensing
 
-Questo repository fa parte della **Clodia Platform** ed è distribuito con
-doppia licenza:
+This repository is part of **Clodia Platform** and is distributed under two
+licences:
 
-1. **GNU AGPL v3** (file `LICENSE`) — per la community: puoi usare,
-   studiare, modificare e ridistribuire il codice. Se offri una versione
-   modificata come servizio in rete, devi rendere disponibile il sorgente
-   delle tue modifiche agli utenti del servizio (art. 13 AGPL).
-2. **Licenza commerciale** — per chi non può o non vuole rispettare i
-   termini AGPL (uso in prodotti/servizi proprietari, policy aziendali che
-   escludono AGPL, edizioni personalizzate senza obbligo di pubblicazione).
-   Contatto: **Davide Carboni** — dcarboni@gmail.com.
+1. **GNU AGPL v3** (see `LICENSE`) — for the community: you may use, study,
+   modify and redistribute the code. If you offer a modified version as a
+   network service, you must make the source of your modifications available to
+   the users of that service (AGPL art. 13).
+2. **Commercial licence** — for those who cannot or do not wish to accept the
+   AGPL terms (use inside proprietary products or services, corporate policies
+   that exclude the AGPL, custom editions without a publication obligation).
+   Contact: **Davide Carboni** — dcarboni@gmail.com.
 
-## Confine di versione
+## The version boundary
 
-- Le versioni pubblicate **fino al tag `apache2-final`** incluso restano
-  disponibili sotto **Apache License 2.0** (irrevocabile per quelle
-  versioni).
-- Tutte le versioni **successive** al tag sono sotto **AGPL v3** (o licenza
-  commerciale).
+- Releases published **up to and including the `apache2-final` tag** remain
+  available under the **Apache License 2.0** (irrevocably, for those releases).
+- Every release **after** that tag is under **AGPL v3** (or a commercial
+  licence).
 
-## Pack, skill, agent seed e MCP server: NON sono opere derivate
+## Packs, skills, agent seeds and MCP servers are NOT derivative works
 
-Per chiarezza verso chi costruisce sopra la piattaforma:
+Stated plainly, for anyone building on top of the platform:
 
-- i **pack** (skill in Markdown, rules, agent seed YAML, template) sono
-  **contenuti/dati caricati** dalla piattaforma, non codice derivato: possono
-  avere qualunque licenza, inclusa proprietaria;
-- i **server MCP** montati sul gateway girano come **processi separati** che
-  comunicano via protocollo (Model Context Protocol): non costituiscono
-  un'opera derivata della piattaforma;
-- le **edizioni** terraformate (blueprint, profili, branding) sono
-  configurazione del cliente, di proprietà del cliente.
+- **packs** — skills in Markdown, rules, agent-seed YAML, templates — are
+  **content the platform loads**, not derived code: they may carry any licence,
+  including a proprietary one;
+- **MCP servers** mounted on the gateway run as **separate processes** speaking
+  a protocol (the Model Context Protocol): they do not constitute a derivative
+  work of the platform;
+- terraformed **editions** (blueprints, profiles, branding) are the customer's
+  configuration and the customer's property.
 
-L'obbligo AGPL riguarda le **modifiche al codice della piattaforma** offerte
-in rete, non i contenuti che vi girano sopra.
+The AGPL obligation concerns **modifications to the platform's code** offered
+over a network, not the content that runs on it.
 
-## Contributi esterni
+## Outside contributions
 
-I contributi esterni sono benvenuti previa accettazione di un **CLA**
-(Contributor License Agreement) che concede al titolare del progetto il
-diritto di rilicenziare il contributo — necessario per mantenere il dual
-licensing. Aprire una issue prima di una PR sostanziale.
+Contributions are welcome, subject to a **CLA** (Contributor License Agreement)
+granting the project owner the right to relicense the contribution — which is
+what makes the dual licensing possible. Please open an issue before a
+substantial pull request.
 
 ---
 Copyright (C) 2026 Davide Carboni
