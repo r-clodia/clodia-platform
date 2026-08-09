@@ -89,8 +89,8 @@ Three states, and the middle one is the dangerous one:
 | § | requirement | state | evidence / what is missing |
 |---|---|---|---|
 | 5.1 | two lists, two axes | **built** | tools 1.43.0 |
-| 5.2 | a repository is a list entry | **partial** | the perimeter is enforced at link time (tools 1.53.0), but `remote: git` **still exists**, the `github.*` verbs do not, and the gateway does not clone into the spawn's scratch |
-| 5.2 | the credential is the owner's, not the platform's | **gap** | reversed on 7 Aug back to the per-scope model; see §2.7 |
+| 5.2 | a repository is a list entry | **built** | the `github.*` verbs land in tools 1.69.0: the gateway clones into the spawn's scratch, `push`/`pull_request` are gated outward, and the credential never enters the agent's process — asserted against the disk, not only intended. `remote: git` still exists as the way an owner *declares* the repository; the verbs no longer go through it |
+| 5.2 | the credential is the owner's, not the platform's | **built** | tools 1.68.0: the credential belongs to the **mount**, resolved narrowest-first (mount → scope → platform) with the provenance always visible |
 | 5.2 | a Drive folder is a list entry | **built** | tools 1.52.0 |
 | 5.3 | membership of the perimeter is vetted | **built** | tools 1.51.0 |
 | 5.3 | an undeclared source taints | **built**, **inert** | `source_allow` is **empty** in production, so everything taints — which is the pre-#77 behaviour, not the intended one |
@@ -134,12 +134,13 @@ Ordered by what unblocks what, not by size.
 4. **Portability declared by the topic** (§2.4) — turning `carries` around.
 5. **Two invariants that do not exist**: a scope owner is always human (§2.8), and the vault
    mask asserted from inside (§7.8).
-6. **Mounts, plural, with the owner's own credential** (§2.6, §2.7, §5.2) — the largest
-   piece left. `meta["remote"]` becomes a collection; the mount name stops being derived
-   from the kind; the per-scope git credential is restored from git history rather than
-   rewritten; the `github.*` verbs land and the gateway clones into the spawn's scratch.
-   Drive needs a per-scope consent flow, which is product work rather than a vault change,
-   and can follow git rather than block it.
+6. ~~**Mounts, plural, with the owner's own credential**~~ (§2.6, §2.7, §5.2) — **done**
+   in rc4: tools 1.67.0 (`meta["mounts"]` a collection, the legacy singular converted on
+   read), 1.68.0 (the credential belongs to the mount), 1.69.0 (the `github.*` verbs; the
+   gateway clones into the spawn's scratch), web 0.133.0 (the mounts in the sidebar, added
+   by the owner). What remains of this item is **Drive's per-scope consent flow**, which is
+   product work rather than a vault change — and one open measurement: whether picking a
+   folder under `drive.file` grants access to its contents.
 7. **`super` away from `ophelia`** — the concept survives in seven places with three
    independent definitions, two of which are not agent authority at all but the
    agent-server's service identity. Untangling those is the work.
