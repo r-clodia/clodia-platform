@@ -139,8 +139,13 @@ Ordered by what unblocks what, not by size.
    read), 1.68.0 (the credential belongs to the mount), 1.69.0 (the `github.*` verbs; the
    gateway clones into the spawn's scratch), web 0.133.0 (the mounts in the sidebar, added
    by the owner). What remains of this item is **Drive's per-scope consent flow**, which is
-   product work rather than a vault change — and one open measurement: whether picking a
-   folder under `drive.file` grants access to its contents.
+   product work rather than a vault change. tools 1.70.0 puts the **credential** in place —
+   a Drive mount uses the owner's, resolved narrowest-first, with the platform account no
+   longer lent silently — and web 0.134.0 lets the owner paste the OAuth bundle. What is
+   still missing is the **consent flow itself** (an in-product OAuth round rather than a
+   pasted bundle), and it is blocked on one open measurement: whether picking a folder under
+   `drive.file` grants access to its **contents** or only to the chosen file. Google's public
+   documentation does not say; it has to be measured with real credentials.
 7. **`super` away from `ophelia`** — the concept survives in seven places with three
    independent definitions, two of which are not agent authority at all but the
    agent-server's service identity. Untangling those is the work.
