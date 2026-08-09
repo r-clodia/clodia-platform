@@ -31,13 +31,36 @@ git clone --depth=1 -b "$BRANCH" "$REPO" "$CLONE_DIR" \
 # Se abbiamo clonato in /tmp, copiamo in /clodia preservando i mount points
 if [ "$CLONE_DIR" != "/clodia" ]; then
     echo "[entrypoint] Copio bundle in /clodia (preservo mount points)..."
-    # Esclude le directory gestite dalla datadir (sono già montate da docker-compose)
-    rsync -a --exclude='.git' \
+    # Esclude le directory gestite dalla datadir (sono già montate da
+    # docker-compose). Un path escluso è anche PROTETTO da --delete: rsync non
+    # tocca ciò che non guarda.
+    #
+    # `logs` è escluso perché è l'UNICA cosa che vive in /clodia e non nel
+    # repo: misurato a secco prima di attivare --delete, e senza quella misura
+    # il primo restart avrebbe cancellato i log dell'istanza. Il resto che
+    # sparirebbe è ciò che deve sparire (server/workflows/, trello_api.py) più
+    # i __pycache__, che si rigenerano.
+    #
+    # `--delete` (9 ago 2026). Senza, un file TOLTO dal repo restava in /clodia
+    # per sempre: la copia successiva sovrascrive ciò che esiste e non rimuove
+    # nulla. Misurato su venere lo stesso giorno — `server/workflows/` era
+    # ancora importabile in produzione dopo essere stato cancellato dal repo,
+    # motore compreso. È il modo peggiore di sbagliare una rimozione: il codice
+    # non c'è più da nessuna parte tranne dove gira.
+    rsync -a --delete --exclude='.git' \
         --exclude='secrets' --exclude='data' --exclude='topics' \
         --exclude='contacts.db' --exclude='boot/VIOLATION.md' \
         --exclude='boot/retrospectives' --exclude='dump' \
+        --exclude='logs' \
         "$CLONE_DIR/" /clodia/
-    # Salva il .git per i pull successivi
+    # Il .git del clone diventa quello di /clodia. `cp -r src/.git /clodia/.git`
+    # NON lo fa quando la destinazione esiste già: copia DENTRO, creando
+    # /clodia/.git/.git e lasciando intatto quello vecchio. Su venere il
+    # risultato era un .git fermo al primo deploy: `git log` nel container
+    # rispondeva con un commit di tre settimane prima mentre girava il codice di
+    # oggi — una risposta sbagliata che sembra autorevole, che è esattamente il
+    # modo in cui una diagnosi parte dal piede sbagliato.
+    rm -rf /clodia/.git
     cp -r "$CLONE_DIR/.git" /clodia/.git
     git -C /clodia remote set-url origin https://github.com/${GIT_REPO_SLUG}.git
     rm -rf "$CLONE_DIR"
