@@ -342,6 +342,43 @@ Three roles, a closed set: **owner**, **contributor**, **reader**.
 **A scope owner is always human.** The rule gives owners gate authority, so an agent-owned
 scope would unlock its own gates — the confused deputy legitimised by the design.
 
+### 2.10 A person's own client
+
+A participant may connect their own MCP client — Claude Code, or another — to **one**
+topic, and from there read the conversation and the files, speak **as themselves**, and ask
+whether anyone has mentioned them.
+
+This adds **no new way of authenticating**. The gateway already verifies, on every call, a
+signed `ckt1` carrying `principal` (who), `on_behalf` (decide on the human role, not on the
+carrier agent), `chat` (which room), `clearance` (how far) and `scoped_tools` (which verbs).
+A person's client is therefore **a token minted for a person** instead of for an agent. A
+parallel API key would have been a second way of saying who you are, and the second one
+would have been the one without PKI, without expiry and without revocation.
+
+Three properties make it a perimeter rather than a hole:
+
+- **`scoped_tools` is a ceiling, not an addition.** On the agent branch the claim *adds*
+  verbs, which is what delegation means. On the human branch it **intersects**. Same word,
+  opposite directions, because the two calls ask for opposite things: an agent receives one
+  more permission, a person receives a boundary.
+- **The message is authored by the person**, with `kind: human`. Not cosmetic: two rules
+  already written — "a mention of a person routes no AI" and "only human messages queue a
+  Telegram notification" — read exactly that field.
+- **The room is in the signature.** The `chat` claim binds the token to one topic and cannot
+  be rewritten by whoever carries it. That property, not the person's name, is what makes it
+  safe to check the *person's* membership instead of the carrier agent's.
+
+**The tier is a ceiling on the client's inference engine.** This is where the feature
+differs from a Telegram binding, where only a notification leaves. Here the *content*
+leaves — into the context of the person's own model. A SEAL-3 topic readable from a client
+running on a SEAL-1 provider has not been breached: it has been **emptied by a
+convenience**. The client's provider is declared at minting time and travels inside the
+signed token; but a declaration is a declaration, so the scale stops short of the data that
+tolerates no error — see §6.3.
+
+Mentions are **asked for**, not pushed: MCP is request/response. Whoever wants to be woken
+has Telegram. The two channels do not compete — one pushes, the other is consulted.
+
 ---
 
 ## 3. Authority
@@ -575,6 +612,11 @@ A human has no provider, so their declared clearance is authoritative.
 - **Storage**: Drive is capped at SEAL-2. Confidential data must not live on a third party
   as a live filesystem.
 - **Channel**: Telegram is capped at SEAL-1.
+- **A person's own MCP client**: capped at SEAL-2, and only with the owner explicitly
+  vouching for it; SEAL-0 and SEAL-1 are free. What the person reads enters **their** model,
+  and the provider is self-declared. The cap is where we stop while the declaration is
+  unverifiable — not a technical limit, and it moves the day a client can prove what it runs
+  on.
 - **Provider**: the resolved SEAL, per §6.2.
 - **Job**: the declared tier, refused rather than degraded.
 
@@ -610,6 +652,10 @@ one failed once, or would fail silently if it broke.
 9. **The clearance in a token is the provider's**, for the provider that spawn runs on.
 10. **Every authority-bearing write goes through the function that merges**, never through
     raw bytes: two writers with no arbiter is how a configuration silently doubles.
+11. **`scoped_tools` restricts a human token and widens an agent's.** The same claim in two
+    directions is the kind of thing a reader assumes rather than checks — and for months it
+    did neither on the human branch, which nobody noticed because a token that grants too
+    much does not fail.
 
 ---
 
