@@ -17,6 +17,13 @@ x-common-env: &common-env
     # rimosso dall'env dei subprocess agentici.
     CLODIA_ORCHESTRATOR_SECRET: ${CLODIA_ORCHESTRATOR_SECRET:?run setup.sh to generate it}
     CLODIA_SHARED_ROOT: /shared
+    # Indirizzo PUBBLICO della webui: quello con cui la raggiunge una persona,
+    # non quello interno alla rete docker. Serve a ogni notifica che esce
+    # dall'istanza e deve poter riportare qualcuno dentro — oggi la menzione
+    # recapitata su un gruppo Telegram. Non impostarla NON è neutro: chi la
+    # legge rifiuta di configurare un canale invece di consegnare link relativi,
+    # che fuori da qui non risolvono.
+    CLODIA_WEBUI_URL: ${CLODIA_WEBUI_URL:-}
     SERVER_HOST: "0.0.0.0"
     # Contenimento runtime (M3): il subprocess dell'agente gira NON-root, con
     # uid unico per-spawn (base del pool) e gid per-seed → non legge i segreti
