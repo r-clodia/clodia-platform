@@ -806,3 +806,73 @@ about a seed: the seed says what it is, and the runtime obeys.
 - The default for a seed that declares nothing.
 - Whether «coda» is per seed or per scope: two rooms queueing on the same agent are a
   different thing from two messages queueing in one room.
+
+---
+
+## Four decisions closing R10, R11, R14, R15
+
+> «il coordinatore è sempre il segretario per i topic a meno che non sia presente clodia e in
+> quel caso è lei. Nei job l'agente mandatario è sempre anche il coordinatore. Se il tier
+> sale, gli agenti non in regola sono espulsi dallo scope. Il parallelo significa multi-spawn»
+
+**The coordinator is a rule, not a ranking.** In a topic: `segretario`, unless `clodia` is a
+participant, in which case her. In a job: the mandated agent is its own coordinator — which
+follows from R11 (one agent) and removes the question entirely for async scopes. No new field
+is needed anywhere: the rule reads the participant list.
+
+**Tier rises → the non-compliant are expelled.** Not suspended. So R14 needs no new state:
+membership is the state. Expulsion is an act on the walls of the scope, so it will have to
+say who did it and why — a participant who disappears without a line in the room is
+indistinguishable from one who left.
+
+**«Parallelo» = multi-spawn.** Two turns on one instance is not on the table. R15's three
+values therefore map onto things that exist or nearly exist: *coda* is new, *parallelo* is
+multi-spawn (built), *rifiuto* is new.
+
+### Measured — and this one changes the work
+
+`segretario` today is **not able to be a coordinator**, in three independent ways:
+
+```
+type: normal          routing_mode: state_writer_only
+tool_permissions: ['topic.open', 'topic.read_document', 'topic.save_summary']
+expertise: «Salvare e aggiornare lo stato di un topic…»
+```
+
+1. **`routing_mode: state_writer_only`** means the router may choose it *only* when the
+   message is a state-writing request. As the coordinator of last resort it must be
+   selectable precisely when nothing else matched — the exact opposite.
+2. **Three verbs, none of which can hand over.** A coordinator that classifies must be able
+   to name another agent in the room, i.e. post a message with a mention. `segretario` cannot
+   post at all.
+3. **Its expertise is one sentence about summaries.** Under R7 the profile is what the
+   semantic router matches on, so widening the seed to make it a coordinator would also make
+   it a *magnet* for ordinary messages — the opposite of the narrowness that made it useful.
+   Whatever the coordinator role is, it must not be expressed by enlarging the expertise.
+
+This is worth stating plainly because it inverts the cost estimate for R10: the rule is
+trivial, the **capability is not**. Either `segretario` gains a coordinator hat that is
+separate from its expertise (a role, with its own verbs, that does not feed the embedding
+profile), or the coordinator of a room without Clodia is a different seed built for the job.
+
+Recorded, not decided: the requirement says *segretario*, and it is the requirement that
+wins — but it cannot be implemented by editing a rank.
+
+### Consequence for R2/R3, implied and worth confirming
+
+R12 makes `$nome` inert. It follows that soft mentions do **not** count towards the «two
+agents mentioned» dialog or the «three or more» refusal — those thresholds count summons, and
+`$` is no longer one. Stated here as an inference rather than left to whoever implements it.
+
+### Still open after these answers
+
+- **What the coordinator returns**: a name (the router then starts that agent's turn), or an
+  answer with an optional hand-over. One bubble or two.
+- **Whether R14 applies to humans** as well (clearance ≥ tier); today the two axes are checked
+  in different places.
+- **The default activation mechanic** for a seed that declares none.
+- **Whether «coda» is per seed or per scope** — two rooms queueing on one agent is not the
+  same problem as two messages queueing in one room.
+- From earlier: the state of a human assignment (R1), who may answer a routing dialog (R3), a
+  person with no Telegram (R4), how the N messages are combined (R7), when a remembered
+  choice stops being «primo riferimento» (R8), who may overrule a confident router (R9).
