@@ -575,3 +575,66 @@ depends on a capability that is nowhere in Clodia's profile (A7).
 - **Which built-ins exist besides the web ones.** The list was never enumerated: whatever the
   SDK ships is what every agent has. That is the general form of this finding, and web search
   is only the instance that happened to be noticed.
+
+### A8 · the enumeration (11 Aug 2026)
+
+Provided by Davide from the local harness — the tool set a Claude Code session holds with no
+gateway attached. **26 native tools: 12 always-loaded, 14 deferred.**
+
+| always-loaded | deferred |
+|---|---|
+| `Read` `Write` `Edit` `Bash` | `WebFetch` |
+| `Agent` `Workflow` `Skill` | `CronCreate` `CronDelete` `CronList` |
+| `ToolSearch` `AskUserQuestion` `ReportFindings` | `ScheduleWakeup` `SendMessage` |
+| | `TaskCreate` `TaskGet` `TaskList` `TaskOutput` `TaskStop` `TaskUpdate` |
+| | `EnterPlanMode` `ExitPlanMode` `EnterWorktree` `ExitWorktree` `NotebookEdit` |
+
+Everything else — the ~90 `mcp__clodia-tools__*` — goes through the gateway, which applies the
+policy, the SEAL clearance and the per-verb gating.
+
+**Caveat, stated rather than glossed:** this is the *CLI* set, measured on the Mac. The platform's
+agents run the SDK **headless** in a container, where some of these have no meaning
+(`AskUserQuestion` with nobody to ask) and the set may legitimately differ. What is measured on
+the platform side is that nothing removes them: `disallowed_tools` is empty for every kind but
+`clodia`, and `allowed_tools` is never passed. The exact headless set has not been enumerated.
+
+### Read as a whole, they are three shadow subsystems
+
+Grouping them by *what the platform already governs and they bypass* is more useful than the
+list, because each group has a rule of ours that it stands beside:
+
+**Shadow I/O** — `Read` `Write` `Edit` `Bash` `WebFetch`. The filesystem, unmediated. This one
+is known and partly accepted: the kernel separation (per-spawn uid, root-owned vault) is what
+contains it, not a tool list — invariant 8 of the specification says exactly that, and says it
+must be verified from inside. `WebFetch` is the exception that is *not* contained by the kernel
+but by the network confinement, measured above.
+
+**Shadow spawning** — `Agent`, `Workflow`. An agent can start other agents. Those children have
+no seed, no ordinal, no PKI identity, no clearance of their own: they run inside the parent's
+process and therefore under the parent's credentials. Nothing in the platform's accounting knows
+they exist. Compare with what the specification requires of a spawn — a named ordinal, never
+reused, «because the ordinal identifies a workload in the audit trail».
+
+**Shadow scheduling** — `CronCreate`, `ScheduleWakeup`, `TaskCreate` and the rest. An agent can
+arrange to act later, outside the jobs subsystem — which is where the tier is enforced («a job
+declares a tier; if the provider cannot carry it, the run fails»). Work scheduled this way
+carries no tier declaration and appears in no job list. This is not hypothetical: a recurring
+memory records agent-server bloat traced to «un job agentico su cron corto» found in the
+datadir.
+
+### Why this is worth a decision rather than a mitigation
+
+The three groups are not equally troubling and should not get the same answer.
+
+- Shadow I/O is *already* the model: the platform decided the kernel contains it, and built the
+  boundary check to prove it. Nothing new is required except keeping `WebFetch` on the network
+  side of that argument.
+- Shadow spawning and shadow scheduling are different: they create **platform objects**
+  (workloads, schedules) outside the platform's own registers. An agent that can schedule
+  itself is an agent whose activity cannot be enumerated by asking the platform — and «what is
+  running» is a question `runtime.*` exists to answer, kept in A6 for exactly that reason.
+
+The decision is therefore not «block or allow» across the board, but **which of the three the
+platform intends to own**. Recorded here; the answer belongs with the seeds' verbs, which is
+this notebook, but it changes the specification's §0 claim that every access is a call to the
+gateway — today that sentence is true of the ~90 MCP verbs and silent about these 26.
