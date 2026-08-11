@@ -638,3 +638,69 @@ The decision is therefore not «block or allow» across the board, but **which o
 platform intends to own**. Recorded here; the answer belongs with the seeds' verbs, which is
 this notebook, but it changes the specification's §0 claim that every access is a call to the
 gateway — today that sentence is true of the ~90 MCP verbs and silent about these 26.
+
+---
+
+## A9 · The native tools become a declaration of the seed
+
+> «ok, aggiorniamo, ma dobbiamo usare la configurazione della cli per decidere quali di questi
+> verbi nativi sono abilitati per seed. Possiamo?»
+
+Yes. Measured: the SDK options object exposes `tools`, **`allowed_tools`**, `disallowed_tools`,
+`permission_mode`, `permission_prompt_tool_name` and `can_use_tool`. The platform already passes
+`disallowed_tools` — per *kind*, from a hardcoded table. So the channel exists and is half in
+use; what changes is where the list comes from and which direction it points.
+
+A seed already declares its gateway verbs (`tool_permissions`) and its skills
+(`capabilities`). The 26 native tools become the third thing it declares, in the same file, read
+by the same loader. «What can this agent do» goes back to having **one** answer.
+
+### Allowlist, not blocklist — and this is the whole point
+
+`disallowed_tools` is a blocklist, and a blocklist has a direction of failure that is wrong
+here: a tool added by a future CLI release is **enabled by default**, silently, in every seed.
+That is precisely how the platform arrived at today's situation — nobody decided that every
+agent should search the web; the tool appeared and nothing said no.
+
+An allowlist inverts it: a new native tool is unavailable until a seed names it. New arrivals
+fail closed, and the failure is visible (an agent that says it cannot do something) rather than
+invisible (an agent that quietly can).
+
+### Where the floor lives: the archseed
+
+The platform's own failure-direction says «nothing declared means no confinement, for every
+list» — an empty list that closed everything would be switched off the same day. That rule and
+an allowlist look contradictory, and the archseed is what reconciles them.
+
+Every seed descends from the archseed, which already carries the base verbs. It carries the
+**native floor** too: the tools a spawn cannot work without. Then no seed ever «declares
+nothing» — it inherits a floor that is explicit and readable — and a narrow seed subtracts from
+it, exactly as inheritance is already required to be subtractable.
+
+A plausible floor, to be decided rather than assumed: `Read`, `Write`, `Edit`, `Bash`, `Skill`,
+`ToolSearch`. Everything else — `Agent`, `Workflow`, the cron and task families, `WebFetch` —
+is named by the seeds that need it, which is also how the two shadow subsystems of A8 come back
+under the platform's own registers.
+
+### Two traps, both measured
+
+**1. `allowed_tools` filters the MCP verbs too.** The gateway is mounted as an MCP server
+(`mcp_servers["clodia-tools"]`) and its ~90 verbs reach the model as `mcp__clodia-tools__*`.
+Passing an allowlist that lists only native tools would **cut every gateway verb at once** —
+the agent would keep `Bash` and lose `topic.open`. Whatever is generated must include the MCP
+namespace, and a test should assert that a seed with a native allowlist still sees its gateway
+verbs.
+
+**2. The headless set has never been enumerated.** A8's 26 come from the CLI on the Mac. Before
+writing an allowlist, the actual set inside a container has to be listed — an allowlist against
+a list nobody has measured produces exactly the wrong kind of silence: tools blocked that the
+seed needed, discovered one failure at a time.
+
+### Open
+
+- Whether the seed lists native tools by name or by family (`Task*`, `Cron*`).
+- Whether `permission_mode` becomes a seed property too: today `bypassPermissions` is hardcoded
+  for `clodia` and `looper`, which is the same shape of defect — a decision about an agent kept
+  in a table instead of in the agent.
+- Whether `can_use_tool` (a callback the SDK offers) is worth using to route native tool
+  attempts through the gateway's own policy, rather than deciding them once at startup.
