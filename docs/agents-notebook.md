@@ -459,3 +459,54 @@ have written require it?» — is what keeps the profile a consequence rather th
   the note-taking ones.
 - Whether losing `egress.list`/`ingress.list` is intended: they are read-only, and a
   coordinator who cannot see the room's perimeter cannot explain why a gate appeared.
+
+---
+
+## A7 · Clodia's packs: base, editorial, anthropic — comms goes
+
+> «ora passiamo ai suoi pack e skills, confermiamo base, editorial, e anthropic. Perde comms»
+
+Three packs kept, one dropped. It is the same cut as A6 seen from the skill side: `comms-pack`
+is the trade of `messaggero` (A2), and A4 already says external communication is delegated. A
+coordinator that still *knew how* to check mail and run a Telegram 1-to-1 would be contradicting
+its own mandate in the only place the semantic router can read.
+
+### Measured, 11 Aug 2026
+
+```
+clodia      capabilities: base-pack/* · editorial-pack/* · comms-pack/* · anthropic-pack/*
+comms-pack  → check-email · helpdesk · mention-relay · telegram-1to1
+editorial   → article-spec · editorial-review · fact-check
+base-pack   → multiagent-collaboration · team-composition · topic-drive-sync ·
+              topic-files · topic-management
+```
+
+Two things follow, and both matter for the router notebook rather than for this one.
+
+**1. Dropping `comms-pack` narrows her semantic profile — measurably.** Clodia's profile is
+**31 pieces** today, and four of them come from `comms-pack`: «check email», «mention relay»,
+«telegram 1to1», «helpdesk». Under R7 those are exactly the sharp signals the router matches on,
+so today a message about email or Telegram can score *Clodia* as high as it scores the postman.
+Removing the pack removes the collision at the source, which is a better fix than any threshold
+adjustment: the profile stops claiming a trade she does not have.
+
+This is the first concrete instance of the tension recorded in A3 — the generalist competing on
+everything — being resolved by **subtraction of a claim** rather than by an exclusion rule. Worth
+noting for the open question there: some of the magnet effect is not structural, it is packs she
+should not have been carrying.
+
+**2. `mention-relay` disappears with the pack, and it should.** Router-notebook R5 abolished the
+group relay; the skill that implements it is in `comms-pack`, held today by both Clodia and
+Messaggero. A7 removes Clodia's copy as a side effect. Messaggero's copy is a separate decision
+and belongs to the R5 removal, not here.
+
+### Open
+
+- **`base-pack/team-composition`** stays with Clodia, and A5 gives the bootstrap role to the
+  secretary when the tier requires it. So a secretary that must «chiedere gli obiettivi e
+  scegliere la squadra» needs that skill too — today it has **no capabilities at all**
+  (`capabilities: []`). A5 gave it verbs; A7 is where the corresponding skills would come from,
+  and the notebook has not said which.
+- Whether `anthropic-pack/*` (17 skills, from docx to canvas design) is kept wholesale or
+  whether it is the one place where a wildcard should become a list — it is the largest single
+  contributor to her profile width.
