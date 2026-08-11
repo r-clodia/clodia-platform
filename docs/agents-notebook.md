@@ -368,3 +368,65 @@ happens to run on today.
   gate request.
 - Whether a room bootstrapped by the secretary hands coordination *back* to Clodia if the tier
   is later lowered, or if the coordinator is fixed at creation.
+
+---
+
+## A6 · Clodia's verbs: six namespaces, and nothing else
+
+> «ora parliamo dei verbi e skill di clodia: mantiene tutti i verbi topic, artifact, agents,
+> memory, fs e github. Perde tutti gli altri»
+
+Six namespaces. Read against A4's mandate the shape is consistent: she works on **contents,
+documents, analysis, editorial** (`topic`, `artifact`, `memory`, `fs`, `github`) and
+**coordinates the squad** (`agents`, plus the `topic` verbs for participants). What she loses
+is everything that belongs to somebody else's trade — external communication, infrastructure,
+providers, packs.
+
+### Measured, 11 Aug 2026 — and it is not only a subtraction
+
+Today Clodia declares 51 verbs. Against A6:
+
+**What falls (18):** `runtime.*` (10) · `integrations.list` · `providers.list` · `mcp.list` ·
+`packs.list` · `packs.show` · `workflows.list` · `workflows.status` · `jobs.list` ·
+`egress.list` · `ingress.list` · `rag.collections`.
+
+**What she does *not* have and A6 gives her — this is the surprise.** `github.*` is **not in
+her profile at all** today: the gateway exposes `github.clone/pull/push/pull_request` and she
+declares none of them. So «mantiene github» reads as *keeps*, but measured it is an
+**addition** — and not a small one, since `github.push` and `github.pull_request` are
+**gated `outward`**: they cross a boundary and need a human's consent each time. Worth being
+explicit that this is new authority rather than a leftover being confirmed.
+
+Same, smaller, for `fs`: she has `fs.list_dir`, which is the whole namespace — so «tutti i
+verbi fs» is one verb, and the sentence is satisfied by what she already holds.
+
+**Two dead declarations, found by the comparison.** `workflows.list` and `workflows.status`
+are still in her profile although the workflows subsystem was removed on 10 Aug — the gateway
+no longer has a `workflows` namespace at all. They would have gone with A6 anyway; recording
+them because a profile that declares verbs which no longer exist is the kind of thing that
+survives quietly until somebody reads it looking for something else.
+
+### The consequence worth naming
+
+`runtime.*` is the read-only introspection surface: which agents exist, what is running, which
+jobs, which providers, which chats. Losing it means the coordinator can no longer answer «who
+is in this room and what are they doing» from inside a conversation — it would have to be
+asked of `sysadmin`, or read by the human in the webui.
+
+That may well be right — introspection is closer to infrastructure than to editorial work, and
+A4 delegates infrastructure. But it is a real change to what coordination *feels* like, and it
+interacts with A1's third outcome: a coordinator that concludes «a new agent must be added to
+the scope» will no longer be able to list the agents that exist outside the room. It keeps
+`agents.list`, which may cover exactly that — worth checking against the intent rather than
+assuming.
+
+### Open
+
+- Whether `agents.*` means the whole namespace, which includes the **grants**
+  (`agents.grant_tool`, `grant_skill`, `grant_rule`, `grant_scoped` and their revokes — all
+  gated `system`, i.e. admin-decided). Coordinating a squad needs `list`/`show`; *granting*
+  another agent a verb is a different power, and A6's wording does not distinguish them.
+- Whether `memory.*` includes the document verbs (`put_document`, `delete_document`) or only
+  the note-taking ones.
+- Whether losing `egress.list`/`ingress.list` is intended: they are read-only, and a
+  coordinator who cannot see the room's perimeter cannot explain why a gate appeared.
