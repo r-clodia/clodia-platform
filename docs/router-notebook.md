@@ -774,6 +774,28 @@ participant, and changing a tier. It also dissolves gap #5 as I posed it — the
 candidate silently excluded», because a candidate that cannot serve the room is not in the
 room.
 
+### Observed, 11 Aug 2026 — what R14's absence looks like
+
+Reported live: «non riesco ad aggiungere segretario ai canali, e nel canale
+uncommon-digital-casa sono spariti tutti gli agent, restano solo gli umani». Cause: the
+providers had been paused.
+
+The symptom is worth keeping because it is the shape of the defect R14 removes. A paused
+provider makes every agent ineligible; the webui hides the ineligible; so a room appears to
+have **no agents at all**, and the humans remain only because they have no provider to judge.
+Nothing says «paused» — the room simply looks empty, which is indistinguishable from a room
+that was never staffed.
+
+Two lessons for the implementation:
+
+- **Ineligibility must have a visible cause.** Under R14 an ineligible agent is expelled, but
+  a provider pause is *temporary* and expelling on it would empty every room on a restart of
+  the provider stack. So R14's «espulsi» has to be scoped to a durable change (the tier rose,
+  the agent's provider is below it permanently) and a pause needs its own visible state —
+  otherwise the fix trades a silent absence for a destructive one.
+- **«Cannot add X to the channel» has the same root.** Adding a participant checks the same
+  eligibility, so the two symptoms had one cause and looked like two bugs.
+
 ### Open
 
 - **What happens to an existing participant when the tier rises** — removed, or suspended
