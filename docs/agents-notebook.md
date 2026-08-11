@@ -173,3 +173,65 @@ filesystem-wide verb.
   mail polling and Telegram listening.
 - Whether messaggero, having no fs access, can still be the agent that a job assigns (R11) —
   a job whose mandated agent cannot read anything is a narrow job.
+
+---
+
+## A3 · There are only bots and humans
+
+> «clodia non è un super agent, non esiste più questa classificazione. Gli agent sono solo bot
+> oppure human»
+
+Two kinds of principal, and nothing else. The third class disappears.
+
+### Measured — the authority half is already gone
+
+In the **gateway**, `_SUPER_AGENTS` is **an empty set**, with a comment saying so
+deliberately: «L'insieme resta, vuoto, ed estendibile via env: rimetterci un nome è ancora
+possibile, ma deve essere un atto esplicito di chi amministra l'istanza.» So `_is_super` no
+longer grants anything — the whitelist bypass that once made Clodia able to call every verb
+was removed already, and `super` today buys **no authority at all**.
+
+This matters for A3: the requirement is not a security change, because the security part of
+`super` was retired earlier. It is a **routing and vocabulary** change.
+
+### What `super` still does, and it is one thing wearing three hats
+
+24 references remain in clodia-logic. In `channels.py` they collapse to three jobs:
+
+| line | what it does |
+|---|---|
+| `specialists = [s for s in ai if s.type != "super"]` | **excludes the generalist from relevance scoring** |
+| `rank_mod.highest(ai)` on abstention | the generalist answers as fallback |
+| `supers[0]` in `suggest_team` | the generalist is proposed as coordinator |
+
+Two of the three are already replaced by the router notebook: R10 makes the coordinator a
+**declared rule** (segretario, or clodia when present) instead of «the first super», and the
+fallback becomes that coordinator rather than «the highest rank».
+
+### The third hat has no replacement yet — and this is the consequence to carry
+
+`specialists = [s for s in ai if s.type != "super"]` is what keeps **Clodia out of the
+specialist competition**. Remove the class and she competes on every message like anyone else
+— with, under R7, the widest profile on the instance (all skills, all expertise clauses) and a
+**max-over-pieces** score, which rewards breadth precisely because any one sharp piece can win.
+The predictable outcome is the generalist winning ordinary traffic, which is the exact problem
+the exclusion was written to prevent.
+
+So A3 needs the exclusion to survive its own class, as a **declared property of the seed**
+rather than a type. The field already exists in embryo: `routing_mode: normal |
+state_writer_only`. What is needed is its inverse — *never chosen by relevance, always
+available as fallback and by mention* — which is also exactly what the router notebook asked
+for the coordinator before A1 resolved it differently for `segretario`.
+
+Note the asymmetry that follows, and it is deliberate rather than a contradiction: `segretario`
+**is** scored (A1: narrow profile, so scoring it is safe and useful), while a generalist like
+`clodia` should **not** be (wide profile, so scoring it swallows the room). Same role, opposite
+treatment, decided by the width of the profile — not by a class.
+
+### Open
+
+- The two words. `bot` is new: today the vocabulary is `super | normal | human`. Does `normal`
+  become `bot`, and where is that name authoritative (agent.yaml, the registry, the API)?
+- Whether anything else in the platform reads `super` — 9 references remain in the gateway
+  beyond `_is_super`, and each has to be looked at rather than pattern-replaced.
+- Whether «bot» distinguishes a spawnable seed from a running spawn, or is silent about it.
