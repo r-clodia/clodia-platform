@@ -308,3 +308,63 @@ own cost in awkwardness. What matters is that it is a decision rather than an ov
   mid-conversation, and nothing today announces that.
 - Whether «all tier» becomes a declared, checked property of a seed rather than a fact about
   its current stack.
+
+---
+
+## A5 · Bootstrap goes to whoever the tier allows
+
+> «hai ragione allora segretario subentra anche in quel caso, ma segretario non ha la capacità
+> di convocare agenti, quindi dovremo dotarlo di questo verbo. Quindi in sostanza, il bootstrap
+> lo fa clodia se il tier lo consente, altrimenti segretario»
+
+The bootstrap exception is closed: there is no exception. The tier decides who opens the room,
+exactly as it decides who speaks in it afterwards. Objectives typed into a SEAL-3 room are
+SEAL-3 statements and stay inside a provider that can hold them.
+
+That also removes the awkward case A4 left dangling — a coordinator who could ask the questions
+but not receive the answers.
+
+### Measured — the verbs exist and are already Clodia's
+
+```
+clodia: … 'topic.suggest_team', 'topic.add_participant' …
+segretario: 'topic.open', 'topic.read_document', 'topic.save_summary'
+```
+
+So «convocare agenti» is two verbs, and giving them to `segretario` is an addition to a seed,
+not a new capability of the platform:
+
+- `topic.suggest_team` — read-only, proposes a squad by relevance;
+- `topic.add_participant` — **gated `walls`**, therefore decided by the *owner* of the scope.
+
+The second point is worth keeping in sight: granting the verb does **not** let the secretary
+staff a room on its own authority. It lets it *ask*, and the owner approves. So A5 widens what
+the secretary can propose without widening what it can decide — which is the same shape as A1's
+third outcome («a new agent must be added to the scope»), now with the verb to say it formally
+instead of in prose.
+
+### What this makes of the secretary
+
+Adding it up across A1, A4 and A5, `segretario` acquires three duties on top of its
+secretarial work, all of them conditional and none of them broadening its expertise:
+
+1. coordinator when Clodia is absent **or out of tier** (A4);
+2. classifier of last resort when the semantic router abstains (A1, second mandate);
+3. bootstrap coordinator — asks the objectives, proposes the team (A5).
+
+Its verbs grow from three to roughly six; its *profile*, which is what the semantic router
+scores, does not have to grow at all. That was the constraint recorded in the router notebook,
+and it survives.
+
+But it is now the seed on which a high-tier room depends entirely, which sharpens the point
+made in A4: «all tier» has to become a checked property rather than a fact about the stack it
+happens to run on today.
+
+### Open
+
+- Whether the secretary's team proposal is posted as a message with pills (the human confirms)
+  or goes straight to `add_participant` and waits on the gate. The first shows the reasoning,
+  the second is fewer steps; only the first makes the choice reviewable before it becomes a
+  gate request.
+- Whether a room bootstrapped by the secretary hands coordination *back* to Clodia if the tier
+  is later lowered, or if the coordinator is fixed at creation.
