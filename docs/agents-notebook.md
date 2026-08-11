@@ -510,3 +510,68 @@ and belongs to the R5 removal, not here.
 - Whether `anthropic-pack/*` (17 skills, from docx to canvas design) is kept wholesale or
   whether it is the one place where a wildcard should become a list — it is the largest single
   contributor to her profile width.
+
+---
+
+## A8 · The runtime's own tools are outside the model
+
+> «non mi è chiaro chi abbia i verbi per fare web search e web fetch» … «ma se non sbaglio il
+> container di agent server non permette di collegarsi all'esterno» … «sysadmin può fare search
+> e fetch anche se non dovrebbe»
+
+Observed, then measured. The answer has three parts and only the third is a defect.
+
+### 1. No such verb exists
+
+The gateway's `web` namespace has **one** verb, `web.post` — an *outward* POST, gated
+`outward`. There is no `web.search`, no `web.fetch`. So the question «who has the verb» has the
+answer «nobody, because it is not a verb».
+
+### 2. The network confinement is real, and it works
+
+Measured from inside `agent-server` on venere: `google.com` → **000** both directly and through
+the proxy; `api.anthropic.com` → **401**, i.e. the connection arrives. The container sits on an
+`internal` network with no route out and must pass a proxy whose allowlist is short and entirely
+justifiable: the inference providers, the repositories needed to install (github, npm, pypi),
+the CLI's own updates, and the LAN address of the RAG service. **No search engine, no general
+web.**
+
+So a client-side fetch of an arbitrary URL cannot succeed. That part of the confinement holds.
+
+### 3. The defect: capabilities that are neither declared nor blocked
+
+`sysadmin` runs on `agent_sdk: claude`, and:
+
+```
+disallowed_tools: []          permission_mode: (default)
+declared web verbs: ['web.post']
+```
+
+`KIND_DISALLOWED_TOOLS` is populated **only** for the kind `clodia`, and its entries are about
+Bash CLIs (`Bash(rm:*)`, `Bash(*email_client*)`) — not about the runtime's built-in tools. No
+`allowed_tools` is ever passed to the SDK. So every agent inherits the SDK's **default tool
+set**, and `WebSearch` rides the API connection that the allowlist legitimately permits: the
+search is executed on the provider's side and the results come back over `api.anthropic.com`.
+The proxy never sees a request to a search engine because the client never makes one.
+
+**This breaks the platform's own rule in both directions at once.** «Non esistono verbi fuori
+profilo. Esistono solo i verbi dichiarati nel profilo» (6 Aug) — here is a capability that is in
+no profile, cannot be granted, cannot be revoked, and does not appear in any of the three places
+that answer «what can this agent do»: `tool_permissions`, the gateway's whitelist, the webui's
+verb list. And it is an **ingress of untrusted content** that reaches an agent's context without
+passing the gateway, the ingress lists, or the taint labelling — the exact leg of the trifecta
+those mechanisms exist to control.
+
+It is also, measured, the reason a fact-check skill appears to work: `editorial-pack/fact-check`
+depends on a capability that is nowhere in Clodia's profile (A7).
+
+### What has to be decided
+
+- **Whether the runtime's built-in tools are declared or removed.** Either they become verbs
+  with a namespace, a profile entry and a gate class — so that «who can read the web» has an
+  answer in the same place as every other question — or they are added to
+  `KIND_DISALLOWED_TOOLS` for every kind, and web access happens only through a gateway verb
+  that does not exist yet.
+- **Which built-ins exist besides the web ones.** The list was never enumerated: whatever the
+  SDK ships is what every agent has. That is the general form of this finding, and web search
+  is only the instance that happened to be noticed.
