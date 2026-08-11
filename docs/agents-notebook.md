@@ -420,6 +420,35 @@ the scope» will no longer be able to list the agents that exist outside the roo
 `agents.list`, which may cover exactly that — worth checking against the intent rather than
 assuming.
 
+### Amendment (11 Aug 2026) — `runtime.*` stays
+
+> «hai ragione teniamo i verbi runtime se le servono per fare il coordinatore durante il
+> routing»
+
+Seven namespaces, not six: `topic`, `artifact`, `agents`, `memory`, `fs`, `github`, `runtime`.
+
+The reason is worth keeping attached to the decision, because it is what makes the exception
+defensible rather than a softening: `runtime.*` is **read-only introspection**, and the
+coordinator's second mandate (A1) requires knowing who exists and what is running before it can
+name the right agent or conclude that nobody in the room fits. Without it, that mandate is
+asserted and unimplementable — the same shape of defect this notebook keeps finding, arrived at
+from the opposite direction.
+
+Two boundaries follow from *why* it stays:
+
+- **Read-only is the whole justification.** `runtime.*` has one verb that is not:
+  `runtime.restart_agent`. Restarting an agent is not knowing who is there — it is acting on
+  the infrastructure, which A4 delegates. Keeping the namespace «because the coordinator needs
+  to see» does not extend to it.
+- What falls with A6 is now **17 verbs**, not 18: `integrations.list`, `providers.list`,
+  `mcp.list`, `packs.list`, `packs.show`, `workflows.list`, `workflows.status`, `jobs.list`,
+  `egress.list`, `ingress.list`, `rag.collections` — and `runtime.*` returns.
+
+Note that `egress.list` / `ingress.list` are also read-only and also arguably needed by a
+coordinator who has to explain why a gate appeared. They are listed in the open points below
+for the same reason `runtime` came back; deciding them by the same test — «does a mandate we
+have written require it?» — is what keeps the profile a consequence rather than a preference.
+
 ### Open
 
 - Whether `agents.*` means the whole namespace, which includes the **grants**
