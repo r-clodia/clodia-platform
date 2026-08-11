@@ -704,3 +704,60 @@ seed needed, discovered one failure at a time.
   in a table instead of in the agent.
 - Whether `can_use_tool` (a callback the SDK offers) is worth using to route native tool
   attempts through the gateway's own policy, rather than deciding them once at startup.
+
+---
+
+## A10 · Telegram is a contact channel, so it is a field of the person
+
+> «ho aggiunto il campo telegram ai miei campi dati personali extra, però essendo telegram un
+> metodo di contatto per gli umani lo metterei come campo fisso e non extra /agents/davide»
+
+Right, and the reason generalises: a **contact channel** is not a personal detail, it is how the
+platform reaches someone. Router-notebook R4 makes it load-bearing — the last rung of the
+escalation ladder is «Telegram to their profile contact» — and a load-bearing value cannot live
+in a free-form bag whose keys nobody validates.
+
+### Measured, 11 Aug 2026 — the field already exists, at every level
+
+```
+models.py:237   telegram: Optional[str] = None   # handle o chat_id Telegram
+loader.py:93    get_by_telegram(handle) → the human whose telegram matches
+agent_registry  PATCH accepts telegram · POST (create human) accepts telegram
+webui           «Telegram (opz.)» input in the agent settings dialog
+gateway         _gate_notify_principal reads contact_channels.telegram / .telegram
+```
+
+And on `davide` it is **`None`**.
+
+So this is not a missing field: it is a **field that exists and was not used**, while the value
+went into the extras — a second place holding the same fact, of which only one is read. The
+platform then behaves exactly as if the contact were absent: `get_by_telegram` cannot resolve an
+inbound message from that handle, and R4's last rung has nothing to send to.
+
+**This is the fourth instance today of the same shape** — something declared, and nobody
+carrying it: `scoped_tools` unread on the human branch, `branding.logo` pointing at an endpoint
+that did not exist, `/profile/logo` gated to an edition that excluded the only instance that
+wanted it, and now a contact field bypassed by an extras bag. Worth naming as a pattern rather
+than a coincidence: a field is only real if something breaks when it is empty.
+
+### What follows for the requirement
+
+- **`telegram` stays a fixed field** and the extras stop being a place where a contact can be
+  written. Two writable homes for one fact is the defect, not the label on either.
+- **The dialog must say what it is for.** «Telegram (opz.)» is accurate today and wrong under
+  R4: it is the channel of last resort for every mention a person does not see. Optional, yes —
+  unreachable, and R4 says so.
+- **R4's open point can now be closed on evidence.** A person with no `telegram` is *silently
+  unreachable* at the last rung. The three candidate answers were: refuse the creation, warn the
+  owner, or drop. Measured, today it drops. The mildest fix that removes the silence is to show
+  the state where a human is listed — a person who cannot be reached out of hours is a fact about
+  a room, not a detail of a profile.
+
+### Open
+
+- Whether **handle or chat_id**. The field accepts both («@handle o chat_id»), and only the
+  numeric id is authoritative for delivery: a handle can be changed by its owner, and the
+  Telegram bot cannot resolve a handle to an id on its own. So a field filled with `@davide` may
+  look correct and still fail to deliver — a validation, not a decision.
+- Whether other contact channels join it as fixed fields (`email` already is) and whether the
+  ladder of R4 ever falls back from Telegram to e-mail.
