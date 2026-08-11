@@ -235,3 +235,76 @@ treatment, decided by the width of the profile — not by a class.
 - Whether anything else in the platform reads `super` — 9 references remain in the gateway
   beyond `_is_super`, and each has to be looked at rather than pattern-replaced.
 - Whether «bot» distinguishes a spawnable seed from a running spawn, or is silent about it.
+
+---
+
+## A4 · Clodia: coordinator of the room, and where the tier takes it away
+
+> «Coordinatore del canale nella fase di bootstrap chiedo gli obiettivi e scelgo la squadra.
+> Questo lo faccio indipendentemente dal tier, ancora non ci sono dati. Fatto il bootstrap
+> resto come coordinatore coordino la squadra, identifico chi è competente per ciascun task,
+> lo coinvolgo e porto a termine l'obiettivo. Lavoro direttamente su contenuti, documenti,
+> analisi ed editoriale; delego agli specialisti per comunicazioni esterne, infrastruttura,
+> sviluppo e security. Tuttavia potrebbe esserci un problema di tier, in alcuni casi se il
+> tier dello scope è superiore a quello che può usare clodia allora segretario subentra come
+> coordinatore dello scope in quanto segretario è all tier»
+
+The existing mandate is confirmed. Two things it adds to the router notebook.
+
+**It splits the coordinator role in two moments.** At *bootstrap* the coordinator asks what
+the room is for and picks the team — a role that has nothing to do with relevance scoring and
+everything to do with there being no conversation yet. Afterwards it coordinates: identify who
+is competent, involve them, see the objective through. R10's fallback duty is the second
+moment; the first was never in the router notebook at all, because the router only exists once
+there are messages.
+
+**It names Clodia's own trade, and it is not «everything».** Contents, documents, analysis,
+editorial — done directly. External communications, infrastructure, development, security —
+delegated. That is a profile, and under router-notebook R7 it is what the semantic router would
+score her on. It also gives A3's open point a concrete answer: Clodia's expertise is *wide but
+bounded*, so whether she is excluded from relevance scoring is a real decision and not a
+foregone one.
+
+### Measured, 11 Aug 2026 — «segretario è all tier» is true, and it is a property of the model, not of the seed
+
+```
+clodia      stacks: claude-team · claude-pro-max · anthropic-api  → SEAL-1
+                    aws-region-eu                                 → SEAL-2
+segretario  stacks: gemma-4-26b-a4b-it on scaleway                → SEAL-3
+```
+
+So the rule holds today: above SEAL-2 Clodia cannot serve a room and `segretario` can, because
+it runs a small open model on a sovereign provider. Note *why* it holds — the secretary is
+all-tier **as a consequence of its stack**, not by declaration. Move it onto a hosted model
+tomorrow and the rule silently stops being true, with no error anywhere: rooms above its new
+ceiling would simply have no coordinator.
+
+That is worth making explicit somewhere the platform can check, because A4 makes the secretary
+the *last resort* of every high-tier room. A last resort that can lose its property without
+saying so is the shape of defect this notebook keeps finding.
+
+Also note the ceiling is not fixed at SEAL-1 for Clodia: with `aws-region-eu` connected she
+reaches SEAL-2. So «il tier dello scope è superiore a quello che può usare clodia» is a
+*runtime* question — which provider is connected and not paused — and not a property of the
+seed. The handover to the secretary is therefore dynamic, and can flip on a provider being
+paused (the symptom observed today, router-notebook R14).
+
+### The bootstrap exception, recorded with its tension
+
+«indipendentemente dal tier, ancora non ci sono dati» is a clean argument: the tier protects
+*content*, and at creation there is none.
+
+But the bootstrap conversation is itself content: the objectives a human types into a SEAL-3
+room are SEAL-3 statements, and under this rule they would reach Clodia's SEAL-1 provider.
+Recorded as a tension, not as an objection — the exception may still be the right trade, and
+narrowing it («the coordinator may ask, but the answers go to a tier-compatible agent») has its
+own cost in awkwardness. What matters is that it is a decision rather than an oversight.
+
+### Open
+
+- Whether the bootstrap exception is bounded (only the first exchange? only until the team is
+  chosen?) or lasts as long as the room has no files.
+- What happens to a room whose tier is raised *after* bootstrap: the coordinator changes hands
+  mid-conversation, and nothing today announces that.
+- Whether «all tier» becomes a declared, checked property of a seed rather than a fact about
+  its current stack.
