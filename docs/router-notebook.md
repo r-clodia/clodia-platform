@@ -652,3 +652,157 @@ the correction now also fixes the present, not only the future.
   asked X» that only teaches, with nothing to interrupt.
 - **What the overruled agent is told**, if anything. Silence risks it resuming; a message
   costs a turn.
+
+---
+
+# Answers to the six gaps raised on 11 Aug 2026
+
+Asked whether requirements were missing, six were raised and all six were answered. They are
+recorded as requirements in their own right, because each one decides something the previous
+nine left undecided.
+
+## R10 · When the router cannot choose, an *intelligent* agent chooses
+
+> «quando il router non sa chi scegliere il fallback è l'agent coordinatore che normalmente è
+> clodia, il quale dunque farà la classificazione usando la sua conoscenza del contesto e si
+> suppone sarà migliore e più accurata della selezione del router semantico, in parole povere
+> se il router semantico non sceglie allora la scelta ricade su un agent 'intelligente'. Non
+> sempre clodia è presente in uno scope, in assenza di clodia l'agente coordinatore potrebbe
+> essere il segretario»
+
+The fallback is not «the strongest agent answers»: it is **a second routing stage, performed
+by a model instead of by cosines**. The coordinator classifies with what an embedding cannot
+have — the context of the room. That reframes the whole design: the semantic router is a
+*cheap first pass*, and its abstention is a **handover**, not a defeat.
+
+### Measured — the difference is bigger than it looks
+
+- Today the fallback is `rank_mod.highest(ai)` with reason `fallback-rank`: the
+  highest-ranked eligible agent **answers the message**. It does not classify and it does not
+  delegate. So today's fallback produces an *answer by the coordinator*, whereas R10 asks for
+  a *decision by the coordinator*, which may well be «this is for Aitiero».
+- There is **no declared «coordinator»** anywhere. The word appears in `suggest_team`, where
+  `coordinator = supers[0].name` — the first super-agent — and in a bootstrap prompt. So
+  «normalmente clodia» is true only as a side effect of Clodia being the highest-ranked super
+  in most rooms. Change a rank, or build a room without her, and the fallback moves silently.
+- `segretario` is a `normal` seed, not a super. Under today's rule it would be chosen only if
+  it happened to outrank everyone eligible. So «in assenza di clodia il coordinatore potrebbe
+  essere il segretario» **cannot** be expressed today: the role has to become a declared
+  thing (per instance, or per scope) rather than a by-product of ranking.
+
+### What R10 leaves open
+
+- **Who declares the coordinator** — the instance profile, or the topic? A per-topic
+  coordinator would let a specialised room name its own.
+- **What the coordinator returns.** A name (and the router starts that agent's turn), or an
+  answer plus an optional handover? The two produce different conversations: one bubble or
+  two.
+- **What if the coordinator is not a participant either.** No super, no secretary: no turn,
+  or the highest rank as today?
+
+## R11 · Async scopes have one agent, so this ambiguity cannot arise
+
+> «negli scope asincroni (job) c'è un solo agent assegnato. I job con multipli agents non
+> sono ancora previsti»
+
+This closes the deadlock I raised: an ambiguity dialog with nobody to answer it cannot happen
+in a job, because a job never routes — its agent is assigned when the job is defined.
+
+**The residual case is different and is not a deadlock.** A channel turn can still be
+triggered with no human watching (`POST /clodia/channels/{tier}/{name}/trigger`, «nessun
+principal», used when the gateway injects a message into a room). There an ambiguity dialog
+waits — but waiting is the correct behaviour, and R4's escalation ladder is precisely what
+makes the wait visible to whoever should answer it. Recorded so the distinction is not
+re-litigated: *jobs never ask; unattended channels ask and wait*.
+
+## R12 · Agents may summon agents, but only to cooperate — and `$` never activates
+
+> «gli agent possono menzionare altri agent, questo è corretto, ma deve succedere solo se un
+> agent ritiene che l'obiettivo possa essere raggiunto solo con la cooperazione di un altro
+> agent, le menzioni sterili e di riconoscimento tipo 'concordo con @avvocato' devono essere
+> evitate. Possono essere usate soft-mentions $agente, le quali non devono attivare l'agente
+> menzionato ma al massimo possono essere usate dal router semantico come elemento di tie
+> break quando due agenti fittano con lo stesso punteggio»
+
+Two rules of different kinds, and the difference matters for where each is enforced.
+
+**`$` must not activate — enforceable, and today it is violated.** Measured: `for nm in soft:
+… targets.append((s, "soft", …))` — a soft tag builds a target exactly like a hard one, only
+at lower priority. So `$avvocato` starts a turn today. R12 makes `$` a **signal, not a
+summons**, with a precise new job: breaking a tie inside the margin (§R8) — which is elegant,
+because it turns the citation into evidence at the one moment the router has none.
+
+**«Menzioni sterili» is not enforceable by the router.** Nothing can distinguish «concordo
+con @avvocato» from a genuine hand-off by inspecting the text — sincerity is not a property
+of a string. This belongs in the agents' instructions (system prompt / rules), not in the
+routing code, and saying so is the difference between a rule that holds and a rule that looks
+like it does. What the router *can* do is make the sterile case harmless: with `$` inert, an
+agent that wants to acknowledge a colleague has a form that costs nobody a turn.
+
+### Open
+
+- Whether `@` from an agent needs a stated justification (a reason recorded with the hop), or
+  whether the prompt rule suffices.
+- Whether the tie-break from `$` is a bonus on the score or an outright override.
+
+## R13 · A degraded router says so — accepted
+
+> «ok»
+
+The embedder being unreachable must not look like a decision. Today `embed_text` returns
+`None`, routing falls to rank, and the routing box says «Nessun punteggio disponibile (tag
+esplicito o embedder non raggiungibile)» — one sentence for two causes that are not the same
+thing at all: one is a person naming an agent, the other is a broken component.
+
+## R14 · Ineligible agents are not in the scope at all
+
+> «la selezione del router avviene solo per gli agenti abilitati ad uno scope, agenti senza
+> la dovuta clearance non sono mai nello scope»
+
+An invariant, not a filter — and much stronger than what exists.
+
+### Measured — today they *are* in the scope, and hidden
+
+Eligibility is computed **at routing time** (`_provider_seal_ok`) and again for display: the
+channel exposes `eligible: false` per participant, and the webui drops them from the list
+(`shownParticipants`). So an ineligible agent is a participant that the interface pretends is
+not there. Under R14 it should never have been added, or should be removed when the room's
+tier rises above its provider's SEAL.
+
+That turns a routing detail into a **membership rule**, enforced at two moments: adding a
+participant, and changing a tier. It also dissolves gap #5 as I posed it — there is no «best
+candidate silently excluded», because a candidate that cannot serve the room is not in the
+room.
+
+### Open
+
+- **What happens to an existing participant when the tier rises** — removed, or suspended
+  with a visible reason? Removal is silent authority; suspension needs a state that does not
+  exist yet.
+- Whether the same rule applies to humans (clearance ≥ tier) — today the two axes are
+  checked separately.
+
+## R15 · The seed declares how it activates: queue, parallel, or refuse
+
+> «coda, parallelo e rifiuto sono tutte valide, il profilo del seed dovrebbe riportare la sua
+> meccanica di attivazione fra queste tre»
+
+The answer to «the chosen agent is already busy» is not one behaviour but a **declared
+property of the seed** — which is consistent with how the platform treats everything else
+about a seed: the seed says what it is, and the runtime obeys.
+
+### Measured
+
+- A seed already declares one routing-related field: `routing_mode: normal |
+  state_writer_only` (whether it may be chosen without being named). The new field is a
+  sibling of that one, not a new concept.
+- «Parallel» partly exists as **multi-spawn** (`@nome#2`), where several instances of one
+  seed run at once. Whether R15's «parallelo» means multi-spawn or two concurrent turns on
+  one instance is the first thing to settle — they are different in cost and in isolation.
+- Nothing today expresses «refuse»: a second message during a turn is simply another turn.
+
+### Open
+
+- The default for a seed that declares nothing.
+- Whether «coda» is per seed or per scope: two rooms queueing on the same agent are a
+  different thing from two messages queueing in one room.
