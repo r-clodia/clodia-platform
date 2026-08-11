@@ -74,3 +74,102 @@ so the secretary's refusal points at a door somebody has the authority to open.
   second fallback, or a stop.
 - Whether «operazione in lettura sui metadati» includes reading other participants' state, or
   only the topic's own.
+
+---
+
+## A2 · Messaggero: the door of a scope
+
+> «messaggero ha il mandato di gestire le comunicazioni da e verso gli scope. E' l'unico che
+> può postare in modo proattivo un messaggio anche se non è stato scelto dal router se
+> triggerato da eventi esterni (new mail oppure webhook). Non può leggere e scrivere nei fs
+> dello scope o nei remote ma può allegare file ai messaggi o scaricare sul fs file allegati
+> ai messaggi in ingresso. Obbedisce alle regole di egress/ingress e ai gate»
+
+The seed is defined by a *position* rather than by a subject: it stands on the boundary of a
+scope and moves messages across it. Everything else in the mandate follows from that — and so
+does everything it must not have, because a door that can also read the room is not a door.
+
+Four clauses, and three of them are subtractions.
+
+### 1. It may act without being chosen — the only seed that may
+
+Every other agent speaks because the router picked it (router-notebook R1–R8). Messaggero also
+speaks when **something outside** happens: a mail arrives, a webhook fires. The trigger is an
+event, not a turn.
+
+This is not an exemption from routing; it is a **second entry point into a scope**, and it
+belongs to exactly one seed so that the question «who can make a room speak?» has one answer.
+
+### 2. It does not read or write the scope's filesystem, nor its remotes
+
+The strongest clause, and the one that makes the position safe. A courier that could read the
+room's documents would be an exfiltration path with a delivery mechanism attached: it already
+holds the credentials to send outward, and the whole egress model assumes that what leaves is
+what somebody put in a message.
+
+### 3. Attachments are the declared exception, in both directions
+
+Out: it may attach a file to a message. In: it may write an incoming attachment to the
+filesystem. **This needs one clarification before implementation** (below).
+
+### 4. Egress, ingress and gates apply
+
+Nothing here is a privilege over the perimeter: being the door does not make it a hole. Same
+whitelists (global then per-scope), same gates, same classes.
+
+### Measured, 11 Aug 2026 — two gaps between the mandate and the seed
+
+```
+tool_permissions: ['email.*', 'telegram.*', 'jobs.propose',
+                   'topic.open', 'topic.files', 'topic.read_file',
+                   'topic.read_document', 'topic.put', 'topic.fetch',
+                   'topic.write_file', 'topic.search', 'topic.list',
+                   'topic.post_message',
+                   'gdrive.list', 'gdrive.search', 'gdrive.download', 'gdrive.upload']
+```
+
+**Gap A — it reads and writes the scope's filesystem today.** `topic.read_file`,
+`topic.read_document`, `topic.write_file`, `topic.files`, `topic.fetch`, plus `gdrive.*`
+(list, search, download, upload) — which reaches the *remotes* the mandate also excludes. Under
+A2 most of these go. What remains has to be exactly the attachment path and nothing wider,
+which is why the clarification below is not pedantry: it decides which verbs survive.
+
+**Gap B — «l'unico che può postare in modo proattivo» is asserted, not enforced.** Measured:
+`topic.post_message` is held by messaggero, ophelia (`*`) and, through the archseed floor, by
+**every** seed — the platform specification puts `topic.post_message` in the floor precisely so
+that a spawn can speak in its own room. So today any agent can post; what only messaggero has
+is the *external trigger*. Two readings, and they are not the same feature:
+
+- exclusivity is about **the trigger** (only messaggero may be woken by an external event) —
+  true today by construction, since only it holds `email.*`/`telegram.*`;
+- exclusivity is about **posting unbidden** (only messaggero may post outside its own turn) —
+  false today, and enforcing it would collide with the archseed floor.
+
+Recorded as a question rather than resolved, because the second reading would change a
+platform invariant.
+
+### The clarification the attachment clause needs
+
+«allegare file ai messaggi» requires reading bytes from somewhere. Three possibilities, and
+they have different blast radii:
+
+1. only files **it received itself** (a mail attachment it just downloaded) — narrowest, and
+   self-consistent with clause 2;
+2. any file **in the scope**, read at send time — which re-opens clause 2 through the back
+   door, since «attach» becomes a read primitive with an outward channel;
+3. files **a human or another agent hands to it** in the message that summons it.
+
+Today the seed has `topic.put` and `topic.fetch`, which are the transfer primitives between an
+agent's scratch and the topic — so the machinery for (1) and (3) exists without any
+filesystem-wide verb.
+
+### Open
+
+- Which of the three attachment forms is meant.
+- Whether an inbound attachment lands in the topic's files or in a quarantine — the platform
+  already labels provenance (`untrusted`) for files arriving from outside, and A2 does not say
+  whether messaggero's writes carry it.
+- What a webhook trigger *is*, concretely: today there is no webhook ingress for a scope, only
+  mail polling and Telegram listening.
+- Whether messaggero, having no fs access, can still be the agent that a job assigns (R11) —
+  a job whose mandated agent cannot read anything is a narrow job.
