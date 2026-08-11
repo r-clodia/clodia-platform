@@ -876,3 +876,28 @@ agents mentioned» dialog or the «three or more» refusal — those thresholds 
 - From earlier: the state of a human assignment (R1), who may answer a routing dialog (R3), a
   person with no Telegram (R4), how the N messages are combined (R7), when a remembered
   choice stops being «primo riferimento» (R8), who may overrule a confident router (R9).
+
+### Ruling on the coordinator (11 Aug 2026)
+
+> «insisto con segretario, il suo mandato andrà modificato. Ma infatti il prossimo notebook
+> sarà sugli agenti e i loro verbi e obiettivi»
+
+R10 stands as written: **the coordinator is `segretario`**, and the seed's mandate changes to
+fit — not the rule to fit the seed. The mandate belongs to the next notebook (agents, their
+verbs and their goals), so it is not settled here.
+
+**One constraint travels with it**, and it is a routing constraint rather than an agent one,
+which is why it is recorded on this side: under R7 the semantic router matches on the seed's
+expertise and skills. If the coordinator's mandate is written into those, `segretario` becomes
+a magnet for ordinary traffic and starts winning messages that belong to specialists — the
+opposite of what the fallback exists for.
+
+So whatever the new mandate says, the router must not score the coordinator on it. Either the
+coordinating duty is expressed outside the fields `_profile_pieces` reads, or the coordinator
+is excluded from the scoring pass and reachable only by mention and by fallback. That second
+form already has a name in the code: it is what `routing_mode` does today — and the
+coordinator's value is the inverse of `state_writer_only`, i.e. «never chosen by relevance,
+always available as the fallback».
+
+Noted so the agents notebook inherits the constraint instead of rediscovering it after the
+first room where the secretary answers everything.
