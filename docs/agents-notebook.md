@@ -761,3 +761,126 @@ than a coincidence: a field is only real if something breaks when it is empty.
   look correct and still fail to deliver — a validation, not a decision.
 - Whether other contact channels join it as fixed fields (`email` already is) and whether the
   ladder of R4 ever falls back from Telegram to e-mail.
+
+---
+
+## A11 · A third kind: the proxy, which speaks and does nothing else
+
+> «nelle spec oggi abbiamo agenti umani, bot. Ma possiamo aggiungere proxy, che di fatto sono
+> sistemi terzi che negli scope risultano come participant, possono dialogare e direi basta. Non
+> dovrebbero avere verbi se non quelli di parlare in chat e fare menzioni.»
+
+A3 reduced the kinds to two — **bot** and **human** — by removing a class that had been a
+container for authority. This adds a third that is the opposite: a class defined by how little
+it can do.
+
+A **proxy** is a third-party system that appears in a scope as a participant. It talks, it
+mentions, and that is the whole of it. Its verbs are `topic.post_message` and the mention that
+travels inside a message. No reading of the room's files, no summary, no runtime, no memory —
+and above all nothing that leaves the scope.
+
+### Why the reduction is the point, and not a limitation to be relaxed later
+
+A proxy is an outside system holding a seat inside a room. If it could read the room's files it
+would be an export channel with no gate on it; if it could reach a verb that leaves the scope it
+would be the second leg of the trifecta, sitting next to content it did not write. Reduced to
+speaking, it can carry **only what someone puts in a message addressed to it** — which is a
+boundary a person can see while typing, and that is worth more than a control they cannot.
+
+So the consequence must be stated where the next reader will find it: **a proxy that needs
+context does not fetch it, it is given it.** The first time one needs a file, the reflex will be
+to add `topic.read_file` and the class stops being what it is. If a proxy needs to read, the
+answer is a bot with a mandate, not a wider proxy.
+
+### What this makes possible, and it is the case that produced the requirement
+
+The Clodia running on Davide's terminal — *Clodia Primal*, the progenitor, on a binary of her
+own outside the colony — has no way to be in a room today. On 11 Aug she diagnosed a channel
+through `ssh` and `docker exec` as root on two hosts, and spoke to `sysadmin` through a webhook
+with a shared secret: **more privilege than the platform grants anyone, and entirely outside its
+audit.** A proxy seat is the narrow, revocable, legible version of what she was doing anyway.
+
+And the attribution stays true, which the alternative did not: the chain says
+`agent:clodia-primal`, and that is literally what acted. A human token held by a model would have
+written a person's name against a decision a person did not take — the one thing the `origin`
+chain exists to prevent.
+
+### Availability is not the same as membership
+
+A proxy answers only while the system behind it answers. A seat in the participants list while
+that system is down is **worse than an empty seat**: the room waits for someone who is not
+there, and nobody can tell the difference.
+
+The mechanism for this already exists and was built for people, on 10 Aug: four presence states
+and a heartbeat. A proxy is a participant **with presence**, like a human, not a service that is
+always up. Where a bot's turn is bounded by its own execution, a proxy's turn must be bounded by
+a deadline, and on expiry the platform says *not present* and returns the turn — rather than
+holding it open. The gate of 11 Aug is the argument: a caller waiting on something that will not
+answer, with no way to know that is what it is doing, produces a diagnosis pointing anywhere but
+at the truth.
+
+### Admitting one is an act on the walls
+
+Adding a proxy to a scope sends that room's conversation to a third party. That is the same kind
+of decision as mounting a Drive folder or binding a Telegram group — it moves the perimeter — so
+it belongs to the **owner of the scope**, and the tier still governs: a proxy cannot sit in a
+room above what its declared clearance carries, because the content flows to it by construction.
+
+### Open
+
+- **Can the router choose a proxy, or only a mention reach it?** Under R7 the semantic router
+  picks by fitness among the agents of a scope. A third-party system selected by score, without
+  anyone naming it, is a surprising place for a conversation to go. The narrower reading —
+  *reachable only by explicit mention, never by semantic fallback* — matches what a proxy is, but
+  it is a decision, not a deduction.
+- **A proxy's message is untrusted content, and today it does not taint.** Measured on 11 Aug:
+  the taint is marked by the **verbs** the gateway executes (`taint.note_verb`), so a message
+  arriving from outside — a hook posts it as `kind: external` — leaves the channel clean. With
+  proxies as a first-class kind this becomes the obvious injection vector: an outside system
+  writes into the room, an agent reads it as ordinary conversation, and the context gate that
+  fired five times that same afternoon on a *read of public issues* would not fire at all here.
+  Either inbound messages of kind `external`/`proxy` taint, or the requirement should say
+  explicitly why they do not.
+- **Can a proxy's mention trigger a turn?** «Fare menzioni» reads as yes, and R2 makes a direct
+  mention an unambiguous route. That means a third-party system can start work inside the colony.
+  Probably right — it is the point of the seat — but it should be said, because it is also the
+  moment a proxy stops being passive.
+- **Whether a proxy has a seed at all.** Humans are spawns of `admin` and `member`; a bot has a
+  seed with verbs, model and provider. A proxy has no model and no provider and two verbs. It may
+  be a third fundamental seed rather than a field on the existing one — which is what A3's
+  vocabulary would suggest.
+
+### The proxy supersedes the hook, and the hook can go
+
+> «il caso d'uso era quello di oggi, avresti potuto parlare con sysadmin senza usare il webhook,
+> che di fatto potremmo abolire»
+
+The webhook is already «a third-party system injecting a message into a scope». It is the same
+thing as a proxy, minus the identity. Measured on 11 Aug, injecting into `SEAL-1/pof-comms`:
+
+```
+author     hook:pof-comms          ← a name that describes the pipe, not who spoke
+kind       external
+authority  untrusted
+principal  null
+auth       one shared bearer secret, per hook
+effect     posts the message AND triggers a turn (_queue_turn)
+taint      none — the room stays "clean" (see the open point above)
+```
+
+So today an outside party can **start work inside a room**, with no name attached, holding a
+secret that is by construction copyable, and leave no mark on the room's contamination state.
+Every one of those is fixed by giving the seat an identity: a proxy has a name in the
+participants list, a cert instead of a shared secret, a tier that must carry the room, a presence
+that says when it is not there, and an owner who admitted it and can revoke it.
+
+That is why the proxy is not an addition next to the hook — it is the hook **done properly**, and
+the hook becomes redundant for this use.
+
+**What would be lost, and it is worth one sentence before deleting anything.** A hook needs no
+identity at all: a CI job that posts a build result does not want a seat in a room, and asking it
+to hold a certificate turns a two-line `curl` into an enrolment. The honest reading is that these
+are two cases wearing one mechanism — *a party that converses* and *an event that is announced* —
+and only the first is a proxy. If the second survives, it survives as something that can post and
+**cannot trigger a turn**, which is the part that makes today's hook a way in rather than a
+notification.
