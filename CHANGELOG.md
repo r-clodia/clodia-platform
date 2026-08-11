@@ -7,7 +7,153 @@ The central changelog of the **Clodia platform**: one modular product made of fo
 - **`clodia-web`** — web UI (SvelteKit)
 - **`clodia-pwa`** — installable app (PWA)
 
-Formato ispirato a [Keep a Changelog](https://keepachangelog.com/); versionamento SemVer a livello di piattaforma. ⚠️ = breaking / migrazione richiesta.
+Format inspired by [Keep a Changelog](https://keepachangelog.com/); SemVer at the platform level. ⚠️ = breaking / migration required.
+
+---
+
+## [9.0] — 2026-08-11
+
+> **9.0 is what a scope is, and what standing it takes to cross its boundary.**
+> Running on both instances (`venere`, `marte`) at gateway 1.85.1, logic 6.173.1,
+> web 0.153.0, pwa 0.3.1.
+
+Read **⚠️ What 9.0 does not do** before treating the model as enforced. The rest
+of this entry covers what arrived after rc5; rc1–rc5 below are the model itself.
+
+### ⚠️ What 9.0 does not do
+
+**Origin enforcement is still in `report`.** `CLODIA_ORIGIN_ENFORCE` is unset on
+both instances — measured on 11 Aug, not assumed — so the default applies: the
+chain is read, the decision is taken and logged, and **nothing is blocked**.
+`source_allow` is absent from the gateway config, which means the list of what a
+human actually needs has still to be learnt from traffic.
+
+This is deliberate and it is also the honest limit of the release: 9.0 ships the
+*model* — scope, membership, standing, the chain that names who is asking — and
+it ships it observing. Turning the switch on is the first act of the next cycle,
+and it is the one step that can stop a running instance from working.
+
+Also open: **clodia-platform#175**, five security findings carried over from the
+closed backlog, each to be re-measured against this release rather than assumed
+still true or already fixed.
+
+### A scope has doors, and each door has an owner
+
+- **A Telegram group is a mount of a scope**, not a global relay. Binding it is
+  an act on the walls, so the owner performs it; the mapping from Telegram
+  handle to platform person is written where the handle is known.
+- **Mentions travel to people, not to a channel.** `messaggero` delivers and the
+  gateway composes; the relay is silent inside the room, and only a person calls
+  a person.
+- **A person connects their own MCP client to one room.** A signed token carries
+  the person, their role, their clearance and the room; ten verbs, a tier
+  ceiling, revocation, and `scoped_tools` acting as a **ceiling** on the human
+  branch rather than a widening. A token bound to a room is refused everywhere
+  else — including through the carrier agent, which is how the first version
+  leaked another room's titles.
+- **A human message routes without needing a mention.** Triggering only on
+  `@mention` is right between agents (it is what stops a loop) and wrong for a
+  person, who had to send the same message twice.
+
+### The gate says what it is asking, and remembers the answer
+
+- **Four answers, two different holders.** Deny, approve once, approve in this
+  topic — the scope's owner — and approve globally, which is the platform admin.
+  The capability is granted before the memory is written, so a failed memory
+  cannot swallow a granted approval.
+- **A decided gate stays readable.** Approved or refused, the card keeps the
+  reason it was raised; it used to collapse into an empty placeholder, which
+  turned a decision into an unexplained one.
+- **The request travels in the message**, not as a pointer to state that may no
+  longer exist.
+
+### Mail, brand and presence
+
+- **A send-only mailbox is a shape, not a fault.** An alias with SMTP and no real
+  IMAP is now describable; the read verbs refuse where reading is impossible
+  instead of the account disappearing from the agents' view. An account that
+  exists but is not granted to you is *said* rather than silently absent, and the
+  SMTP refusal distinguishes a wrong password from a wrong username.
+- **Corporate branding and a per-topic image.** The instance carries its own logo
+  and legal name; every topic can carry its own mark, set only by the scope's
+  owner. Both are read through an authenticated route: an `<img src>` carries no
+  Authorization header, so the first version showed a broken image and said
+  nothing.
+- **Presence has four states, not two** — on this channel, elsewhere in the web
+  UI, logged in but looking at something else, off — because a mention has to
+  reach a person differently in each.
+- **Whoever changes a grant leaves a line in the audit**, with who did it. Added
+  after a grant disappeared overnight and nothing could say who removed it: the
+  inability to answer was itself the finding.
+
+### Two chains that were finished by halves
+
+Both found on 11 Aug while an agent reported something it could not do, and in
+both cases the thing it could not do was not the thing that was broken:
+
+- **No agent could register with the gateway.** The retirement of
+  `gated_in_channel` removed the parameter from `upsert_agent` and left the
+  caller passing it: every registration answered 500. An unregistered agent does
+  not get fewer verbs — `agent_config()` raises and its tool list comes back
+  **empty**. A seed installed from a pack sat in a channel with zero verbs while
+  its sheet showed sixteen.
+- **The `github.` namespace is shared** between four native verbs and the mounted
+  GitHub MCP backend, and the dispatch selected by prefix: `github.issue_write`
+  appeared in the tool list, was allowed by the whitelist, and answered "unknown
+  verb". Two hours were spent diagnosing a connector that was working.
+
+Both now have the test the previous ones could not be: not that one end is
+correct, but that the two ends agree — every keyword a caller passes must exist
+in the callee's signature, and the native branch matches by name rather than by
+namespace.
+
+### Documented rather than built
+
+`docs/router-notebook.md` (R1–R16) and `docs/agents-notebook.md` (A1–A10) are
+requirements dictated in this cycle: channel routing, mentions, semantic
+fallback, and each agent's mandate and verbs. **They are specification, not
+implementation** — they ship in the repository because that is where the next
+cycle starts, and they are named here so nothing in them reads as delivered.
+
+---
+
+## [9.0-rc5] — 2026-08-10
+
+> Milestone 4: **what was removed, and what an owner declares.**
+
+- **Trello and the workflow engine are gone for real** — gateway verbs, backend
+  routes and the web UI board. Verbs of a removed subsystem stayed declared in
+  the catalogue, which is the same defect as a control nobody carries, pointing
+  the other way.
+- **Portability is declared from the web UI, by the owner.** rc3 moved the
+  declaration from the seed to the topic; rc5 gives it the switch, in the Meta
+  section, where the person who owns the walls can find it.
+- **The gate request says what crosses and who decides**, so the card can be
+  acted on without opening anything else.
+- **`topic.set_portable` exists**, which it did not — the switch above had
+  nothing to call.
+- Documentation across the repositories moves to English and is re-checked for
+  relevance: the platform repos are public and the audience is not Italian.
+
+---
+
+## [9.0-rc4] — 2026-08-09
+
+> Milestone 3: **a scope has many mounts, and each carries its own credential.**
+
+- **Many mounts per scope, each with a name.** A remote is no longer a singular
+  attachment converted on read: `meta["mounts"]` is a collection, and the mount's
+  name is an identifier rather than a derivation of its kind.
+- **The credential belongs to the mount, not to the scope.** Two Drive folders in
+  one room can come from two accounts; before, the second inherited the first's
+  credential.
+- **A Drive folder is mounted by the owner, with the owner's own credential** —
+  the largest of the five gaps left open at rc3.
+- **The `github.*` verbs are the gateway's.** The git actions that leave a scope
+  — clone, pull, push, pull request — are performed by the gateway, which knows
+  the room from the signed claim, the perimeter from the topic's list and the
+  credential from the vault. None of the three is something the agent may assert
+  about itself.
 
 ---
 
