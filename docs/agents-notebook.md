@@ -682,6 +682,93 @@ A plausible floor, to be decided rather than assumed: `Read`, `Write`, `Edit`, `
 is named by the seeds that need it, which is also how the two shadow subsystems of A8 come back
 under the platform's own registers.
 
+### ⟲ Corrected, 12 Aug 2026 — the channel is the opposite one
+
+The paragraph above says «the SDK exposes `allowed_tools` … so the channel exists
+and is half in use». **It does not work.** Measured in the container, not deduced:
+
+```
+claude -p … --allowed-tools WebFetch      → the agent uses WebSearch anyway
+claude -p … --disallowed-tools WebSearch  → «WebSearch is not available
+                                             in this environment»
+```
+
+`allowed_tools` is a **permission** list — what does not ask for confirmation —
+not a filter on the available set. Only `disallowed_tools` removes a tool.
+
+So the shape survives and the wiring inverts: the seed declares an **allowlist**,
+because that is the form a person can read in a file, and the runtime computes
+`KNOWN − granted`. Built in clodia-logic 6.175.0 (`sdk_runtime/native_tools.py`).
+
+**And the price of the inversion, which the paragraph above claims to avoid.** A
+blocklist really does have the wrong failure direction: a tool added by a future
+CLI release is enabled by default, in every seed. It cannot be avoided —
+`disallowed_tools` is the only switch — so it is made **noisy** instead. `KNOWN`
+is parsed from the CLI's own `sdk-tools.d.ts`, installed with the npm package, and
+a test asserts that the hardcoded fallback still matches it. An upgrade that adds
+a tool turns a test red rather than granting in silence.
+
+### And the reason it matters is narrower and worse than A8 said
+
+A8 grouped `WebFetch` and `WebSearch` together as «shadow I/O». They are not the
+same, and the difference decides where they can be arbitrated. Measured inside the
+container with the egress proxy active and `curl example.com` refused:
+
+```
+WebFetch  → example.com                BLOCKED ("Socket is closed")
+WebFetch  → raw.githubusercontent.com  OK        ← same probe, host in allowlist
+WebSearch → any query                  OK, 6 results
+```
+
+The control is what makes it conclusive: for `WebFetch` the discriminator is
+exactly the proxy allowlist, so that one is **local** and the network contains it.
+`WebSearch` is a **server-side tool** — the CLI bundle declares
+`type:"web_search_20250305"` — so the provider performs it inside the conversation
+with `api.anthropic.com`, which is necessarily allowed.
+
+Two consequences, and the second is the one for the model:
+
+1. against a tool executed by the provider **no network policy can do anything**,
+   so the runtime configuration is the only layer that sees it;
+2. the content **never crosses the container**, so the platform never gets the
+   chance to mark the taint. The context gate fired five times on 11 Aug over
+   reads made *through the gateway*; the same read via `WebSearch` lights nothing.
+
+A defence resting on where the provider happens to execute a tool is a defence
+with an unknown expiry date. That is the argument for declaring the tools rather
+than filtering the network — and it is the argument the notebook did not have when
+A8 and A9 were written.
+
+### Measured after the deploy, 12 Aug
+
+```
+clodia           Bash, Agent, Workflow, Task* + floor      WebSearch denied
+sysadmin         Bash, WebFetch + floor                    WebSearch denied
+segretario       floor only                                WebSearch, Bash denied
+content-creator  floor only                                WebSearch, Bash denied
+```
+
+and end-to-end, with `segretario`'s computed list of 34 denied tools: *«Nessuno
+strumento WebSearch disponibile nell'ambiente»*.
+
+One piece of noise to know about rather than to fix: the CLI's own union lists
+names that are not tools in this harness (`Mcp`, `Projects`, `REPL`,
+`ShowOnboardingRolePicker`), and denying them prints *«Permission deny rule "Mcp"
+matches no known tool»* on stderr. They stay in the set on purpose — a name that
+becomes a real tool tomorrow is already denied — and the warning is the price of
+that. Pruning them would remove exactly the future-proofing.
+
+### The half that made it inert, and is also fixed
+
+6.175.0 alone changed nothing. `sync_seeds` only materialises **missing** seeds, so
+the new field never reached the instances: measured right after the deploy,
+`native_tools` absent from every datadir seed and zero tools denied. A field the
+local copy does not have is **not** a modification by the owner — it is a field
+that did not exist when the copy was made — so 6.176.0 backfills the keys of a
+closed list where they are absent, and leaves an empty declaration (`[]`) alone.
+That difference between *absent* and *empty* is what lets it write without erasing
+a decision.
+
 ### Two traps, both measured
 
 **1. `allowed_tools` filters the MCP verbs too.** The gateway is mounted as an MCP server
