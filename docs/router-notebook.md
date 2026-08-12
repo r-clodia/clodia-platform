@@ -16,6 +16,37 @@
 
 ---
 
+## Gap analysis → issue, 12 ago 2026
+
+Ogni requisito è stato misurato contro il codice mentre veniva dettato: le sezioni
+«Measured» qui sotto **sono** la gap analysis. Il 12 ago sono state trasformate in
+issue di remediation su `r-clodia/clodia-platform`:
+
+| R | issue | il divario, in una riga |
+|---|---|---|
+| R1 | [#181](https://github.com/r-clodia/clodia-platform/issues/181) | instradare a una persona è un'assenza, e un'assenza non porta stato |
+| R2 | [#182](https://github.com/r-clodia/clodia-platform/issues/182) | una menzione che non si può servire scivola, e risponde un altro |
+| R3 | [#183](https://github.com/r-clodia/clodia-platform/issues/183) | due menzioni devono chiedere, tre rifiutare: oggi vince la prima |
+| R4 | [#184](https://github.com/r-clodia/clodia-platform/issues/184) | mancano toast, blink e il canale personale; il contatore c'è |
+| R6·R7 | [#185](https://github.com/r-clodia/clodia-platform/issues/185) | N, soglia e margine sono costanti nel sorgente |
+| R8 | [#186](https://github.com/r-clodia/clodia-platform/issues/186) | l'ambiguità abbandona la scelta invece di chiedere |
+| R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no |
+| R10 | [#188](https://github.com/r-clodia/clodia-platform/issues/188) | nessun coordinatore dichiarato, e il ripiego risponde invece di decidere |
+| R12 | [#189](https://github.com/r-clodia/clodia-platform/issues/189) | `$nome` non è ancora inerte |
+| R14 | [#190](https://github.com/r-clodia/clodia-platform/issues/190) | l'ineleggibilità è un filtro di vista, non un'appartenenza |
+| R15 | [#191](https://github.com/r-clodia/clodia-platform/issues/191) | «coda» e «rifiuto» non esistono; «parallelo» è multi-spawn |
+
+**R5, R11 e R13 non producono issue**, e per ragioni diverse: R5 è stato revocato
+lo stesso giorno e ciò che descrive è vivo e misurato funzionante; R11 constata che
+gli scope asincroni hanno un agente solo, quindi l'ambiguità non si pone; R13 è
+accettato come è.
+
+I punti «To decide first» dentro ogni issue sono le domande aperte del notebook,
+portate dove servono: chi implementa le trova nella issue invece di doverle
+ricostruire da qui.
+
+---
+
 ## R1 · What the router is
 
 > «il router è un componente che in una conversazione analizza l'ultimo messaggio e
