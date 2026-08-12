@@ -11,6 +11,94 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/); SemVer at th
 
 ---
 
+## [9.1] — 2026-08-12
+
+> **A path names one thing.** Three defects that all pointed away from themselves,
+> and the addressing scheme that made them possible.
+
+Running on both instances: gateway 1.87.0, logic 6.174.1, web 0.154.0, pwa 0.3.1.
+
+### A path names one thing
+
+- **The channel preamble stops teaching `files/`.** Every turn opened with «i file
+  stanno in files/», and `files/` resolves to the *effective* backend — Drive on a
+  scope with a Drive remote, local otherwise. So a file uploaded **before** a
+  remote was mounted stays in `local/`, and from the moment of the mount that
+  prefix looks for it on Drive, where it has never been. Measured on venere:
+  `files/8.png` written locally at 14:44:33, the Drive mount created at 14:47:21.
+  That is the file an agent could not open the day before, concluding it had no
+  tools at all. Accepting the prefix in reads stays right; teaching it once per
+  turn did not.
+- **A mounted folder is a top-level directory with its own name.** `remote/`
+  grouped by *how* the platform reaches a thing — the one property nobody thinks
+  about while writing a path — and under it there had only ever been one child,
+  whose name was already the identifier. A folder mounted as `comms` is now
+  `comms/x`. `remote/<n>/…` keeps resolving and **stops being emitted**: even
+  entering by the alias, the label that comes back is the new form, so what
+  circulates is the form we want circulating. `remote/` alone lists the mounts at
+  their new paths rather than being a dead end, and `local`/`files`/`remote` are
+  refused as mount names **at mount time** — a colliding name discovered while
+  opening a path is far from whoever chose it.
+- **A file named in a reply is a reference.** It links, and for the formats the
+  preview window can render — md, html, png, jpg — it carries a 🔎. This uncovered
+  why a wrong path had gone unnoticed for a day: the linkifier recognised **only
+  `files/` and `dump/`**, exactly the legacy roots, so the paths agents actually
+  write stayed plain text and nobody could try them. A path is linkified only when
+  its first segment is a root the scope really has: no guessing at prose.
+- **The preview window learns images.** It read every file as text, so a PNG
+  arrived as a page of replacement characters. Its own branch now, via a **data
+  URL and not a blob**: the iframe runs `sandbox` without `allow-same-origin`, so
+  it has an opaque origin and a blob — bound to the origin that created it — is
+  unreachable from inside. The CSP already admitted `data:`. It costs a third more
+  bytes in the srcdoc, which is the price of not loosening the sandbox.
+
+### The mention notification is a preview
+
+The Telegram excerpt goes from 280 characters to **120**, with the ellipsis
+asserted by a test: an excerpt cut without saying so reads as a finished message,
+and then nobody opens the room. The rest was already there and measured working —
+the excerpt is the *line* of the mention, the handle is translated to the one that
+notifies on Telegram, and the link points at the message.
+
+**R5 is reversed**: the relay into a room's Telegram group is **kept**, not
+abolished. Measured on venere: 14 notifications queued, 14 delivered, none failed
+— and it reaches the people in the group who are not registered humans, which R5
+had itself listed as the deliberate loss.
+
+### Dictated, not built
+
+- **A third kind of principal: the `proxy`** (`docs/agents-notebook.md`, A11). A
+  third-party system with a seat in a scope: it speaks, it mentions, and that is
+  all. No files, no summary, no runtime, nothing that leaves the scope. It is the
+  webhook done properly — a hook posts as `hook:<id>`, untrusted, principal null,
+  triggers a turn, and leaves no taint — and the case that produced it is Clodia
+  Primal diagnosing a channel over `ssh` and root `docker exec`, which is more
+  privilege than the platform grants anyone and sits entirely outside its audit.
+  **Specification, not implementation.**
+
+### ⚠️ Still not done, carried from 9.0
+
+`CLODIA_ORIGIN_ENFORCE` is still unset on both instances and `source_allow` is
+still absent, so the chain decides, logs, and blocks nothing. And it is not
+academic: the context gate stopped five writes to GitHub on 12 Aug, correctly,
+and the escape the model provides — declaring the source vetted — is the list
+that 9.0 shipped empty. Populating it for a **public** repository would let a
+stranger's issue text drive an outward write, so the answer there is not the list.
+
+Open, and named rather than left to be found:
+
+- **#177** — the archseed floor is computed and the decision point does not read
+  it. `effective_tools()` resolves the inherited verbs; `list_tools()` and the
+  enforcement branch read the raw per-agent list. Measured: `segretario` resolves
+  10 verbs and is served 3, and `sysadmin` has no `memory.*` although its own
+  memory is the one thing the archseed exists to guarantee.
+- **#178** — a gate raised inside a channel notifies nobody outside it, and the
+  caller gives up before the gate answers. The informative error exists and is
+  only reachable by a caller more patient than any of them are.
+- **#175** — five security findings carried over, to be re-measured.
+
+---
+
 ## [9.0] — 2026-08-11
 
 > **9.0 is what a scope is, and what standing it takes to cross its boundary.**
