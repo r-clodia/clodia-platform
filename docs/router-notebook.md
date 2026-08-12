@@ -303,7 +303,7 @@ is refused, warned, or silently unreachable** at the last rung.
 
 ---
 
-## R5 · The group relay is abolished
+## R5 · The group relay is abolished — REVERSED on 12 Aug, it stays
 
 > «aggiungo che il meccanismo preesistente che segnala via telegram tramite messaggero e
 > verso un gruppo telegram collegato al topic è abolito»
@@ -360,6 +360,64 @@ group*, and the boundary between the two runs through the same files.
   group with a people map. Removal has to decide between dropping it silently and telling
   the owner it is gone.
 - **Whether the `telegram` mount kind survives** for any other purpose, or goes with it.
+
+### ⟲ Reversed, 12 Aug 2026 — the relay stays
+
+> «se non sbaglio in roadmap abbiamo deciso di abolire questa notifica da canale a gruppo
+> telegram, invece direi di tenerla. Sembra funzionare» · «quando avviene una notifica dal topic
+> a gruppo telegram a seguito di menzione, sarebbe utile che anche un excerpt del messaggio
+> venisse mostrato, per esempio 120 caratteri troncati da ... e poi link per navigare sul canale»
+
+R5 is withdrawn. The group relay is **kept**, and everything the section above lists as «what
+this makes dead» is alive: the queue, `enqueue_for_message`, `render()`, the presence check, the
+`telegram` mount kind, the bind verbs, the sidebar section.
+
+The reasoning of R5 is not wrong — a mention is about a person, and the relay routes it through a
+property of the room — but it was decided before the thing had been seen working. **Measured on
+venere, 12 Aug: 14 notifications in the queue, 14 with `delivered_at`, none with an error.** It
+works, and a room whose people already talk in a Telegram group is served by it in a way R4's
+per-person channel does not replace: it reaches people in the group who are not registered
+humans on the platform, which R5 listed as the deliberate loss.
+
+So the two coexist. R4 answers «how do we reach this person», R5 «how does this room reach the
+group it already lives in», and neither is the other's fallback.
+
+### What the notification carries
+
+Three parts, and all three were already implemented — only the length changes:
+
+```
+🔔 @giocasu75 — davide ti ha menzionato in «Proof-of-flex solo esecuzione»
+“@giovanni puoi guardare il deck prima di giovedì? mi serve una revisione sulla parte tec…”
+https://venere.tail368c4c.ts.net:8443/topics/SEAL-1/proof-of-flex-2#m-20260812-073710-Jgq4xg
+```
+
+- **The translated handle.** `@giovanni` in the room is `@giocasu75` in the group — writing the
+  platform name would notify nobody there.
+- **The excerpt: the LINE of the mention, not the message**, truncated at **120** characters with
+  `…`. It was 280. The notification is read on a phone, among other notifications, and its job is
+  to make someone decide whether to open the conversation — not to replace it. Past a couple of
+  lines it stops being a preview and becomes a partial copy of the message living outside its
+  scope, which is the thing an excerpt exists to avoid. The ellipsis is not cosmetic: an excerpt
+  cut without saying so reads as a finished message, and nobody opens the room.
+- **The link, to the message.** `#m-<id>` is consumed by the topic page; if the anchor ever
+  disappeared the link still lands on the topic — losing precision, not the destination.
+
+A mount can still ask for `mode: notify`, which carries no content at all: a room where even one
+line is too much keeps the notice and drops the preview.
+
+### Open
+
+- **Whether 120 is a constant or a per-mount setting.** It is a constant today. A room with a
+  stricter posture already has `mode: notify` to fall back on, so the middle ground — «an
+  excerpt, but shorter here» — has no case behind it yet, and a setting invented before its case
+  is a setting nobody sets.
+- **The queue never empties.** A delivered notification stays in the file with
+  `attempts = MAX_ATTEMPTS` and a `delivered_at`, deliberately, so that «that person was told»
+  stays readable. But nothing prunes it, and the same field means *delivered* and *given up on* —
+  the discriminator is `delivered_at` vs `last_error`. It cost a wrong reading during this very
+  measurement: 14 items at maximum attempts look like 14 failures until the two fields are
+  compared.
 
 ## R6 · Semantic routing is the fallback, not the default path
 
