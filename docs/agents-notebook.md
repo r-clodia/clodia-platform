@@ -14,6 +14,36 @@
 
 ---
 
+## Gap analysis → issue, 12 ago 2026
+
+Come per il router notebook: le sezioni «Measured» sono state scritte contro il
+codice mentre i requisiti venivano dettati, e **sono** la gap analysis. Il 12 ago
+sono diventate issue di remediation su `r-clodia/clodia-platform`.
+
+| A | issue | il divario, in una riga |
+|---|---|---|
+| A1 | [#192](https://github.com/r-clodia/clodia-platform/issues/192) | manca il quarto `kind` di convocazione, e il mandato che lo legge |
+| A2 | [#193](https://github.com/r-clodia/clodia-platform/issues/193) | messaggero legge e scrive il fs dello scope, e il mandato lo esclude |
+| A3 | [#194](https://github.com/r-clodia/clodia-platform/issues/194) | `super` resta nel vocabolario e decide ancora chi coordina |
+| A4 | [#195](https://github.com/r-clodia/clodia-platform/issues/195) | «all tier» è una conseguenza dello stack, non una proprietà dichiarata |
+| A5 | [#196](https://github.com/r-clodia/clodia-platform/issues/196) | il segretario non ha i due verbi per convocare |
+| A6 | [#197](https://github.com/r-clodia/clodia-platform/issues/197) | 18 verbi cadono, e `github.*` è un'AGGIUNTA con due gate `outward` |
+| A7 | [#198](https://github.com/r-clodia/clodia-platform/issues/198) | via `comms-pack`; e al segretario manca la skill che A5 dà per scontata |
+| A9 | [#199](https://github.com/r-clodia/clodia-platform/issues/199) | residuo: `permission_mode` è ancora una tabella per kind |
+| A10 | [#200](https://github.com/r-clodia/clodia-platform/issues/200) | il campo esiste e il valore sta negli extras; serve una validazione |
+| A11 | [#201](https://github.com/r-clodia/clodia-platform/issues/201) | il proxy va costruito: non è un divario, è una classe che non c'è |
+
+**A8 non produce issue**: era l'enumerazione dei tool nativi, ed è servita a
+scrivere A9. **A9 è consegnata** il 12 ago (clodia-logic 6.175.0/6.176.0/6.176.1),
+e la issue raccoglie solo ciò che resta.
+
+Il grosso del lavoro non è dove sembrava. A1, A5 e A7 convergono tutti sullo stesso
+punto: **il segretario non può fare il coordinatore** — non ha il modo di essere
+scelto (#188), non ha i verbi per passare la mano, non ha le skill. Chi implementa
+farebbe bene a leggerle insieme.
+
+---
+
 ## A1 · The secretary keeps a narrow profile and gains a conditional duty
 
 > «invece dovrà essere oggetto di classificazione del router, ma segretario avrà due mandati
