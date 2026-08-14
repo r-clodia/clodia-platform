@@ -171,7 +171,11 @@ services:
     ports:
       - "${CLODIA_BIND_HOST:-127.0.0.1}:${AGENT_SERVER_PORT:-7842}:7842"
     networks: [clodia-int, clodia-pub]
-    depends_on: [agent-server]
+    # Anche il gateway: da quando l'ingress pubblica `/mcp` e `/proxy/token`,
+    # un client esterno che arriva prima che clodia-tools sia su riceverebbe un
+    # 502 invece di una risposta. I nomi sono comunque risolti a runtime (vedi
+    # `resolver` in nginx.conf), quindi questo è ordine di avvio, non un vincolo.
+    depends_on: [agent-server, clodia-tools]
     restart: unless-stopped
 
   # ── Egress proxy for the agent container (#104 phase 1) ────────────────────
