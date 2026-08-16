@@ -1980,6 +1980,50 @@ failure dressed as a decision — the defect that cost three diagnoses on 6 Aug.
 
 ---
 
+## 34 · Only an automated test documents that something was implemented
+
+**Definition (Davide, 16 Aug 2026).** «non importa se la funzionalità è stata testata a mano,
+solo i test automatici documentano il successo dell'implementazione, anzi sono necessari ma
+non sufficienti.»
+
+**What it settles.** Until now a notebook entry could close on a measurement taken by hand —
+a curl, a container inspected, a turn watched in a log. That is how most of the entries in
+both notebooks were confirmed, this file included. The ruling does not dispute those
+measurements; it says they do not *document* anything, because a manual check leaves nothing
+that can be run again. The next person cannot re-take it, and nothing tells them when it
+stops being true.
+
+**Necessary and not sufficient**, which is the sharper half. A green test does not establish
+that the requirement is met — it establishes that one reading of it is. Three times in two
+days the platform was green while doing nothing: a job reporting `success` with no verbs
+available, then with a rule that had overwritten its mandate, then with a hung turn
+(clodia-platform#206). Every one of those would have passed a test asserting "the run
+completed". So the test is the floor, not the proof: what it protects is the *regression*,
+not the correctness.
+
+**Measured, 16 Aug 2026, and the gap is the record itself.** Across 27 entries in the two
+notebooks, explicit references to a notebook entry anywhere in the code are **four**, two of
+them written the day before while recording A12. The string `A<n> ·` appears in no test in
+the repository. So today neither question can be answered mechanically: *is this requirement
+verified?* and, more useful, *if I delete this test, which requirement stops being
+protected?*
+
+Correlating by vocabulary instead — searching each entry's concepts across the test files —
+finds four entries with no test at all (A3, A7, A10, R11) and the rest with tests that at
+least touch them. That method is weak in both directions and is reported as such: it counts
+words, not requirements. **The honest reading is that the real coverage is unknown**, and
+that is precisely the kind of gap the notebooks exist to make visible — here about the
+notebooks themselves.
+
+**Consequence.** A notebook entry is not closed by a measurement taken by hand. It carries
+the test that fixes it, the test names the entry, and an entry with no test is visible as
+such rather than assumed. R11 is the case that shows why: it asserts that a condition
+*cannot arise* («async scopes have one agent, so this ambiguity cannot arise») — an
+assertion that stops being true in silence the day someone adds a second agent to an async
+scope.
+
+---
+
 ## Where the open questions went
 
 Both lists that used to live here — what was closed, and what was open — have moved to
