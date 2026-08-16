@@ -1082,3 +1082,66 @@ So the first measurement of this requirement was not "the fork does not work": i
 flag is off, and nothing says why". Configuration declared in a pack can be silently inert
 on an instance, and there is no code left that explains the marker — which makes it its own
 finding, recorded here because the next person to enable a seed field will hit it first.
+
+---
+
+## A13 · A multi-spawn seed is a super-node, and each instance has its own row
+
+> «quando un seed è multi spawn dovrebbe vedersi nella lista participant che il seed è un
+> super nodo dei vari spawn ognuno con la sua riga»
+>
+> — 16 ago 2026, dopo aver guardato `fullstack-dev` lavorare e non aver saputo dire se fosse
+> vivo, né quante istanze stessero girando.
+
+The complaint that produced it is worth keeping whole, because two of its three parts turned
+out to be about **presentation**, not about work that failed:
+
+> «clodia menziona fullstack dev che parte ma poi sembra fermarsi, scrive in una bubble che
+> poi sparisce e non si capisce se è attivo o meno. ha menzionato di nuovo fullstack dev e
+> non si capisce più quanti spawn sono attivi»
+
+### Measured, 16 ago 2026
+
+**Nothing had failed.** Both turns completed — `run_done` at 13:05:47 and at 13:11:08 — and
+the reuse of `#1` for the second mention was correct: the first turn had finished 32 seconds
+earlier, so there was a free ordinal and no fork was due. What the owner saw as "it starts
+and then seems to stop" was an agent working for eleven minutes on a task that takes eleven
+minutes.
+
+**But the platform said it was stuck, and said it wrongly.** `/clodia/runtime/sessions`
+reported `fullstack-dev#1` as `blocked`, which `api/agents.py` defines as *in `thinking` with
+no activity for more than `_STUCK_AFTER_S`* — **180 seconds**. Two problems compound there:
+
+- three minutes is shorter than a great many legitimate turns. A developer agent that clones
+  a repository, reads an issue and reasons about it is silent for far longer, and is not
+  stuck;
+- `last_activity` is refreshed by `_record`, i.e. when a MESSAGE is written to the session
+  file. A turn spending ten minutes in tool calls updates nothing, so the measure is not
+  "no activity" but "nothing said out loud". Those are different states and the platform
+  reports the second while claiming the first.
+
+The consequence is precise: the one signal that distinguishes *working* from *hung* is wrong
+in exactly the case where a human needs it — a long turn. And it is wrong in the direction
+that teaches the reader to ignore it, which is the same defect as a job reporting `success`
+while doing nothing (#206), seen from the opposite side.
+
+**And the room cannot count.** `participants` in the topic meta is a list of SEED names, and
+the webui's `types.ts` types it as `ReadonlyArray<string>`. There is no notion of an
+instance anywhere in that path, so four concurrent `fullstack-dev` instances and one look
+identical. Meanwhile the data exists and is one call away: `/clodia/runtime/sessions`
+returns `chan:<tier>:<name>:<seed>#<n>` with a state per instance.
+
+### What the requirement asks for
+
+A participant that is multi-spawn stops being a name and becomes a **super-node**: the seed,
+and under it one row per live instance, each with its own state. It is the same shift already
+made elsewhere — «i partecipanti ad uno scope non sono i seed bensì sono gli spawn» (7 ago,
+about clearance) — arriving now at the surface where a person reads the room.
+
+Three things follow, and only the first is UI:
+
+1. the participant list renders seed → instances, each row with its state;
+2. the state must distinguish **working** from **stuck**, or the rows will carry the same
+   wrong signal four times instead of once;
+3. the badge asked for on 1 Aug (#210, 👯) is subsumed by this: a super-node that shows its
+   instances does not need a symbol to say it has them.
