@@ -1001,3 +1001,84 @@ are two cases wearing one mechanism — *a party that converses* and *an event t
 and only the first is a proxy. If the second survives, it survives as something that can post and
 **cannot trigger a turn**, which is the part that makes today's hook a way in rather than a
 notification.
+
+---
+
+## A12 · A seed summons itself, and that is how it forks
+
+> «un seed deve poter spawnare se stesso, ad esempio agent-1 se menziona @agent deve
+> spawnare agent-2, non c'è niente di sbagliato»
+>
+> — 15 ago 2026, dopo aver visto `fullstack-dev` taggarsi senza che partisse nessun clone.
+
+The requirement was already dictated on 1 Aug, when `multi_spawn` was asked for:
+
+> «Se la menzione è generica @agente allora risponde sempre lo spawn con l'ordinale più
+> basso tra quelli che non hanno un turno in corso. Se nessun ordinale è libero ecco che
+> viene forkato un nuovo spawn con un nuovo ordinale. **Quindi la menzione è ciò che può
+> triggerare nuovi spawn.**»
+
+That last sentence is the whole design, and it settles what a self-mention *is*. `@agent`
+written by `agent#1` does not address `agent#1`: it addresses **the seed**, and the seed
+answers with whichever instance is free — forking one if none is. The author being an
+instance of that same seed changes nothing, because the recipient was never a particular
+instance.
+
+The only tag that genuinely loops is the one aimed at **this exact instance**: `@agent#1`
+read by `agent#1`. There the recipient and the author are the same session, and nothing
+ends the chain.
+
+So the rule has one line and one exception:
+
+```
+@agent      from agent#1   → the seed answers: lowest free ordinal, or fork  ← this is the feature
+@agent#2    from agent#1   → another instance, delegated
+@agent#1    from agent#1   → itself, dropped                                 ← the only loop
+```
+
+### Measured, 15 ago 2026 · clodia-logic `server/api/channels.py`
+
+**The fork machinery is already there and already correct.** `_resolve_ordinal` implements
+the dictated rule verbatim: lowest ordinal with no turn in progress, fork of the next one
+when all are busy, cap at `max_spawns`, queue on the minimum at the cap. `_start_turn`
+gives each instance its own session (`chan:<tier>:<name>:<seed>#<n>`) and labels the author
+`nome#N`. Nothing to build.
+
+**What is missing is that the tag never reaches it.** `_maybe_delegate` filters candidates
+by SEED:
+
+```python
+_seed_name(t) != self_seed
+```
+
+`@fullstack-dev` written by `fullstack-dev#1` resolves to its own seed and is discarded —
+in the same comprehension that discards tags to non-participants, so **without a log line**.
+The guard against the non-terminating chain swallows the fan-out that `multi_spawn` exists
+to produce. From outside: the agent tags itself, nothing happens, nothing to read.
+
+The comment two lines above already describes the intended behaviour — *«il tag con
+ordinale (@nome#N) resta valido se il SEED è partecipante»* — so the intent was recorded
+and the code never matched it. Worth noting that even that comment is narrower than the
+requirement: it rescues `@nome#N` and stays silent on the bare tag, which is the case the
+owner names first.
+
+**The memory rule is honoured.** `_start_turn` sets `spawn_memory_readonly` for every
+ordinal > 1, so only the lowest instance writes `MEMORY.md` — as dictated on 1 Aug
+(«MEMORY.md è rw solo allo spawn con ordinale minimo»).
+
+**The badge is not.** «a livello di ui il participant dovrebbe avere un simbolino 👯 che
+mostra che il participant lavora con spawn multipli» — `multi_spawn` travels in the
+`/api/agents` payload, so the frontend has the datum; `clodia-web` never reads it. A
+participant that can answer as four instances looks exactly like one that cannot.
+
+### A trap for whoever enables it
+
+On the personal instance `multi_spawn: true` was present in the installed seeds but
+**commented out**, with a `#v7compat#` prefix that appears in **no repository** of the
+platform. Same for `avvocato` and `commercialista`, and for other fields entirely
+(`gated_tools` with the four `topic.remote_*`, `stacks`, a `gsheets.write_range`).
+
+So the first measurement of this requirement was not "the fork does not work": it was "the
+flag is off, and nothing says why". Configuration declared in a pack can be silently inert
+on an instance, and there is no code left that explains the marker — which makes it its own
+finding, recorded here because the next person to enable a seed field will hit it first.
