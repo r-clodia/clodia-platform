@@ -560,6 +560,11 @@ would then protect nothing.
 ### 5.3 Taint
 
 The trifecta signals — `tainted`, `private_data`, `arbitrary_egress` — stay as they are.
+Their **definitions** were sharpened on 17 Aug 2026 (decision record 36): the first two
+are facts about the channel — content arrived from an uncensused source, and data brought
+in that no agent produced — while only the third is a capability of the participants.
+Before that, the second bit was the OR of the participants' read verbs, which is why it
+was on almost everywhere and measured nothing.
 What changes is that they do not fire **inside the scope's perimeter**.
 
 **Membership of the perimeter is vetted by construction.** A participant's mail does not
