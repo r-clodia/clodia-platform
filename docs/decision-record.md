@@ -2091,6 +2091,67 @@ is born denied, and the error the agent receives is legible.
 A control that duplicates a decision already taken elsewhere is not redundancy, it is drift
 waiting to happen: two places that answer the same question diverge, and this week they
 diverged three times. The gate on an object already inside the perimeter was one of them.
+## 36 · The three bits describe the ROOM, and only the third one is a capability
+
+**Definition (Davide, 17 Aug 2026).** Three statements, one per bit:
+
+> «il primo bit setta quando entra un contenuto da fonte non censita»
+>
+> «il secondo bit setta se al canale sono stati aggiunti dati di natura
+> "riservata" e non generati dagli agenti, ad esempio un file uploaded oppure un
+> attachment di email, oppure un collegamento ad un remote»
+>
+> «il terzo bit setta quando nel canale è presente uno o più agent in grado di
+> scrivere su egress non censiti»
+
+**What it settles, and it is not a refinement.** Entry 4 of #104 had the vector as
+*one event and two properties*; the second bit was «qualcuno qui ha accesso a dati
+privati» — the OR of the participants' read verbs. That is why it was on almost
+everywhere: anyone who can sit in a channel has the verbs to read its files. On 3
+Aug I wrote that the bit «non discrimina», treated it as a fact of life, and built
+the context gate on two bits instead of three. The right move was the other one:
+**fix the definition**.
+
+Now the second bit is a **fact about the channel**, like the first. Only the third
+remains a capability — and it is the one where a capability is the right thing to
+measure, because an agent that can write to an uncensored destination is dangerous
+before it writes anything.
+
+**Measured, 17 Aug 2026.** `software-house` scored 3/3. Taking the definitions
+literally:
+
+```
+🙉  on    GitHub reads from an uncensored source (issues, PRs, commits)
+🙈  off   only files with provenance=agent — patches the agents produced; no remote
+🙊  off   fullstack-dev publishes into repositories INSIDE the egress perimeter,
+          so its egress is circumscribed, not arbitrary
+```
+
+1/3, and not by an heuristic: by three measures that finally look at facts. The
+owner's objection was «non dovrebbe partire da 1/3 ma da 0/3», and the first bit
+is what keeps it at 1 — which is the honest answer until the GitHub sources are
+censused.
+
+**Nothing is guessed.** The two sources of the second bit are already recorded:
+`provenance` on a file (`agent` = produced here, `trusted`/`untrusted` = brought
+in, and **missing counts as brought in** — the direction the taint already uses
+for absent labels), and a connected `remote` in the meta. A vetted remote still
+lights the bit: vetting concerns the EXIT, not the presence of the data.
+
+**The capability does not disappear, it stops being the title.** `capability_legs`
+still reports that those verbs exist, because denying it would be the one lie this
+measure cannot afford. What changes is what the number means: **the room, not who
+is standing in it**. A channel holding a client's PDF lights the bit even if
+nobody present can read it — the data is there.
+
+**And the owner can override it.** «un bottoncino "reset trifecta" che riporta a
+0/3 sotto la responsabilità dell'owner»: signed with who and when, decaying when
+the channel's composition changes, and it does **not** switch off the gates. No
+heuristic covers every case, and a score that can never be contradicted becomes a
+traffic light people learn to ignore.
+
+**Implemented, 17 Aug 2026** — clodia-logic (trifecta second bit, reset endpoint),
+clodia-web (the reset button and the explanation of a bit that is off).
 
 ---
 

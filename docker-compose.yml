@@ -108,6 +108,46 @@ services:
       - ./entrypoint.sh:/entrypoint.sh:ro
       - ${CLODIA_DATA}:/datadir
       - clodia-transfer:/shared
+      # I SEED su volume nativo, non sul bind dell'host (clodia-platform#207).
+      # `whitelist.py`, `human.py` e `boundary_check.py` assumono tutti e tre che
+      # `/datadir/agents/` sia `drwx------ root:root` mentre gli spawn girano
+      # come uid 60000 — cioè fanno poggiare l'autorità sul permesso di una
+      # directory. Su un bind virtiofs da macOS quel permesso è decorativo: i
+      # file arrivano con l'identità dell'utente dell'host e QUALUNQUE uid nel
+      # container legge. Un volume Docker vive nella VM Linux, dove il modo
+      # torna a mordere — misurato: stessa dir 700, stesso uid, `Permission
+      # denied` sul volume e lettura riuscita sul bind.
+      - clodia-agents:/datadir/agents
+    # ── Il vault NON appartiene a questo container (clodia-platform#207) ──────
+    # `${CLODIA_DATA}` porta dentro anche `clodia-vault/` — le credenziali di
+    # ogni integrazione e il topics-store di TUTTI i topic — `secrets/` e la
+    # `pki/`. Nel codice dell'agent-server il vault compare in un solo file:
+    # `agents/boundary_check.py`, cioè il controllo che verifica di NON poterlo
+    # leggere. Nessuna riga lo usa: il mount era un residuo, non un requisito, e
+    # le credenziali provider arrivano già dal gateway via HTTP
+    # (`api/provider_store.py`), non dal filesystem.
+    #
+    # Un tmpfs vuoto SOPRA il bind è il modo che copre senza enumerare: ciò che
+    # il gateway aggiungerà domani sotto `${CLODIA_DATA}` continua a persistere
+    # sull'host, mentre questi tre percorsi restano vuoti per chiunque qui
+    # dentro — il processo server compreso, che gira come root e sui permessi
+    # POSIX non si sarebbe fermato comunque.
+    #
+    # `mode: 0`: nessun permesso per nessuno. root li scavalca (CAP_DAC_OVERRIDE)
+    # ma non troverebbe niente da leggere — il punto è che la directory è VUOTA,
+    # non che sia protetta.
+    tmpfs:
+      # SOLO il vault. `secrets/` e `pki/` sono stati provati e RIMESSI, il 17 ago
+      # 2026, dopo che l'owner è rimasto fuori dalla propria istanza: la prima
+      # tiene `ca/ca.crt`, la seconda i certificati dei principal, e
+      # `/clodia/whoami` ha bisogno di entrambi — identifica chi bussa provando i
+      # cert e verificandone la catena contro la CA. Il log lo diceva alla prima
+      # occorrenza: «CA cert (ca.crt) assente: impossibile verificare la catena».
+      #
+      # Oscurarli non protegge niente: sono materiale PUBBLICO, servono a
+      # riconoscere e non a firmare. «agent-server keyless» (M3++) riguarda le
+      # chiavi PRIVATE e il minting, che restano al gateway.
+      - /datadir/clodia-vault:mode=0
     # ONLY the internal network: the confinement rule targets this subnet, so a
     # process here has no route out except through the proxy.
     networks: [clodia-int]
@@ -155,6 +195,11 @@ services:
       # reference monitor cade dall'interno (issue #80). Bind su host per
       # restare nel perimetro di backup/ripristino dell'operatore.
       - ${CLODIA_GATEWAY_STATE:-./gateway-state}:/gateway-state
+      # Stesso volume dei seed: il gateway li LEGGE (`tools_api.py` risolve il
+      # ruolo, `human.py` gli umani) e deve vedere ciò che l'agent-server scrive
+      # a un pack import. Condiviso, quindi, ma su un filesystem che applica i
+      # permessi invece di uno che li mima.
+      - clodia-agents:/datadir/agents
       - clodia-transfer:/shared
     # Both networks: the gateway is the mediator and KEEPS direct egress (Drive,
     # Telegram, SMTP, inference providers). Its traffic leaves through clodia-pub,
@@ -171,7 +216,11 @@ services:
     ports:
       - "${CLODIA_BIND_HOST:-127.0.0.1}:${AGENT_SERVER_PORT:-7842}:7842"
     networks: [clodia-int, clodia-pub]
-    depends_on: [agent-server]
+    # Anche il gateway: da quando l'ingress pubblica `/mcp` e `/proxy/token`,
+    # un client esterno che arriva prima che clodia-tools sia su riceverebbe un
+    # 502 invece di una risposta. I nomi sono comunque risolti a runtime (vedi
+    # `resolver` in nginx.conf), quindi questo è ordine di avvio, non un vincolo.
+    depends_on: [agent-server, clodia-tools]
     restart: unless-stopped
 
   # ── Egress proxy for the agent container (#104 phase 1) ────────────────────
@@ -209,6 +258,9 @@ services:
     restart: unless-stopped
 
 volumes:
+  # I seed degli agenti. Volume NATIVO e non bind: qui l'autorità è custodita da
+  # un permesso di directory (700 root), e un bind da macOS non lo applica.
+  clodia-agents:
   # Unico canale byte fra agent-server e gateway. Contiene esclusivamente
   # envelope cifrati effimeri e la chiave PUBBLICA transfer del gateway.
   clodia-transfer:
