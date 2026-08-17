@@ -1053,3 +1053,56 @@ question:
   that ends in «this room cannot answer this» instead of in silence or in the super-agent
   answering anyway, and it closes the loop with R14: adding an agent to a scope is exactly the
   act R14 governs.
+
+---
+
+## R16 · The chain has a limit, and the limit must speak
+
+> «fullstack quando menzionato a volte parte e a volte no»
+>                                                     — Davide, 17 Aug 2026
+
+Not intermittent — **positional**. `_MAX_DELEGATION_HOPS` was 2 and fixed, and the two
+call sites read
+
+```python
+if hop < _MAX_DELEGATION_HOPS:
+    await _maybe_delegate(...)
+```
+
+so past the limit the delegation function was never entered. No log line, no message in
+the channel, no trace anywhere. A `@fullstack-dev` written by an agent on the third leg
+of a chain simply did not exist.
+
+| leg | who mentions whom | outcome |
+|---|---|---|
+| 0 | Davide → @clodia | starts |
+| 1 | clodia → @fullstack-dev | starts |
+| 2 | fullstack-dev → @clodia | starts |
+| 3 | clodia → @fullstack-dev | **nothing, and nobody is told** |
+
+Measured on `software-house`: the chain reaches `hop 2` routinely, so the fourth mention
+of any working session fell into the hole. From the channel this is unpredictable, because
+nothing displays where in the chain a message sits.
+
+**Two defects, and only one of them is the number.** A limit on the chain is right — it is
+the brake on agents bouncing a task between themselves, and raising it does not remove the
+need for it. What was wrong is that the brake was silent: «I called him and he does not
+answer» is indistinguishable from a fault, and it was reported as one. So the check moved
+*inside* `_maybe_delegate`, which is the only place that knows **who** had been tagged —
+the single piece of information that makes the notice worth posting.
+
+The notice is posted only when there was something to serve. A reply with no eligible tag
+produces nothing, or the channel would fill with notes about mentions that were never
+there. A `$` citation alone likewise: it does not open a turn inside the limit either, so
+past the limit there is nothing denied to declare.
+
+**The number went from 2 to 4, and became configurable** (`CLODIA_MAX_DELEGATION_HOPS`).
+With a coordinator and an executor, 2 is exhausted by the first return exchange, which is
+the shape of nearly every session in a working channel; 4 allows two complete exchanges.
+The right value depends on how many agents cooperate in a channel, and that is not
+knowable in advance — but an unreadable value falls back to the default rather than
+turning the brake off, because `0` would block every delegation and the failure would look
+exactly like the one this note fixes.
+
+**Where the chain resets.** A human message starts at `hop 0`. So the recovery path is
+always available and the notice says it: the chain restarts from a human message.
