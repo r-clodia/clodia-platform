@@ -2153,6 +2153,48 @@ traffic light people learn to ignore.
 **Implemented, 17 Aug 2026** — clodia-logic (trifecta second bit, reset endpoint),
 clodia-web (the reset button and the explanation of a bit that is off).
 
+## 37 · The lists are writable by hand, and only by an admin
+
+    «devo poter inserire un egress o ingress anche a mano»
+                                                — Davide, 17 Aug 2026
+
+This reverses a reason written the same day. When `/settings/egress` was split into
+its own page it was deliberately **read-only**, on the argument that the gate dialog
+is the right place to grant a destination because there the information is complete:
+*«@clodia wants to write to X»*, with the caller, the object and the moment in view.
+A text field in a settings page is where somebody pastes a list without reading it.
+
+That argument holds for destinations an agent asks for, and the dialog stays the
+normal path. It does not cover the opposite case: **when the owner already knows what
+to censor.** The GRC digest has 48 sources. They do not arrive through 48 dialogs, and
+the alternative that existed was editing the gateway's config file by hand — outside
+any role check, any validation, and any trace. A control so narrow that it pushes the
+real work around it is not protecting anything.
+
+**Admin-only in both directions, for asymmetric reasons.** Granting is more privileged
+than the single send it permits, because it makes that destination silent forever.
+Revoking a trusted source is dangerous the other way round: reads start contaminating
+again, which is the safe direction and therefore the one nobody notices as damage.
+Neither is a participant's operation. The check lives in the agent-server because the
+gateway executes and does not know human roles.
+
+**Validation stays where the rule is.** `check_grantable` rejects a scheme belonging to
+the other direction, `*`, and degenerate entries; the HTTP route does not re-implement
+it and forwards the reason verbatim, because the reason is the only thing that tells
+the owner how to fix the entry.
+
+**What the tests found, and it is the whole argument for writing them.** `canonical()`
+lowercased http hosts but not addresses, while `_emails()` builds a call's destination
+with `.lower()`. An entry typed `mailto:Someone@Example.it` would have been accepted,
+stored, displayed — and never matched an actual send. Approved and ineffective, with
+the only symptom being *"I whitelisted it and it still asks"*. The defect was
+unreachable while the lists were filled solely by the dialog, because there the URI was
+built by code; it becomes the first thing that happens once a human types them. A
+feature that opens a new way in also opens the paths that way reaches.
+
+**Implemented, 17 Aug 2026** — clodia-tools (route + normalisation, 6 tests),
+clodia-logic (admin-only endpoint, 7 tests), clodia-web (field + per-row removal).
+
 ---
 
 ## Where the open questions went
