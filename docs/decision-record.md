@@ -2195,6 +2195,58 @@ feature that opens a new way in also opens the paths that way reaches.
 **Implemented, 17 Aug 2026** — clodia-tools (route + normalisation, 6 tests),
 clodia-logic (admin-only endpoint, 7 tests), clodia-web (field + per-row removal).
 
+## 38 · A whitelisted destination is perimeter, not a signal
+
+    «se la destinazione è censita in whitelist allora va considerata come parte del
+     perimetro e non deve essere un segnale che fa scattare il gate o incrementare
+     il trifecta»
+                                                        — Davide, 17 Aug 2026
+
+This reverses how #77 condition 2 had been read. The gateway treated *already in
+the whitelist* as *nobody is watching this call*, and therefore as a reason the
+context gate **must** fire. Written out, that says: declaring a destination safe
+makes every send to it require an approval. The whitelist stopped being a
+statement about the perimeter and became a trigger.
+
+**What it cost, measured.** `fullstack-dev` had its GitHub destinations
+whitelisted and kept asking anyway, once per work cycle. The cycle re-arms itself:
+`github.issue_read`, `github.get_*` and `topic.read_file` taint the channel,
+`github.push` is the exit. Read the issue → tainted → push → gate → approve →
+declassified → read the next file → tainted again. Nothing was wrong with the
+whitelist; the whitelist was the reason.
+
+A gate that fires every round is approved by reflex, which is the exact failure
+that #77 condition 1 was written to avoid. So the same document contained the
+argument against this reading, applied to a different bit.
+
+**The rule, and where the gate survives.** A destination that somebody censored is
+inside the perimeter: a tainted channel does not change where the data is going,
+and whoever listed that destination already decided that writing there is allowed.
+The context gate keeps firing in the two cases where the destination is **not**
+declared and nobody is watching either: `report` mode (out of the list, simply not
+blocked) and an unchecked type (`checked: false`, including mode `off`). There the
+absence of confinement is not a perimeter — reading it as one would turn *we
+control nothing* into *everything is declared safe*, which is the direction of
+error this measure cannot afford.
+
+**The third bit already obeyed the rule, and now says so.** `egress_scope` has
+distinguished `presided`/`listed` from `arbitrary` since #128: confined egress
+does not light the bit. It was conformant and undocumented, which is the state
+from which a rewrite silently regresses — so it now has tests. A `*` rule still
+counts as arbitrary: censoring a destination and censoring *all of them* are not
+the same act.
+
+**What this does not fix, and it is the other half of the same story.**
+`github.com/r-clodia/*` is in `egress_allow` (where one may write) but not in
+`source_allow` (where one may read without tainting). So the exits are now quiet,
+while every read of our own issues and our own code still taints the channel. The
+taint is not wrong — nobody declared those sources — but declaring them is a
+separate decision about ingress, and it is the one that decides whether the first
+bit means anything for a development channel.
+
+**Implemented, 17 Aug 2026** — clodia-tools (`_context_gate_needed`, 3 tests
+including the reversed one), clodia-logic (9 tests pinning the third bit).
+
 ---
 
 ## Where the open questions went
