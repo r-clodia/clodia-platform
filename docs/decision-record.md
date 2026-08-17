@@ -2024,6 +2024,73 @@ scope.
 
 ---
 
+## 35 · The gate belongs on the object, and the irreversible is not granted at all
+
+> «nel nuovo design di sicurezza il gate è spostato dal verbo all'oggetto del verbo, se un repo
+> è un egress non autorizzato allora è gated, se è autorizzato allora è libero»
+
+> «i verbi consentono di scrivere su un repo non di distruggerlo, sistemi come git o Drive sono
+> sempre reversibili di natura. Quindi il gate non serve sui verbi. I verbi veramente
+> distruttivi come repository.delete non saranno mai dati all'agente»
+
+The rule was already written in one place and nowhere else. `egress.allowed_uris()` carries it
+verbatim: *«l'approvazione giudica la DESTINAZIONE, non chi spedisce … e per-agente la lista non
+converge mai: con quattordici agenti lo stesso indirizzo viene chiesto quattordici volte»*
+(entry 128). What stayed attached to the verb — the global `OUTWARD` class and the per-agent
+`gated_tools` — is the previous model, never withdrawn when this one arrived.
+
+### The measurement that made it concrete
+
+On `SEAL-1/software-house`, 16 Aug: **17 gates for one agent**, eight of them for
+`github.create_branch` — creating a branch, which exits nothing and deletes nothing. An agent
+whose trade is publishing accumulates confirmations until they are approved without being read,
+and at that point the gate protects nothing and only the friction remains. It is the worst
+square of the cost/benefit grid: the click is free, so it becomes a reflex.
+
+### The objection that was raised, and why it fell
+
+The first reading distinguished *publishing* from *destroying*: push and branch free, but
+`merge_pull_request` and `delete_file` still gated, because a perimeter says «you may send data
+there», not «you may undo history there».
+
+The objection does not survive the nature of the systems involved. **In git the history
+remains**: a merge is reverted, a deleted file is a commit, Drive has a bin. Those verbs write,
+they do not destroy — so gating them is friction with no counterpart.
+
+The correct form of the rule is stronger and simpler: **what is genuinely irreversible is not
+gated, it is not granted.** A gate on an action that must never happen is an invitation to
+click.
+
+### The premise had to be made true first
+
+The rule rests on «the destructive verbs are never given to the agent», and on 17 Aug that was
+an intention, not a state. `fullstack-dev` held `github.*` — a namespace wildcard — and the
+official GitHub MCP backend is mounted with no toolset restriction. Measured:
+
+```
+github.delete_repository   allowed = True
+github.force_push          allowed = True
+github.delete_branch       allowed = True
+```
+
+What had been holding those back was the very mechanism about to be removed — and not even
+well: `gated_tools` listed `merge_pull_request` and `delete_file`, but **not**
+`delete_repository`.
+
+So the order matters, and it is the opposite of the obvious one: **first narrow the grant, then
+remove the gate.** Done in that order the same day — 14 explicit verbs (the four native ones
+that publish, plus read), `gated_tools` emptied of `github.*`, `topic.remote_*` kept because
+acts on the walls of a scope are a different question.
+
+**Allow-list, not deny-list.** A deny-list would have to enumerate what the backend exposes
+*today*; a destructive verb added tomorrow would pass in silence. With an allow-list a new verb
+is born denied, and the error the agent receives is legible.
+
+### Consequence
+
+A control that duplicates a decision already taken elsewhere is not redundancy, it is drift
+waiting to happen: two places that answer the same question diverge, and this week they
+diverged three times. The gate on an object already inside the perimeter was one of them.
 ## 36 · The three bits describe the ROOM, and only the third one is a capability
 
 **Definition (Davide, 17 Aug 2026).** Three statements, one per bit:
