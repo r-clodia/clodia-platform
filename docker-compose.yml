@@ -137,9 +137,17 @@ services:
     # ma non troverebbe niente da leggere — il punto è che la directory è VUOTA,
     # non che sia protetta.
     tmpfs:
+      # SOLO il vault. `secrets/` e `pki/` sono stati provati e RIMESSI, il 17 ago
+      # 2026, dopo che l'owner è rimasto fuori dalla propria istanza: la prima
+      # tiene `ca/ca.crt`, la seconda i certificati dei principal, e
+      # `/clodia/whoami` ha bisogno di entrambi — identifica chi bussa provando i
+      # cert e verificandone la catena contro la CA. Il log lo diceva alla prima
+      # occorrenza: «CA cert (ca.crt) assente: impossibile verificare la catena».
+      #
+      # Oscurarli non protegge niente: sono materiale PUBBLICO, servono a
+      # riconoscere e non a firmare. «agent-server keyless» (M3++) riguarda le
+      # chiavi PRIVATE e il minting, che restano al gateway.
       - /datadir/clodia-vault:mode=0
-      - /datadir/secrets:mode=0
-      - /datadir/pki:mode=0
     # ONLY the internal network: the confinement rule targets this subnet, so a
     # process here has no route out except through the proxy.
     networks: [clodia-int]
