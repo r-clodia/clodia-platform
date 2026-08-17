@@ -147,68 +147,88 @@ requirements agree; the code implements neither.
 
 ---
 
-## R3 · Two mentions ask; three refuse
+## R3 · One mention per message; a second one is asked back to whoever wrote it
 
-> «se vengono menzionati due agenti nello stesso messaggio il router apre un dialogo
-> chiedendo come gestire: agente1 , agente2 , entrambi ... se vengono menzionati 3 o più
-> agenti il dialogo informa che route con 3+ non sono supportate e il turno resta agli
-> umani»
+> «Nuova regola 1 messaggio max 1 menzione. Un messaggio con due menzioni chiede
+> conferma. Se l'ha generato un agente A che menziona sia B che C, allora viene chiesta
+> conferma all'agente A con una menzione diretta (chi intendevi attivare? B o C)»
+>                                                                — Davide, 17 Aug 2026
 
-This settles the first open point of R2, and it settles it by **not deciding for the
-person**. Two names are an ambiguity the router genuinely cannot resolve — «ask Aitiero and
-Minerva» may mean *both*, or *whichever of you can*, and the message does not say which.
-Guessing is what produces the "why did HE answer" that has now been reported twice.
+The norm comes first and it is the whole rule: **a message carries at most one mention
+that starts a turn.** Everything below is what happens when it does not.
 
-Three thresholds, and each one is a different kind of answer:
+A second mention is not resolved by the router and not resolved by whoever happens to be
+in the room. It is **asked back to the author of the message**, because the author is the
+only party that knows what they meant — and this is the part the previous version got
+wrong, not the counting.
 
-| mentions | outcome |
+| author of the message | two or more mentions |
 |---|---|
-| 1 | direct route (R2) |
-| 2 | **a dialog**: agent1 · agent2 · both |
-| 3+ | **a dialog that refuses**: not supported, the turn stays with the humans |
+| a human | a dialog in the channel: the named agents as choices |
+| an **agent** | a **direct mention back to that agent**: «you mentioned @B and @C: which did you mean to start?» |
 
-The refusal at 3+ is the part worth noticing. It is not "route to the best of the three":
-it is a declared limit, said out loud, with the turn left where it already was. A limit that
-announces itself is a different thing from a silent truncation — and today the code does
-exactly the silent truncation.
+### Why the previous rule created confusion
 
-### Measured, 11 Aug 2026
+R3 used to say *two mentions ask, three refuse*, and both halves misfired in practice.
 
-- **Today the first tag wins.** `targets` is built from all hard tags, then, with
-  single-answer enforced, `targets = targets[:1]` and the rest become `dropped_tags`: a log
-  line plus a note on the routing bar. Nobody is asked anything. With three names the
-  behaviour is the same as with two — the first answers.
-- **The dialog does not need to be invented.** The conversation already renders inline
-  choice pills from an invisible marker in a message: `<!-- choices=A,B,C -->` (single) and
-  `<!-- choices-multi=… -->`. It is used today by agents asking a question. The router can
-  post the same marker; the webui already knows how to draw it and how to send the answer
-  back.
-- **`_multi_responder_enabled()` still exists** and is off by default. Under R3 "both" needs
-  two turns from one message, so the capability stays — what changes is the trigger.
+**The dialog asked the room, not the author.** When an agent wrote the ambiguous message,
+the router posted choice pills addressed to the humans. Nobody was expecting a question:
+the pills sat there, the turn never started, and the channel looked stalled rather than
+waiting. The one participant who could answer instantly — the agent that had just written
+both names — was the one not being asked.
 
-### Recorded as a deliberate reversal, not a contradiction
+**Two thresholds with two different outcomes.** Two names opened a dialog, three printed a
+refusal and dropped the turn. Nothing about three names makes the question harder to ask:
+«which of B, C, D did you mean» is exactly as well posed as with two. The extra threshold
+bought no safety and had to be remembered.
 
-On 30 Jul: «rimuovere la possibilità che due agenti rispondano simultaneamente». On 10 Aug:
-«deve essere solo uno». R3 allows two agents to answer the same message.
+So the fix is not a new count. It is **asking the right party**, and once the question goes
+to the author the special case at three disappears with it.
 
-The two rulings are not in conflict once the trigger is named: what was removed is
-**automatic** fan-out — the router deciding by itself that a message had several intents.
-What R3 adds is fan-out **by explicit human choice**, on a question the human was asked.
-Same outcome, different authority. The distinction must survive into the implementation, or
-the guard that was put in place twice will be taken out a third time by accident.
+### What this removes, deliberately
 
-### What R3 does not settle
+**`both` is gone.** It was the one path by which a single message could still start two
+turns — fan-out by explicit human choice. Under «max 1 menzione» a message activates one
+agent, and offering *both* would be offering to break the rule the same sentence
+establishes. Two agents on the same subject remain possible: two messages.
 
-- **Who sees the dialog, and who may answer it.** Any participant, or only the author of the
-  message? If two people answer differently, which wins?
-- **What happens meanwhile.** The message sits unrouted until somebody replies to the
-  dialog: does it expire, and if so what then?
-- **Mentions of humans mixed in.** `@aitiero @matteo` is two mentions but only one agent —
-  under R1 a human is a possible assignee, so is this the two-way dialog, or the human rule
-  of 10 Aug?
-- **Soft tags (`$nome`)**, still unresolved from R2, now matter more: do they count towards
-  the two/three thresholds?
+This is the third time fan-out has been narrowed (30 Jul: no simultaneous answers ·
+10 Aug: «deve essere solo uno» · today: not even by choice). Recording it here so the
+guard is not removed a fourth time by accident, believing it a regression.
 
+**The turn is no longer dropped.** The refusal at 3+ left the message unrouted with a
+notice. Now every ambiguous message gets a question, and the question is addressed to
+somebody who can answer it.
+
+### What counts as a mention
+
+Only mentions that **would start a turn**: hard tags (`@nome`) resolving to an eligible
+agent in this channel. A mention of a person follows R4 — it notifies, it does not route —
+and an unserviceable tag was never a target. Soft tags (`$nome`) do not count, as before:
+they are a suggestion, and a suggestion cannot make a message ambiguous.
+
+A seed mentioning **itself** alongside another agent is genuinely ambiguous — A12 says a
+self-mention forks a new instance, so `@A @B` from `A#1` may mean *fork me* or *hand it to
+B*. It gets the same question as any other pair.
+
+### Asked once, never twice
+
+The answer to the question is an ordinary message, so it goes through the ordinary routing —
+which means it could be ambiguous too. Two agents could then trade questions at token cost
+without anybody noticing, which is the failure mode this design must not open.
+
+So the question is asked **once per chain**. If the reply is ambiguous again, no turn starts
+and a system message says so. A stopped turn that declares itself is recoverable; a loop
+between two agents is not.
+
+### Still not settled
+
+- **Who may answer a human-authored dialog.** The author, as today (`routing-request` binds
+  the dialog to them), and the constraint carries over unchanged.
+- **What happens meanwhile.** The message waits. It does not expire, and an unanswered
+  question is visible in the channel rather than silent — but nothing reminds anybody.
+- **A mixed pair `@agent @person`.** One mention starts a turn, the other notifies: one
+  routing mention, so the norm holds and no question is asked.
 ---
 
 ## R4 · A mention of a person escalates by how present they are
