@@ -35,6 +35,18 @@ x-common-env: &common-env
     RESPONDER_ROUTING_THRESHOLD: "${RESPONDER_ROUTING_THRESHOLD:-0.75}"
     RESPONDER_ROUTING_MARGIN: "${RESPONDER_ROUTING_MARGIN:-0.04}"
     RESPONDER_FALLBACK_SOFT_RATIO: "${RESPONDER_FALLBACK_SOFT_RATIO:-0.87}"
+    # Salti massimi della catena di delega (R16). Il codice la legge già
+    # (`_max_delegation_hops`), ma qui non era dichiarata: metterla nel `.env`
+    # non la faceva arrivare al container, esattamente come `CLODIA_DEBUG_MODE`
+    # qui sotto — una manopola che non si può girare è una manopola che non c'è.
+    #
+    # Default `4` = quello del codice, e resta il default di chi installa: è
+    # l'UNICO freno al rimpallo fra agenti (R3 limita le menzioni per messaggio,
+    # non la lunghezza della catena), quindi ogni unità in più è un turno LLM in
+    # più che un solo messaggio umano può innescare. Alzarlo è legittimo in un
+    # canale con molti agenti che cooperano, ma deve essere una scelta di chi
+    # paga i turni. Un valore illeggibile o <= 0 ricade sul default.
+    CLODIA_MAX_DELEGATION_HOPS: "${CLODIA_MAX_DELEGATION_HOPS:-4}"
     # ── Postura di sicurezza dell'istanza ─────────────────────────────────────
     # Vivevano solo nella copia locale del compose di un'istanza, applicate a
     # mano. Conseguenza misurata su una istanza nuova: `CLODIA_DEBUG_MODE=1` era
