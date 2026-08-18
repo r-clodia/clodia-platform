@@ -1104,5 +1104,22 @@ knowable in advance — but an unreadable value falls back to the default rather
 turning the brake off, because `0` would block every delegation and the failure would look
 exactly like the one this note fixes.
 
+**Configurable, but not actually settable — until 18 Aug.** The code read
+`CLODIA_MAX_DELEGATION_HOPS` from the moment the limit became a variable, and
+`docker-compose.yml` never declared it. A value in an instance's `.env` therefore never
+reached the container: the knob existed in the code, answered `4` whatever you wrote, and
+nothing said so. Exactly the shape of the `CLODIA_DEBUG_MODE` defect the security-posture
+block in that same file was written to record — which is the argument for reading a lesson
+as a *class* rather than as the one variable that occasioned it. Now declared, with `4`
+still the default for whoever installs.
+
+**What raising it costs, stated where the number is set.** This limit is the *only* brake
+on agent-to-agent ping-pong: R3 bounds how many mentions a single message may serve, not
+how long a chain may get. So the hop count is a multiplier on LLM turns that one human
+message can trigger — at 50, up to fifty consecutive turns before the chain stops and says
+it. That is a legitimate setting in a channel where many agents genuinely cooperate, and it
+is the reason the default does not move: whoever raises it is choosing to pay for those
+turns, and should be doing so on purpose.
+
 **Where the chain resets.** A human message starts at `hop 0`. So the recovery path is
 always available and the notice says it: the chain restarts from a human message.
