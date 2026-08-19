@@ -32,7 +32,7 @@ issue di remediation su `r-clodia/clodia-platform`:
 | R8 | [#186](https://github.com/r-clodia/clodia-platform/issues/186) | l'ambiguità abbandona la scelta invece di chiedere |
 | R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no |
 | R10 | [#188](https://github.com/r-clodia/clodia-platform/issues/188) | nessun coordinatore dichiarato, e il ripiego risponde invece di decidere |
-| R12 | [#189](https://github.com/r-clodia/clodia-platform/issues/189) | `$nome` non è ancora inerte |
+| R12 | [#189](https://github.com/r-clodia/clodia-platform/issues/189) | `$nome` non è ancora inerte — **rimediato** il 18 ago, [`clodia-logic#325`](https://github.com/r-clodia/clodia-logic/pull/325) |
 | R14 | [#190](https://github.com/r-clodia/clodia-platform/issues/190) | l'ineleggibilità è un filtro di vista, non un'appartenenza |
 | R15 | [#191](https://github.com/r-clodia/clodia-platform/issues/191) | «coda» e «rifiuto» non esistono; «parallelo» è multi-spawn |
 
@@ -835,7 +835,8 @@ re-litigated: *jobs never ask; unattended channels ask and wait*.
 
 Two rules of different kinds, and the difference matters for where each is enforced.
 
-**`$` must not activate — enforceable, and today it is violated.** Measured: `for nm in soft:
+**`$` must not activate — enforceable, and violated when this was measured** (fixed on 18 Aug,
+see «Remediated» below). Measured: `for nm in soft:
 … targets.append((s, "soft", …))` — a soft tag builds a target exactly like a hard one, only
 at lower priority. So `$avvocato` starts a turn today. R12 makes `$` a **signal, not a
 summons**, with a precise new job: breaking a tie inside the margin (§R8) — which is elegant,
@@ -848,11 +849,43 @@ routing code, and saying so is the difference between a rule that holds and a ru
 like it does. What the router *can* do is make the sterile case harmless: with `$` inert, an
 agent that wants to acknowledge a colleague has a form that costs nobody a turn.
 
-### Open
+### Remediated, 18 Aug 2026 — [`clodia-logic#325`](https://github.com/r-clodia/clodia-logic/pull/325)
 
-- Whether `@` from an agent needs a stated justification (a reason recorded with the hop), or
-  whether the prompt rule suffices.
-- Whether the tie-break from `$` is a bonus on the score or an outright override.
+`$` is inert on **both** paths, and the second one is the reason this took a second pass:
+
+- **human → agent** was the real hole. `for nm in soft: targets.append((s, "soft", …))` fed
+  the citation straight into `_start_turn`. Two tests appeared to cover it and passed for the
+  wrong reason: with `CHANNEL_MULTI_RESPONDER` off, `targets[:1]` truncated the list with the
+  `@` at the head — so the mixed case `@a $b` looked correct while `$b` alone always
+  activated, and with the flag on both started. A defect visible in one configuration only is
+  a defect that stays;
+- **agent → agent** kept a *sampled* nod (`CHANNEL_SOFT_ACK_RATE`, default 0.2) so the channel
+  would not go mute. «Never» does not admit a fraction, and the knob was removed rather than
+  defaulted to 0: an switch that violates a requirement when raised is debt nobody knows they
+  have. If silence after a citation becomes a problem, it gets its own issue and its own
+  measurement;
+- `_report_back` counted `$` among the tags that had already woken the caller and suppressed
+  the return. But `$` wakes nobody: the polite delegate («$clodia per conoscenza, ho finito»)
+  made the caller wait for a message that never came — the very defect that mechanism exists
+  to close.
+
+R3's thresholds needed no change: they already counted only `@`. What was missing was a test
+saying so for the right reason.
+
+**The two open questions, answered.**
+
+- **Justification with the hop: recorded, not demanded.** A mandatory field would be a
+  protocol change, with turns stalling over a missing datum. The sentence the agent already
+  wrote around the `@` travels in the `reason` of the routing decision, where whoever
+  retraces a chain finds it. The prompt rule stays what keeps sterile mentions rare; this
+  makes the ones that happen readable.
+- **Tie-break: deferred, not decided by default.** The requirement says «may», and even a
+  bonus makes the cited agent the probable pick — activation via `$` through the back door,
+  in the one place the router has no evidence. Inertia first, measured; the tie-break belongs
+  with §R8's ambiguity dialog ([#186](https://github.com/r-clodia/clodia-platform/issues/186),
+  [#187](https://github.com/r-clodia/clodia-platform/issues/187)) and is decided there, on
+  purpose, rather than here by inertia. A test pins today's behaviour: a citation does not
+  change who the router picks.
 
 ## R13 · A degraded router says so — accepted
 
