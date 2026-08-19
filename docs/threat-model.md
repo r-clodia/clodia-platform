@@ -241,6 +241,35 @@ page, a job). Deny beats allow, super-agents included.
 New enforcement lands in observation first — see `specification.md` §8, where this is stated
 once as a general failure direction rather than repeated per control.
 
-## 7 · Known limits
+## 7 · Findings carried over from the rc5 reset
+
+The rc5 reset closed 52 issues. Five of them were **security findings recorded
+nowhere else** — [#175](https://github.com/r-clodia/clodia-platform/issues/175)
+kept them alive on the condition that each be re-measured against rc5 and then
+written down here, reopened, or dismissed *with the measurement that dismisses
+it*. Never dropped silently: a backlog reset that reads as progress is the
+failure mode #175 exists to prevent.
+
+This is that measurement, taken on **19 August 2026** against `main` of
+`clodia-platform`, `clodia-logic` and `clodia-web`. Two of the five cannot be
+decided from here at all, and saying so is part of the result: the credential
+store, the per-connector ACL and the on-behalf gate check live in
+`clodia-tools`, and that repository was **not reachable** from the room where
+this was measured. A row that reads "not measurable" is not a row that is fine.
+
+| was | finding | state on rc5 | measurement |
+|---|---|---|---|
+| [#68](https://github.com/r-clodia/clodia-platform/issues/68) | connector credentials are *platform* identities: topic and user ACLs have no grip on the external data | **open — not measurable here** | the credential store and every per-connector ACL live in the gateway. What is verifiable from this side is only that the agent plane holds no copy: provider credentials arrive over HTTP (`clodia-logic/server/api/provider_store.py`) and `/datadir/clodia-vault` is blanked by a `mode=0` tmpfs on the agent container (`docker-compose.yml`, agent-server `tmpfs:`). That says the secret is not *here*; it says nothing about whose identity it is when used |
+| [#80](https://github.com/r-clodia/clodia-platform/issues/80) | the agent-server can rewrite the gateway's decision state on the shared `/datadir` → self-escalation from the inside | **closed by construction** | the decision state moved off the shared datadir: `CLODIA_TOOLS_STATE_DIR: /gateway-state` and the bind `${CLODIA_GATEWAY_STATE:-./gateway-state}:/gateway-state` appear **only** on the `clodia-tools` service in `docker-compose.yml`; the agent-server's volume list has no `/gateway-state` entry, and its comment names this issue. Already carried in `SECURITY.md` §8.2 / §8.9. **Dismissed with this measurement**, not by assumption |
+| [#148](https://github.com/r-clodia/clodia-platform/issues/148) | on-behalf requests skipped gates and the destination whitelist, on the rationale that any authenticated UI user is trusted | **open — half measured, and the half that shows is not reassuring** | the rationale is gone on this side: a human action from the UI no longer authorises itself, it asks the gateway with the same RBAC as an agent (`clodia-logic/server/api/gateway_pdp.py`, `gw_authorize` / `gw_tool`, token minted with `on_behalf=True` and a **signed** `human_role` claim). Whether the *gateway* then applies gate and destination whitelist to an on-behalf token is decided in `clodia-tools`. What is measurable here is adjacent and points the wrong way: on-behalf still confers human standing at ingress — a proxy token is on-behalf, and its message persists as `kind: human`, which `clodia-logic/server/api/channels.py` (`_from_human`) now refuses to believe as a declared bridge (#221, #248) |
+| [#149](https://github.com/r-clodia/clodia-platform/issues/149) | a Drive grant is silently also a mail grant: the unified Google credential re-grants `email.*` through `_connector_allows` | **open — not measurable here** | `_connector_allows` appears **nowhere** in `clodia-platform` or `clodia-logic` (grep, 19 Aug 2026): the unified credential and the re-grant it implies live entirely in the gateway. One consent, two authorities — until read there, this stands |
+| [#108](https://github.com/r-clodia/clodia-platform/issues/108) | artifact CSP `img-src https:` allows exfiltration by GET from the owner's browser | **was still true — fix open** | measured live at `clodia-web/src/lib/artifact-frame.ts`: `img-src data: blob: https:`, and the same `https:` on `style-src`, `font-src` and `media-src` — closing only `img-src` moves the channel instead of closing it, since `<video src>` and a remote `@font-face` make the same GET. r-clodia/clodia-web#175 drops all four and adds `scripts/check-artifact-csp-no-remote.mjs`, which is red on the current state. This row closes when that merges |
+
+**What is left to finish #175**, stated so it does not dissolve into "we looked
+at it": #68, #148 and #149 need the gateway repository inside the perimeter of
+whoever measures them, and each then ends as its own issue or as a row in this
+table. #108 closes with a merge. #80 is done.
+
+## 8 · Known limits
 
 Moved to [`gap-analysis.md`](gap-analysis.md).
