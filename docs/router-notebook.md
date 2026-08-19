@@ -30,7 +30,7 @@ issue di remediation su `r-clodia/clodia-platform`:
 | R4 | [#184](https://github.com/r-clodia/clodia-platform/issues/184) | mancano toast, blink e il canale personale; il contatore c'è |
 | R6·R7 | [#185](https://github.com/r-clodia/clodia-platform/issues/185) | N, soglia e margine sono costanti nel sorgente |
 | R8 | [#186](https://github.com/r-clodia/clodia-platform/issues/186) | l'ambiguità abbandona la scelta invece di chiedere |
-| R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no — **rimediato** il 19 ago, `clodia-logic feat/r9-router-overrule` |
+| R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no — **rimediato** il 19 ago, [`clodia-logic#334`](https://github.com/r-clodia/clodia-logic/pull/334) |
 | R10 | [#188](https://github.com/r-clodia/clodia-platform/issues/188) | nessun coordinatore dichiarato, e il ripiego risponde invece di decidere |
 | R12 | [#189](https://github.com/r-clodia/clodia-platform/issues/189) | `$nome` non è ancora inerte — **rimediato** il 18 ago, [`clodia-logic#325`](https://github.com/r-clodia/clodia-logic/pull/325) |
 | R14 | [#190](https://github.com/r-clodia/clodia-platform/issues/190) | l'ineleggibilità è un filtro di vista, non un'appartenenza |
@@ -755,7 +755,7 @@ the correction now also fixes the present, not only the future.
   would waste the difference — the store already distinguishes `confirm` from `correction`
   and weights them differently.
 
-### Remediated, 19 Aug 2026 — `clodia-logic` `feat/r9-router-overrule`
+### Remediated, 19 Aug 2026 — [`clodia-logic#334`](https://github.com/r-clodia/clodia-logic/pull/334)
 
 The sequence exists, in one function (`_overrule_router`) called by **both** doors that mean
 «I would have used X» — `POST /clodia/routing/correct` and `POST /clodia/routing/feedback`
