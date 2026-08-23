@@ -29,8 +29,8 @@ issue di remediation su `r-clodia/clodia-platform`:
 | R3 | [#183](https://github.com/r-clodia/clodia-platform/issues/183) | due menzioni devono chiedere, tre rifiutare: oggi vince la prima |
 | R4 | [#184](https://github.com/r-clodia/clodia-platform/issues/184) | mancano toast, blink e il canale personale; il contatore c'è |
 | R6·R7 | [#185](https://github.com/r-clodia/clodia-platform/issues/185) | N, soglia e margine sono costanti nel sorgente |
-| R8 | [#186](https://github.com/r-clodia/clodia-platform/issues/186) | l'ambiguità abbandona la scelta invece di chiedere — **il dialogo è rimediato**; resta la promozione dello storage, vedi §R8 |
-| R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no |
+| R8 | [#186](https://github.com/r-clodia/clodia-platform/issues/186) | l'ambiguità abbandona la scelta invece di chiedere — **rimediato**: il dialogo il 12 ago, la promozione dello storage il 23 ago (§R8) |
+| R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no — **rimediato** il 19 ago, [`clodia-logic#338`](https://github.com/r-clodia/clodia-logic/pull/338); resta cosa viene detto all'agente scavalcato (§R9) |
 | R10 | [#188](https://github.com/r-clodia/clodia-platform/issues/188) | nessun coordinatore dichiarato, e il ripiego risponde invece di decidere |
 | R12 | [#189](https://github.com/r-clodia/clodia-platform/issues/189) | `$nome` non è ancora inerte — **rimediato** il 18 ago, [`clodia-logic#325`](https://github.com/r-clodia/clodia-logic/pull/325) |
 | R14 | [#190](https://github.com/r-clodia/clodia-platform/issues/190) | l'ineleggibilità è un filtro di vista, non un'appartenenza |
@@ -765,8 +765,50 @@ learns where it is confidently wrong.
 3. **Starting a turn for a named agent exists** — it is the direct-mention path of R2.
 
 So R9 asks for a **sequence**, not for new capability: correct → interrupt → re-route →
-record. Today the correction teaches the store for *next time* and lets the wrong agent
-finish talking; the human then has to interrupt by hand and re-ask with a mention.
+record. On 11 Aug the correction taught the store for *next time* and let the wrong agent
+finish talking; the human then had to interrupt by hand and re-ask with a mention. That is no
+longer the state of the world — see the next section.
+
+### Remediated, 19 Aug 2026 — [`clodia-logic#338`](https://github.com/r-clodia/clodia-logic/pull/338), on the mechanism from [`#335`](https://github.com/r-clodia/clodia-logic/pull/335)
+
+The sequence exists and is one endpoint: `POST /clodia/channels/{tier}/{name}/routing-overrule`
+(`channels.py`, `channel_routing_overrule`). Read against `main`, not against the design —
+[#252](https://github.com/r-clodia/clodia-platform/issues/252) was closed for recording a
+mechanism that did not exist, and every claim below names the symbol that makes it true.
+
+**The order is the fix, not a detail.** Interrupt first, then start: inverted, the interrupt
+would kill the turn just started. Pinned by
+`RoutingOverruleTests::test_the_wrong_turn_is_stopped_before_the_right_one_starts`, which
+asserts the *sequence* (`["interrupt:accountant", "start:worker"]`) and not just the outcome.
+
+**What gets stopped is one agent, not the room** — the substance of
+[#253](https://github.com/r-clodia/clodia-platform/issues/253) §2. `_misrouted_agents`
+returns the agent the client declares as the router's pick (`chosen`), or else whoever spoke
+after the last human message; `_interrupt_channel_turns` is then called with `only=` that set
+and `keep=` the agent taking over. Three consequences, each with a test:
+
+- the rest of the room keeps working (`test_the_rest_of_the_room_keeps_working`): a
+  `librarian` busy with a different request is not touched;
+- identity is by **seed**, not by string, so `accountant#2` is stopped while `worker#3`
+  taking over is spared (`test_the_instance_taking_over_is_spared_and_the_wrong_one_is_not`);
+- **an empty target set stops nobody, deliberately** — not knowing whose turn is wrong is not
+  a licence to stop everyone (`test_when_nobody_spoke_yet_nothing_is_interrupted`). The
+  whole-room stop keeps its own endpoint (`/interrupt`) and its own button.
+
+A turn that has already finished is the empty case, and the re-route happens anyway: the chip
+is an explicit request that the other agent speak, so asking and getting nothing would be
+worse than the defect (`test_a_finished_turn_leaves_the_room_alone_and_still_re_routes`).
+
+**Recording is the last step and not a condition.** If the embedder is down the wrong turn is
+still stopped and the right one still starts; the response says `learned: false`
+(`test_a_dead_embedder_does_not_cancel_the_overrule`). An endpoint that gives up interrupting
+because it cannot take notes would be the worse trade.
+
+**The two learning-only doors now say so.** `POST /clodia/routing/correct` and
+`/routing/feedback kind=correction` return `acted: false` plus
+`acts_at: "/clodia/channels/{tier}/{name}/routing-overrule"` — they teach and do not act, and
+they name the door that acts instead of leaving the caller to guess
+([#253](https://github.com/r-clodia/clodia-platform/issues/253) §1).
 
 ### The prompt on record
 
@@ -781,6 +823,10 @@ the correction now also fixes the present, not only the future.
   a window of three messages including the agents'. If the correction keeps learning from
   one message while the router decides on three, the store teaches something the router does
   not consume — a mismatch invisible in both places.
+  **Closed in code (19 Aug):** the overrule embeds
+  `_latest_human_routing_context(messages, router_config.load())` and falls back to the bare
+  human text only when that window is empty — the same window the router consumes, so the
+  store learns what the router will read.
 - **Interrupting is not free.** The interrupted agent may have already spoken, called tools,
   or written to the topic. What the conversation shows afterwards — a truncated bubble, a
   note, nothing — is not stated, and «il turno viene interrotto» hides a real question: a
@@ -790,13 +836,54 @@ the correction now also fixes the present, not only the future.
   would waste the difference — the store already distinguishes `confirm` from `correction`
   and weights them differently.
 
-### What R9 does not settle
+### What R9 does not settle — two of three now answered in code
 
-- **Who may overrule.** The corrector is `_require_contributor` today; readers are excluded.
-- **Whether an overrule is possible after the turn has finished** — a late «you should have
-  asked X» that only teaches, with nothing to interrupt.
-- **What the overruled agent is told**, if anything. Silence risks it resuming; a message
-  costs a turn.
+- **Who may overrule: answered.** `_may_overrule_routing` — the **author** of the misrouted
+  message, with the **topic owner** as fallback. Not every contributor: whoever wrote the
+  message is the only one who knows for certain where it should have gone, and a third party
+  does not get to redirect someone else's conversation
+  (`test_a_third_party_cannot_reroute_someone_elses_message`). The owner fallback is not
+  symmetry for its own sake — without it, an author who is not connected leaves the wrong
+  agent talking with nobody able to stop it, which is the defect the endpoint exists to close
+  (`test_topic_owner_may_overrule_as_fallback`).
+
+  **The asymmetry is deliberate and worth stating**: the *act* is authored-or-owner, while the
+  *learning* threshold stayed at contributor. So a third party still teaches the store while
+  being declined the act — `test_a_third_party_is_declined_by_outcome_and_still_teaches`.
+  Learning here opens nothing that `routing/correct` did not already open to the same
+  audience, and dropping the correction because the act was unauthorized would throw the
+  information away twice.
+
+- **Whether an overrule is possible after the turn has finished: answered, and it is no longer
+  an error.** The act declines with `acted: false` inside a **200** while the correction is
+  recorded anyway. The outcomes are `not-authorized`, `same-agent` and `not-routable`
+  (`OverruleDeclaresItsOutcomeTests`); `401` and `404` remain exceptions, because a request
+  that cannot even be read is not an outcome of the act. The reason for the shape is the part
+  worth keeping: a `403` made **«I did not learn»** indistinguishable from **«I did not
+  act»**, and those are two different things to tell a human. A finished turn is not a
+  decline at all — it is the empty interrupt set, and the re-route still happens.
+
+  The three declines in full — table carried over from the competing PR #277, which stated
+  this better than the prose above does. `learned` is `yes` in all three rows, and that is
+  the whole point of the shape:
+
+  | `outcome` | `acted` | `learned` | when |
+  |---|---|---|---|
+  | `not-authorized` | false | yes | the caller is a contributor but neither the author nor the owner |
+  | `same-agent` | false | yes | the named agent is the one the router had already chosen |
+  | `not-routable` | false | yes | the named agent cannot take the turn (`trace.reason` says why) |
+
+- **What the overruled agent is told: still open, and not invented here.** Today: nothing. The
+  agent is cancelled and the channel carries no note about it.
+  [`clodia-logic#334`](https://github.com/r-clodia/clodia-logic/pull/334) — closed without
+  merge, superseded by [`#335`](https://github.com/r-clodia/clodia-logic/pull/335) — argued
+  the channel should be told with a `router` note, for the same reason R16's chain limit
+  speaks: an interruption nobody
+  declares is indistinguishable from a fault, and the human reading the transcript later has
+  no way to know why an agent stopped mid-sentence. Against it: a note costs a message in a
+  channel that already produces plenty, and the truncated bubble is *some* signal. Undecided,
+  deliberately — it needs a measurement of how often an overrule leaves a reader confused,
+  not a preference.
 
 ---
 
