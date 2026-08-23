@@ -30,7 +30,7 @@ issue di remediation su `r-clodia/clodia-platform`:
 | R4 | [#184](https://github.com/r-clodia/clodia-platform/issues/184) | mancano toast, blink e il canale personale; il contatore c'è |
 | R6·R7 | [#185](https://github.com/r-clodia/clodia-platform/issues/185) | N, soglia e margine sono costanti nel sorgente |
 | R8 | [#186](https://github.com/r-clodia/clodia-platform/issues/186) | l'ambiguità abbandona la scelta invece di chiedere |
-| R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no |
+| R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no — **rimediato** il 19 ago, [`clodia-logic#335`](https://github.com/r-clodia/clodia-logic/pull/335); resta aperto cosa si dice al canale |
 | R10 | [#188](https://github.com/r-clodia/clodia-platform/issues/188) | nessun coordinatore dichiarato, e il ripiego risponde invece di decidere |
 | R12 | [#189](https://github.com/r-clodia/clodia-platform/issues/189) | `$nome` non è ancora inerte — **rimediato** il 18 ago, [`clodia-logic#325`](https://github.com/r-clodia/clodia-logic/pull/325) |
 | R14 | [#190](https://github.com/r-clodia/clodia-platform/issues/190) | l'ineleggibilità è un filtro di vista, non un'appartenenza |
@@ -754,13 +754,69 @@ the correction now also fixes the present, not only the future.
   would waste the difference — the store already distinguishes `confirm` from `correction`
   and weights them differently.
 
-### What R9 does not settle
+### Measured, 23 Aug 2026 — the sequence exists, and it is one door
 
-- **Who may overrule.** The corrector is `_require_contributor` today; readers are excluded.
-- **Whether an overrule is possible after the turn has finished** — a late «you should have
-  asked X» that only teaches, with nothing to interrupt.
-- **What the overruled agent is told**, if anything. Silence risks it resuming; a message
-  costs a turn.
+The three pieces are connected. `POST /clodia/channels/{tier}/{name}/routing-overrule`
+([clodia-logic#335](https://github.com/r-clodia/clodia-logic/pull/335), scoped and given
+declared outcomes by [#338](https://github.com/r-clodia/clodia-logic/pull/338)) performs the
+whole sequence in one call: **stop the wrong turn → start the right one → record the
+exemplar**. That order is the substance of the fix and it is stated in the code as such —
+inverted, the interrupt would kill the turn just started.
+
+The two learning-only doors stayed learning-only and now **say so**:
+`/clodia/routing/correct` and `/clodia/routing/feedback` (even with `kind=correction`) return
+`acted: false` plus `acts_at` pointing at the overrule endpoint. Learning is cheap,
+re-routing costs a turn; the split is deliberate, but which door a client calls was a
+functional difference that nothing announced.
+
+**The scope of the interrupt is one agent, not the room.** The overrule stops the
+wrongly-routed agent and **all its instances** — the match is by seed, so stopping
+`accountant` stops `accountant#2`, and the agent receiving the turn is spared even when the
+label differs (`keep="worker"` spares `worker#2`). The whole-room stop keeps its own endpoint
+(`/interrupt`) and its own button. An **empty target set stops nobody, deliberately**: not
+knowing whose turn is wrong is not a licence to stop everyone. When the client does not
+declare what the router chose, the target is whoever spoke after the last human message —
+the same window the exemplar uses.
+
+### Two of the three open questions now have answers, and they are in the code
+
+- **Who may overrule** — `_may_overrule_routing`: the **author of the misrouted message**,
+  with the **topic owner** as fallback. Not every contributor. The author is the only one who
+  knows for certain where the message should have gone, and the owner fallback closes the hole
+  that minimum privilege would otherwise leave: if the author is offline, the wrong agent
+  would finish talking with nobody able to stop it — precisely the defect the endpoint exists
+  to close. Same policy as the R8 ambiguity dialog, on purpose: one criterion per mechanism.
+
+  Worth stating, because it is an asymmetry and not an oversight: the **learning** threshold
+  stayed at contributor. A third party is therefore *declined the act and still teaches the
+  store* — see `test_a_third_party_is_declined_by_outcome_and_still_teaches`. Losing the
+  correction because the act was unauthorised would throw the information away twice, and the
+  caller was already allowed to teach through `routing/correct`.
+
+- **Whether an overrule is possible after the turn has finished** — yes, and it is no longer
+  an error. The act declines with `acted: false` **inside a 200**, and the correction is
+  recorded anyway. The declared outcomes are `not-authorized`, `same-agent` and
+  `not-routable`; `overruled` is the acting one. The reason for that shape is worth recording:
+  a 403 made «I did not learn» indistinguishable from «I did not act». Only 401 and 404
+  survive as exceptions, because they are not outcomes of the act but requests that cannot be
+  read at all. Recording the exemplar is the last step and **not** a condition — if the
+  embedder is down the wrong turn has still been stopped and the right one started, rather
+  than an endpoint that refuses to interrupt because it cannot take notes.
+
+### What R9 still does not settle
+
+- **What the overruled agent is told**, if anything. Today: **nothing** — no note to the
+  agent, and none to the room. Silence risks it resuming; a message costs a turn.
+
+  The argument for telling the **channel** instead of the agent — a `router` note naming who
+  stopped which turn and where the request went — is on record in
+  [clodia-logic#334](https://github.com/r-clodia/clodia-logic/pull/334), a PR closed *without*
+  merging (the R9 code landed as
+  [#335](https://github.com/r-clodia/clodia-logic/pull/335), `cf1e7da`), so the reasoning
+  survives where the implementation does not. It is the same reason R16's chain limit speaks
+  rather than failing quietly: a turn that truncates in silence is indistinguishable, from the
+  room, from a broken agent. The note would also not overpromise — what the interrupted agent
+  already said or did stays, and a sent email cannot be un-sent.
 
 ---
 
