@@ -250,25 +250,45 @@ written down here, reopened, or dismissed *with the measurement that dismisses
 it*. Never dropped silently: a backlog reset that reads as progress is the
 failure mode #175 exists to prevent.
 
-This is that measurement, taken on **19 August 2026** against `main` of
-`clodia-platform`, `clodia-logic` and `clodia-web`. Two of the five cannot be
-decided from here at all, and saying so is part of the result: the credential
-store, the per-connector ACL and the on-behalf gate check live in
-`clodia-tools`, and that repository was **not reachable** from the room where
-this was measured. A row that reads "not measurable" is not a row that is fine.
+This is that measurement, first taken on **19 August 2026** and **re-taken on 23
+August 2026** against `main` of `clodia-platform`, `clodia-logic`, `clodia-web`
+and — this is what changed — `clodia-tools` (`81344a2`). Three of the five rows
+used to end in "not measurable from here", because the credential store, the
+per-connector ACL and the on-behalf gate check all live in the gateway and that
+repository was outside the perimeter of whoever measured. It no longer is, so
+those rows now say what was **found** instead of where it could not be looked
+at. A row that reads "not measurable" is not a row that is fine; it is a row
+waiting for a room with the right reach.
+
+Three of the five are now closed, each with the measurement that closes it —
+and, where one exists, with the executable guard that keeps it closed, run
+rather than cited. The two that remain open are open for a reason that is no
+longer "unmeasured": each needs a decision that is the owner's, and the rows
+name it.
 
 | was | finding | state on rc5 | measurement |
 |---|---|---|---|
-| [#68](https://github.com/r-clodia/clodia-platform/issues/68) | connector credentials are *platform* identities: topic and user ACLs have no grip on the external data | **open — not measurable here** | the credential store and every per-connector ACL live in the gateway. What is verifiable from this side is only that the agent plane holds no copy: provider credentials arrive over HTTP (`clodia-logic/server/api/provider_store.py`) and `/datadir/clodia-vault` is blanked by a `mode=0` tmpfs on the agent container (`docker-compose.yml`, agent-server `tmpfs:`). That says the secret is not *here*; it says nothing about whose identity it is when used |
+| [#68](https://github.com/r-clodia/clodia-platform/issues/68) | connector credentials are *platform* identities: topic and user ACLs have no grip on the external data | **open — measured, and it is a decision, not a gap in the reading** | read in the gateway on 23 Aug 2026: a grant names an **agent** and nothing else. `vault.grants_for(agent)` is keyed by agent name, and `vault.deposit(..., grant_agents=[…])` takes a list of agents — there is no user dimension and no topic dimension anywhere on that key. The per-agent ACL exists and, since the row below, actually intersects; what does not exist is any binding between the external datum and *the person who may see it*, so two people on one instance share one identity in the mailbox and on Drive. The agent plane still holds no copy of the secret (`clodia-logic/server/api/provider_store.py` over HTTP, `/datadir/clodia-vault` blanked by a `mode=0` tmpfs on the agent container) — which says the secret is not *there*, and says nothing about whose identity it is when used. Exactly the multi-user blocker it was recorded as. **Ends as its own issue**: giving the datum a per-user and per-topic ACL is the multi-user design, not a patch |
 | [#80](https://github.com/r-clodia/clodia-platform/issues/80) | the agent-server can rewrite the gateway's decision state on the shared `/datadir` → self-escalation from the inside | **closed by construction** | the decision state moved off the shared datadir: `CLODIA_TOOLS_STATE_DIR: /gateway-state` and the bind `${CLODIA_GATEWAY_STATE:-./gateway-state}:/gateway-state` appear **only** on the `clodia-tools` service in `docker-compose.yml`; the agent-server's volume list has no `/gateway-state` entry, and its comment names this issue. Already carried in `SECURITY.md` §8.2 / §8.9. **Dismissed with this measurement**, not by assumption |
-| [#148](https://github.com/r-clodia/clodia-platform/issues/148) | on-behalf requests skipped gates and the destination whitelist, on the rationale that any authenticated UI user is trusted | **open — half measured, and the half that shows is not reassuring** | the rationale is gone on this side: a human action from the UI no longer authorises itself, it asks the gateway with the same RBAC as an agent (`clodia-logic/server/api/gateway_pdp.py`, `gw_authorize` / `gw_tool`, token minted with `on_behalf=True` and a **signed** `human_role` claim). Whether the *gateway* then applies gate and destination whitelist to an on-behalf token is decided in `clodia-tools`. What is measurable here is adjacent and points the wrong way: on-behalf still confers human standing at ingress — a proxy token is on-behalf, and its message persists as `kind: human`, which `clodia-logic/server/api/channels.py` (`_from_human`) now refuses to believe as a declared bridge (#221, #248) |
-| [#149](https://github.com/r-clodia/clodia-platform/issues/149) | a Drive grant is silently also a mail grant: the unified Google credential re-grants `email.*` through `_connector_allows` | **open — not measurable here** | `_connector_allows` appears **nowhere** in `clodia-platform` or `clodia-logic` (grep, 19 Aug 2026): the unified credential and the re-grant it implies live entirely in the gateway. One consent, two authorities — until read there, this stands |
-| [#108](https://github.com/r-clodia/clodia-platform/issues/108) | artifact CSP `img-src https:` allows exfiltration by GET from the owner's browser | **was still true — fix open** | measured live at `clodia-web/src/lib/artifact-frame.ts`: `img-src data: blob: https:`, and the same `https:` on `style-src`, `font-src` and `media-src` — closing only `img-src` moves the channel instead of closing it, since `<video src>` and a remote `@font-face` make the same GET. r-clodia/clodia-web#175 drops all four and adds `scripts/check-artifact-csp-no-remote.mjs`, which is red on the current state. This row closes when that merges |
+| [#148](https://github.com/r-clodia/clodia-platform/issues/148) | on-behalf requests skipped gates and the destination whitelist, on the rationale that any authenticated UI user is trusted | **open — measured in full, and still true** | both exemptions are there, in `clodia-tools/server/main.py` on 23 Aug 2026: the M-gate is inside `if not is_on_behalf():` (line 3355) and so is the destination whitelist (line 3474), whose comment states the rationale in plain words — «NON si applica alle richieste on-behalf: l'utente autenticato dall'UI è trusted (§2)». What sits above them is `_human_tool_allowed`, which demands `admin` only for the *gated* verbs, plus `_scoped_ceiling_ok` → `whitelist.scoped_ceiling_allows` — and that one is, by declared design, **not a ceiling when the claim is absent** («un tetto vuoto non è un tetto stretto»). The claim is absent precisely on the path that matters: `clodia-logic/server/api/gateway_pdp.py::_token` mints the on-behalf token with `principal`, `on_behalf=True`, `human_role` and `origin`, and **no `scoped_tools`**. So a `user`-role person acting from the webui reaches every non-gated verb with no gate and no destination whitelist. The instinctive suspect is the wrong one: a proxy token is on-behalf too, but its ceiling is `human_mcp.PROXY_VERBS` (`topic.post_message`, `topic.messages`, `topic.my_mentions`, `topic.mark_seen`) — no egress verb, so the proxy is not the vector and a guard aimed at it would sit in the wrong place. **Ends as its own issue**, with the decision named: whether the destination perimeter applies to a *person* changes a product rule (spec §2), and it is not a developer's call |
+| [#149](https://github.com/r-clodia/clodia-platform/issues/149) | a Drive grant is silently also a mail grant: the unified Google credential re-grants `email.*` through `_connector_allows` | **closed — with the measurement, and with a guard that was run** | `_connector_allows` (`clodia-tools/server/main.py`) no longer answers True for a whole credential namespace: it **intersects** the verb with the connector the grant is for, behind an emergency switch (`CLODIA_CONNECTOR_INTERSECT`, on by default) so a legitimate flow can be unblocked without a deploy. The rule has an executable guard, and it was **executed** rather than cited: `server/test_connector_intersect.py`, 11 tests green on 23 Aug 2026 — `email.send` granted to `messaggero` does not carry `gdrive.download`, and a Drive grant to `impiegato` does not carry `email.send`. One consent no longer makes two authorities. **Dismissed with this measurement** |
+| [#108](https://github.com/r-clodia/clodia-platform/issues/108) | artifact CSP `img-src https:` allows exfiltration by GET from the owner's browser | **closed — the fix merged, and re-read at `main`** | r-clodia/clodia-web#175 is merged. Read at `main` on 23 Aug 2026 (not taken from the issue thread): `clodia-web/src/lib/artifact-frame.ts` declares `default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; media-src data: blob:` — no network source left on any of the four directives that had one, which is the point: closing `img-src` alone would have **moved** the channel, since `<video src>`, a remote `@font-face` and a `<link rel=stylesheet>` make the same GET with the same effect. `scripts/check-artifact-csp-no-remote.mjs` is in the repository and wired into `npm run check`, so the row stays closed by a test and not by memory |
 
 **What is left to finish #175**, stated so it does not dissolve into "we looked
-at it": #68, #148 and #149 need the gateway repository inside the perimeter of
-whoever measures them, and each then ends as its own issue or as a row in this
-table. #108 closes with a merge. #80 is done.
+at it": **two rows, and neither is waiting to be read**. #68 and #148 are
+measured, written above, and each waits on a decision that belongs to the owner
+— for #68, whether the external datum gets a per-user and per-topic identity
+(that is the multi-user design); for #148, whether the destination perimeter
+applies to a person acting from the UI, which is the product rule that spec §2
+currently answers with "the authenticated user is trusted". Each ends as its own
+issue, with that question in the body: a security row that dies in a table
+nobody reopens is the same failure this issue exists to prevent, one table
+later.
+
+Done, with the measurement in the row: **#80** (decision state off the shared
+datadir), **#149** (verb ∩ connector, guard run green), **#108** (artifact CSP
+with no network source, guard in `npm run check`). Three of five closed, none of
+them dismissed by assumption.
 
 ## 8 · Known limits
 
