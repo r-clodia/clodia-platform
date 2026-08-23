@@ -827,6 +827,16 @@ the correction now also fixes the present, not only the future.
   act»**, and those are two different things to tell a human. A finished turn is not a
   decline at all — it is the empty interrupt set, and the re-route still happens.
 
+  The three declines in full — table carried over from the competing PR #277, which stated
+  this better than the prose above does. `learned` is `yes` in all three rows, and that is
+  the whole point of the shape:
+
+  | `outcome` | `acted` | `learned` | when |
+  |---|---|---|---|
+  | `not-authorized` | false | yes | the caller is a contributor but neither the author nor the owner |
+  | `same-agent` | false | yes | the named agent is the one the router had already chosen |
+  | `not-routable` | false | yes | the named agent cannot take the turn (`trace.reason` says why) |
+
 - **What the overruled agent is told: still open, and not invented here.** Today: nothing. The
   agent is cancelled and the channel carries no note about it.
   [`clodia-logic#334`](https://github.com/r-clodia/clodia-logic/pull/334) — closed without
