@@ -29,7 +29,7 @@ issue di remediation su `r-clodia/clodia-platform`:
 | R3 | [#183](https://github.com/r-clodia/clodia-platform/issues/183) | due menzioni devono chiedere, tre rifiutare: oggi vince la prima |
 | R4 | [#184](https://github.com/r-clodia/clodia-platform/issues/184) | mancano toast, blink e il canale personale; il contatore c'è |
 | R6·R7 | [#185](https://github.com/r-clodia/clodia-platform/issues/185) | N, soglia e margine sono costanti nel sorgente |
-| R8 | [#186](https://github.com/r-clodia/clodia-platform/issues/186) | l'ambiguità abbandona la scelta invece di chiedere |
+| R8 | [#186](https://github.com/r-clodia/clodia-platform/issues/186) | l'ambiguità abbandona la scelta invece di chiedere — **il dialogo è rimediato**; resta la promozione dello storage, vedi §R8 |
 | R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no |
 | R10 | [#188](https://github.com/r-clodia/clodia-platform/issues/188) | nessun coordinatore dichiarato, e il ripiego risponde invece di decidere |
 | R12 | [#189](https://github.com/r-clodia/clodia-platform/issues/189) | `$nome` non è ancora inerte — **rimediato** il 18 ago, [`clodia-logic#325`](https://github.com/r-clodia/clodia-logic/pull/325) |
@@ -692,16 +692,52 @@ mechanism itself.
 It measures a store fed by whoever happened to bother; R8 feeds it from the cases that
 matter.
 
-### What R8 does not settle
+### What R8 asked and is now settled — 23 Aug 2026
 
-- **When the remembered choice stops being «primo riferimento».** A stored preference that
-  always wins is indistinguishable from a hard rule, and a conversation changes subject. The
-  floor and margin exist today for this; whether R8's storage keeps them is not stated.
+The dialog half shipped: close scores are recognised as ambiguity (`channels.py`,
+`_routing_ambiguity`), the candidates are rendered as pills (`_routing_choices_marker`), and
+`POST /clodia/channels/{tier}/{name}/routing-choice` both starts the chosen agent on the
+original message and appends the human's answer to the exemplar corpus as a supervised
+correction. Two of the questions this section left open have answers now, and they are
+written here because the answer existed in the code while the notebook still called it open.
+
+**When a remembered choice stops being «primo riferimento» → with a decay, not a counter.**
+Not «never», and not «after N contrary corrections». What is implemented:
+
+| mechanism | value | what it does |
+|---|---|---|
+| temporal decay | half-life 90 days (`EXEMPLAR_HALF_LIFE_DAYS`) | a choice fades by itself; a year-old preference weighs 1/16 of a fresh one |
+| corrections over confirmations | `CONFIRM_WEIGHT = 0.50` | a contrary correction outvotes rather than deletes |
+| absolute floor | 0.80 (`EXEMPLAR_FLOOR`) | a memory only applies to messages that really resemble the one it came from |
+| relative margin | 0.15 (`EXEMPLAR_MARGIN`) | when memories disagree, none of them is «the first reference» |
+
+A stored preference is therefore never a hard rule: it is an old vote among newer ones, on a
+message that has to look like the one it was given for.
+
+**Whether the shadow→enforce switch stays a manual decision → manual, but subordinate to a
+measurement** ([`clodia-logic#348`](https://github.com/r-clodia/clodia-logic/pull/348)). It
+was written here that `enforce` is «an explicit decision to take once accuracy is adequate,
+indicatively ≥70%» — and that sentence lived in a comment while the switch itself was a free
+environment variable. With leave-one-out accuracy at 21–30%, writing `RESPONDER_EXEMPLAR_MODE=enforce`
+made routing worse in silence: nothing connected the measurement to the knob that presupposes
+it. Now `RESPONDER_EXEMPLAR_MIN_ACCURACY` (0.70, the number that was already written) and
+`RESPONDER_EXEMPLAR_MIN_SUPPORT` (20 predictions) are checked against the leave-one-out on the
+installed corpus, and `GET /clodia/routing/stats` reports `exemplar.gate` with the requested
+mode, the effective one and the number separating them.
+
+The gate can only **withhold**: it never turns `enforce` on by itself, and setting the
+thresholds to 0 is the explicit way to force the switch. Nothing is computed at all while the
+mode is `shadow`, which is the default.
+
+### What R8 still does not settle
+
+- **Raising the accuracy itself.** The gate makes the criterion executable; it does not make
+  the corpus better. That happens through use of the ambiguity dialog — every answer is a
+  label produced exactly where the router did not know — and it is a measurement to watch,
+  not a patch to write.
 - **Scope of a memory**: does a choice made in one topic apply to another? The record already
   carries `topic` and `tier`, so both are possible.
 - **Whether an ambiguity dialog can also be answered «neither»** — and what happens then.
-- **Whether the shadow→enforce switch stays a manual decision**, or whether R8 implies the
-  store is authoritative from the first answer.
 
 ---
 
@@ -1038,8 +1074,9 @@ agents mentioned» dialog or the «three or more» refusal — those thresholds 
 - **Whether «coda» is per seed or per scope** — two rooms queueing on one agent is not the
   same problem as two messages queueing in one room.
 - From earlier: the state of a human assignment (R1), who may answer a routing dialog (R3), a
-  person with no Telegram (R4), how the N messages are combined (R7), when a remembered
-  choice stops being «primo riferimento» (R8), who may overrule a confident router (R9).
+  person with no Telegram (R4), how the N messages are combined (R7), who may overrule a
+  confident router (R9). *«When a remembered choice stops being «primo riferimento» (R8)» was
+  on this list and is answered in §R8: with a decay, 23 Aug 2026.*
 
 ### Ruling on the coordinator (11 Aug 2026)
 
