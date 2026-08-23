@@ -1144,15 +1144,43 @@ reached the container: the knob existed in the code, answered `4` whatever you w
 nothing said so. Exactly the shape of the `CLODIA_DEBUG_MODE` defect the security-posture
 block in that same file was written to record — which is the argument for reading a lesson
 as a *class* rather than as the one variable that occasioned it. Now declared, with `4`
-still the default for whoever installs.
+the default for whoever installs — until #268 moved it to `15`, below.
 
 **What raising it costs, stated where the number is set.** This limit is the *only* brake
 on agent-to-agent ping-pong: R3 bounds how many mentions a single message may serve, not
 how long a chain may get. So the hop count is a multiplier on LLM turns that one human
 message can trigger — at 50, up to fifty consecutive turns before the chain stops and says
 it. That is a legitimate setting in a channel where many agents genuinely cooperate, and it
-is the reason the default does not move: whoever raises it is choosing to pay for those
-turns, and should be doing so on purpose.
+was the reason the default stayed put for as long as it did: whoever raises it is choosing
+to pay for those turns, and should be doing so on purpose.
 
 **Where the chain resets.** A human message starts at `hop 0`. So the recovery path is
 always available and the notice says it: the chain restarts from a human message.
+
+**4 to 15: the default is a number of exchanges, not a number of messages** (#268, on
+Davide's instruction, 23 Aug 2026). The unit here is easy to misread. A complete exchange
+between a coordinator and an executor costs **two** hops — the order out and the report
+back — so the hop count divided by two is what the channel actually gets: at `4`, two
+exchanges. The session `software-house` was built to run is six legs long: lead assigns,
+dev plans, lead approves, dev implements, dev reports, lead picks up the next issue. It
+exhausted the limit at the halfway mark, every single time, and from there every mention
+produced the notice instead of a turn. `15` covers seven exchanges — one whole working
+session, with the brake still in front of an infinite one.
+
+**This does not retract the paragraph above it.** The cost argument stands unchanged and is
+the reason the number is fifteen rather than fifty: one human message can now trigger up to
+fifteen consecutive LLM turns, and that ceiling was chosen against a measured session
+length, not picked for headroom. What changed is not the reasoning, it is the input — the
+default was set when a channel meant a coordinator and one executor, and `software-house`
+now runs a tech lead, several concurrent dev spawns, a sysadmin and a messenger. «The
+default does not move» was never a property of the brake; it was a claim about the shape of
+a channel, and the shape moved first.
+
+**The number lives in three files, and all three are the same number.** The code default
+(`_DEFAULT_MAX_DELEGATION_HOPS` in `clodia-logic`), the `.env.example`, and the
+`docker-compose.yml` fallback. This variable has already been broken once by exactly this
+kind of drift — declared in the code and missing from the compose, so the knob answered `4`
+whatever you wrote — and a default that disagrees with itself across two repos is the same
+defect wearing different clothes. The executable check therefore measures the *default*,
+not the constant: with no env var set, a delegation at `hop 14` must still start and at
+`hop 15` must produce the notice with the denied agent named.

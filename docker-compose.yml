@@ -40,13 +40,17 @@ x-common-env: &common-env
     # non la faceva arrivare al container, esattamente come `CLODIA_DEBUG_MODE`
     # qui sotto — una manopola che non si può girare è una manopola che non c'è.
     #
-    # Default `4` = quello del codice, e resta il default di chi installa: è
-    # l'UNICO freno al rimpallo fra agenti (R3 limita le menzioni per messaggio,
-    # non la lunghezza della catena), quindi ogni unità in più è un turno LLM in
-    # più che un solo messaggio umano può innescare. Alzarlo è legittimo in un
-    # canale con molti agenti che cooperano, ma deve essere una scelta di chi
-    # paga i turni. Un valore illeggibile o <= 0 ricade sul default.
-    CLODIA_MAX_DELEGATION_HOPS: "${CLODIA_MAX_DELEGATION_HOPS:-4}"
+    # Default `15` = quello del codice (#268; era `4`). Uno scambio completo fra
+    # due agenti costa DUE salti, quindi il numero è «quanti scambi regge il
+    # canale»: 4 erano due, meno di una sessione di lavoro, e la catena si
+    # fermava a metà giro. 15 ne copre sette.
+    #
+    # Resta l'UNICO freno al rimpallo fra agenti (R3 limita le menzioni per
+    # messaggio, non la lunghezza della catena), quindi ogni unità è un turno LLM
+    # in più che un solo messaggio umano può innescare. Alzarlo ancora è
+    # legittimo in un canale con molti agenti che cooperano, ma deve essere una
+    # scelta di chi paga i turni. Un valore illeggibile o <= 0 ricade sul default.
+    CLODIA_MAX_DELEGATION_HOPS: "${CLODIA_MAX_DELEGATION_HOPS:-15}"
     # ── Postura di sicurezza dell'istanza ─────────────────────────────────────
     # Vivevano solo nella copia locale del compose di un'istanza, applicate a
     # mano. Conseguenza misurata su una istanza nuova: `CLODIA_DEBUG_MODE=1` era
