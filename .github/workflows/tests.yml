@@ -1,0 +1,43 @@
+name: tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  notebook-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # I due componenti servono al controllo di copertura: `notebook-coverage`
+      # cerca, per ogni voce dei notebook, il test che la cita. Sono repository
+      # pubblici, quindi basta il token di default: nessun secret entra qui.
+      - uses: actions/checkout@v4
+        with:
+          repository: r-clodia/clodia-logic
+          path: repos/clodia-logic
+      - uses: actions/checkout@v4
+        with:
+          repository: r-clodia/clodia-tools
+          path: repos/clodia-tools
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # `test-coverage` e non `test`: le suite dei componenti hanno la loro
+      # workflow nei loro repository (clodia-platform#263), e rieseguirle qui
+      # renderebbe questa CI rossa per una rottura che non sta in questo repo.
+      # Qui si verifica la sola cosa che appartiene a clodia-platform: che ogni
+      # voce dei notebook sia citata da un test che la fissa.
+      #
+      # Non può essere verde per assenza: senza i componenti sotto `repos/`
+      # nessuna voce risulta citata e `--strict` esce 1 (misurato il 23 ago
+      # 2026 con una cartella vuota). È lo stesso principio della soglia sul
+      # numero di test nelle altre workflow — un controllo che non ha letto
+      # niente non deve poter passare.
+      #
+      # LIMITE DICHIARATO: i componenti sono presi al loro `main`, quindi un
+      # commit fatto altrove può far diventare rosso questo repo. È la natura
+      # dell'asserzione (è cross-repo), non un difetto della workflow: il
+      # rosso dice che i notebook e il codice hanno divergiato, che è
+      # esattamente ciò che si vuole sapere.
+      - name: ogni voce dei notebook è citata da un test
+        run: make test-coverage
