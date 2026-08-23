@@ -30,7 +30,7 @@ issue di remediation su `r-clodia/clodia-platform`:
 | R4 | [#184](https://github.com/r-clodia/clodia-platform/issues/184) | mancano toast, blink e il canale personale; il contatore c'è |
 | R6·R7 | [#185](https://github.com/r-clodia/clodia-platform/issues/185) | N, soglia e margine sono costanti nel sorgente |
 | R8 | [#186](https://github.com/r-clodia/clodia-platform/issues/186) | l'ambiguità abbandona la scelta invece di chiedere |
-| R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no |
+| R9 | [#187](https://github.com/r-clodia/clodia-platform/issues/187) | i tre pezzi ci sono, la sequenza no — **rimediato** il 19 ago, [`clodia-logic#335`](https://github.com/r-clodia/clodia-logic/pull/335); resta aperto cosa viene detto all'agente scavalcato, vedi §R9 |
 | R10 | [#188](https://github.com/r-clodia/clodia-platform/issues/188) | nessun coordinatore dichiarato, e il ripiego risponde invece di decidere |
 | R12 | [#189](https://github.com/r-clodia/clodia-platform/issues/189) | `$nome` non è ancora inerte — **rimediato** il 18 ago, [`clodia-logic#325`](https://github.com/r-clodia/clodia-logic/pull/325) |
 | R14 | [#190](https://github.com/r-clodia/clodia-platform/issues/190) | l'ineleggibilità è un filtro di vista, non un'appartenenza |
@@ -729,8 +729,9 @@ learns where it is confidently wrong.
 3. **Starting a turn for a named agent exists** — it is the direct-mention path of R2.
 
 So R9 asks for a **sequence**, not for new capability: correct → interrupt → re-route →
-record. Today the correction teaches the store for *next time* and lets the wrong agent
-finish talking; the human then has to interrupt by hand and re-ask with a mention.
+record. When this was measured the correction taught the store for *next time* and let the
+wrong agent finish talking; the human then had to interrupt by hand and re-ask with a
+mention. That is no longer the state of the code — see «Measured again on `main`» below.
 
 ### The prompt on record
 
@@ -744,7 +745,9 @@ the correction now also fixes the present, not only the future.
 - **The correction re-embeds «the last human message».** Under R7 the router will decide on
   a window of three messages including the agents'. If the correction keeps learning from
   one message while the router decides on three, the store teaches something the router does
-  not consume — a mismatch invisible in both places.
+  not consume — a mismatch invisible in both places. *Closed: what gets embedded is
+  `_latest_human_routing_context(messages, router_config.load())`, the same window the
+  router decided on, in the overrule and in `/routing/correct` alike.*
 - **Interrupting is not free.** The interrupted agent may have already spoken, called tools,
   or written to the topic. What the conversation shows afterwards — a truncated bubble, a
   note, nothing — is not stated, and «il turno viene interrotto» hides a real question: a
@@ -754,13 +757,80 @@ the correction now also fixes the present, not only the future.
   would waste the difference — the store already distinguishes `confirm` from `correction`
   and weights them differently.
 
-### What R9 does not settle
+### Measured again on `main`, 23 Aug 2026 — the sequence exists
 
-- **Who may overrule.** The corrector is `_require_contributor` today; readers are excluded.
-- **Whether an overrule is possible after the turn has finished** — a late «you should have
-  asked X» that only teaches, with nothing to interrupt.
-- **What the overruled agent is told**, if anything. Silence risks it resuming; a message
-  costs a turn.
+Delivered by [`clodia-logic#335`](https://github.com/r-clodia/clodia-logic/pull/335) (19 Aug)
+and scoped by [`#338`](https://github.com/r-clodia/clodia-logic/pull/338) the same day. The
+sequence is one endpoint — `POST /clodia/channels/{tier}/{name}/routing-overrule`,
+`channel_routing_overrule` — and the order inside it is the substance of the fix: the wrong
+turn is stopped *before* the right one starts, because inverted, the interrupt would kill the
+turn just created (`test_the_wrong_turn_is_stopped_before_the_right_one_starts` asserts the
+order, not just the outcome).
+
+The two doors that only mean «I would have used X» — `/clodia/routing/correct` and
+`/clodia/routing/feedback` — now say so in the response: `acted: false` plus
+`acts_at: /clodia/channels/{tier}/{name}/routing-overrule`. Learning is free, re-routing
+spends a turn; keeping them separate is deliberate, but which door a client happens to call
+must not be a functional difference that nothing announces.
+
+**The act declares its outcome inside a 200.**
+
+| `outcome` | `acted` | `learned` | when |
+|---|---|---|---|
+| `overruled` | true | best effort | the turn was re-routed |
+| `not-authorized` | false | yes | the caller is a contributor but neither the author nor the owner |
+| `same-agent` | false | yes | the named agent is the one the router had already chosen |
+| `not-routable` | false | yes | the named agent cannot take the turn (`trace.reason` says why) |
+
+A 403 for «there was no turn to stop» would make «I did not learn» indistinguishable from «I
+did not act». `401` and `404` remain exceptions — they are not outcomes of the act but
+requests that cannot be read at all.
+
+**Two of the three questions this section left open have an answer in code.**
+
+- **Who may overrule → the author of the misrouted message, with the topic owner as
+  fallback** (`_may_overrule_routing`). The author because they are the only one who knows
+  for certain who the message was for; the owner because without a fallback an author who is
+  not connected leaves the wrong agent talking with nobody able to stop it — the very defect
+  the endpoint exists to close. Same policy as R8's ambiguity dialog: one criterion for one
+  mechanism.
+  **The asymmetry is deliberate and worth stating:** the threshold for *acting* is
+  author-or-owner, while the threshold for *learning* stayed at contributor
+  (`_require_contributor`), so a third party is declined the act and still teaches the store
+  — `test_a_third_party_is_declined_by_outcome_and_still_teaches`. Losing the correction
+  because the act was not authorised would throw the information away twice.
+  Learning is also the *last* step and not a condition: with the embedder down the wrong turn
+  has still been stopped and the right one started
+  (`test_a_dead_embedder_does_not_cancel_the_overrule`), where `/routing/correct` fails with
+  503 — an endpoint that refuses to interrupt because it cannot take notes.
+- **An overrule after the turn has finished → yes, and it is no longer an error.** Nothing is
+  reopened that nobody asked for again: the empty interrupt list *is* the answer «the turn was
+  already over», and it does not stop the new turn from being handed over — whoever pressed
+  the overrule chip asked for the other agent to speak, which is what distinguishes that chip
+  from the one that only teaches.
+
+**The scope of the interrupt** — the substance of
+[#253](https://github.com/r-clodia/clodia-platform/issues/253) §2 — is one turn, not the
+room. `_interrupt_channel_turns(keep=chosen, only=_misrouted_agents(...))` stops the
+misrouted **seed and all its instances** and spares the seed taking over, in both
+directions and by seed rather than string equality: `keep="worker"` must spare `worker#2`,
+or the instance we are handing the turn to is the one we kill, and stopping `accountant`
+must stop `accountant#2`. The whole-room stop keeps its own endpoint (`/interrupt`) and its
+own button. **An empty target set stops nobody, deliberately**: not knowing whose turn is
+wrong is not a licence to stop everyone
+(`test_when_nobody_spoke_yet_nothing_is_interrupted`).
+
+### What R9 still does not settle
+
+- **What the overruled agent is told: nothing, today.** Neither the agent nor the channel
+  gets a note — the interrupted turn simply stops, and the only trace is the
+  `routing_decision` event the webui consumes.
+  [`clodia-logic#334`](https://github.com/r-clodia/clodia-logic/pull/334) argued the *channel*
+  should be told with a `router` note saying who stopped which turn and where the request
+  went, for the same reason R16's chain limit speaks: a turn that truncates in silence is
+  indistinguishable from a broken agent. That argument is recorded here as a proposal, not as
+  behaviour. Note what such a note could not promise: what the interrupted agent already said
+  or did stays, and a sent email cannot be un-sent.
 
 ---
 
@@ -1039,7 +1109,9 @@ agents mentioned» dialog or the «three or more» refusal — those thresholds 
   same problem as two messages queueing in one room.
 - From earlier: the state of a human assignment (R1), who may answer a routing dialog (R3), a
   person with no Telegram (R4), how the N messages are combined (R7), when a remembered
-  choice stops being «primo riferimento» (R8), who may overrule a confident router (R9).
+  choice stops being «primo riferimento» (R8). *«Who may overrule a confident router (R9)»
+  was on this list and is answered in §R9: the author of the misrouted message, with the
+  topic owner as fallback, 19 Aug 2026.*
 
 ### Ruling on the coordinator (11 Aug 2026)
 
