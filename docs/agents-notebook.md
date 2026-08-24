@@ -29,7 +29,7 @@ sono diventate issue di remediation su `r-clodia/clodia-platform`.
 | A5 | [#196](https://github.com/r-clodia/clodia-platform/issues/196) | il segretario non ha i due verbi per convocare |
 | A6 | [#197](https://github.com/r-clodia/clodia-platform/issues/197) | 18 verbi cadono, e `github.*` è un'AGGIUNTA con due gate `outward` |
 | A7 | [#198](https://github.com/r-clodia/clodia-platform/issues/198) | via `comms-pack`; e al segretario manca la skill che A5 dà per scontata |
-| A9 | [#199](https://github.com/r-clodia/clodia-platform/issues/199) | residuo: `permission_mode` è ancora una tabella per kind |
+| A9 | [#199](https://github.com/r-clodia/clodia-platform/issues/199) | residuo: `permission_mode` era una tabella per kind — ora lo dichiara il seed (24 ago) |
 | A10 | [#200](https://github.com/r-clodia/clodia-platform/issues/200) | il campo esiste e il valore sta negli extras; serve una validazione |
 | A11 | [#201](https://github.com/r-clodia/clodia-platform/issues/201) | il proxy va costruito: non è un divario, è una classe che non c'è |
 
@@ -816,11 +816,16 @@ seed needed, discovered one failure at a time.
 ### Open
 
 - Whether the seed lists native tools by name or by family (`Task*`, `Cron*`).
-- Whether `permission_mode` becomes a seed property too: today `bypassPermissions` is hardcoded
-  for `clodia` and `looper`, which is the same shape of defect — a decision about an agent kept
-  in a table instead of in the agent.
+- ~~Whether `permission_mode` becomes a seed property too~~ — **decided, 24 Aug 2026**: it does.
+  `AgentSpec.permission_mode` (the four SDK values), resolution `seed → table → fallback`, and
+  `clodia` out of `KIND_PERMISSION_MODE`. The table survives only for the seedless static kinds
+  (`ada`, `looper`), where `ada`'s `None` is a value the dynamic fallback cannot express.
+  Worth recording what the residual actually was: not a field nobody read, a field **nobody
+  could write** — `AgentSpec` forbids extras, so a seed that declared it failed to load.
 - Whether `can_use_tool` (a callback the SDK offers) is worth using to route native tool
-  attempts through the gateway's own policy, rather than deciding them once at startup.
+  attempts through the gateway's own policy, rather than deciding them once at startup. Still
+  open on purpose: it would make a native read *taint* the channel, which is a decision about
+  the taint model and not about where a table lives.
 
 ---
 
