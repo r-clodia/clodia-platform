@@ -1087,3 +1087,93 @@ So the first measurement of this requirement was not "the fork does not work": i
 flag is off, and nothing says why". Configuration declared in a pack can be silently inert
 on an instance, and there is no code left that explains the marker — which makes it its own
 finding, recorded here because the next person to enable a seed field will hit it first.
+
+---
+
+## A13 · The provider belongs to the room, not to the agent
+
+Dictated 5 set 2026, as a question with a premise attached:
+
+> «un agente dovrebbe entrare in un canale con il provider meno costoso che rispetta la
+> clearance. E' così? Questo significa che lo stesso agente potrebbe usare un provider 1
+> per un topic ed un provider 2 per un altro topic. Mentre ora l'agente è vincolato ad un
+> unico provider alla volta per tutti gli spawn.»
+
+The requirement and the premise are two claims, and they turn out to have different
+answers. The requirement is **already implemented**; the premise describing today's
+behaviour is **no longer true**. What is left is a set of three residues, and the third is
+the reason the premise sounded right.
+
+This supersedes the earlier rule recorded on 30 giu 2026 — «il provider usato da un agent
+è quello con seal maggiore fra i provider attivi che gli sono attribuiti». Highest SEAL
+was a per-agent rule and made every room pay the most sovereign provider the agent could
+reach, including the rooms that did not need it. Cost-minimal-above-the-tier is the same
+safety with the spend attached to the room that requires it.
+
+### Measured, 5 set 2026 · clodia-logic
+
+The selection is per-tier, minimal-cost, and there is no silent fallback below the tier
+(`api/providers.py`):
+
+```python
+eligible = [p for p in cands
+            if p in connected and p not in paused and provider_meets_tier(p, tier)]
+if not eligible:
+    return None
+return min(eligible, key=lambda p: (provider_cost_rank(p), _seal_rank(p), cands.index(p)))
+```
+
+It is wired into the turn: `_start_turn` calls `topic_runtime_override(spec.name,
+tier_real)` and passes it as the session's `runtime_override`, and a missing eligible
+provider raises `ProviderNotConnected` rather than degrading.
+
+And the sessions are already separate per room, which is what makes the second half of the
+question true today:
+
+```python
+base_id = f"chan:{tier}:{name}:{spec.name}"
+```
+
+One session per **(topic, agent)** — so the same agent in a SEAL-1 room and in a SEAL-3
+room holds two sessions, each opened with the cheapest provider eligible for *its* tier.
+The agent is not bound to one provider across its spawns.
+
+### Open
+
+**1. The choice is made once, at session birth** ([#305](https://github.com/r-clodia/clodia-platform/issues/305))**.** The override is computed inside the
+`except KeyError` branch — that is, only when the session does not yet exist:
+
+```python
+try:
+    chat = manager.get(chat_id)          # existing session: nothing recomputed
+except KeyError:
+    override = topic_runtime_override(spec.name, tier_real)
+```
+
+A live session therefore keeps the provider it was born with. If a cheaper eligible
+provider connects, or the one in use is paused, nothing moves until the session dies. The
+rule is stated as a property of entering the room, and it is enforced only at the moment
+of entering it — for a long-lived room the two are not the same thing.
+
+**2. The agent card shows a single provider, and cannot show the true one**
+([#306](https://github.com/r-clodia/clodia-platform/issues/306))**.**
+`api/agent_registry.py` fills the card with `agent_effective_provider(name)` — the variant
+*without* tier, which resolves the declared preference order and knows nothing about any
+room. So the card names one provider while the effective one depends on where the agent is
+working. This is almost certainly where the premise of the question comes from: the
+platform says a thing it does not do, which is the same class of defect as
+[#296](https://github.com/r-clodia/clodia-platform/issues/296).
+
+**3. The below-tier warning can name a provider that is not in use**
+([#307](https://github.com/r-clodia/clodia-platform/issues/307))**.**
+`_provider_below_tier_warning` builds its message from the same tier-less variant:
+
+```python
+pid = agent_effective_provider(spec.name)
+...  f"Il provider in uso da {spec.name} ({pid}…) è sotto il tier {tier_real}"
+```
+
+`_topic_provider(spec, tier)` — the one that answers the question the warning is asking —
+is defined a few lines above and not used here. A warning about provider/tier mismatch
+that names the wrong provider, with the words «in uso», is worse than no warning: it sends
+whoever reads it to check a provider that this room never touched.
