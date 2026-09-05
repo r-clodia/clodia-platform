@@ -1140,7 +1140,7 @@ The agent is not bound to one provider across its spawns.
 
 ### Open
 
-**1. The choice is made once, at session birth.** The override is computed inside the
+**1. The choice is made once, at session birth** ([#305](https://github.com/r-clodia/clodia-platform/issues/305))**.** The override is computed inside the
 `except KeyError` branch — that is, only when the session does not yet exist:
 
 ```python
@@ -1155,7 +1155,8 @@ provider connects, or the one in use is paused, nothing moves until the session 
 rule is stated as a property of entering the room, and it is enforced only at the moment
 of entering it — for a long-lived room the two are not the same thing.
 
-**2. The agent card shows a single provider, and cannot show the true one.**
+**2. The agent card shows a single provider, and cannot show the true one**
+([#306](https://github.com/r-clodia/clodia-platform/issues/306))**.**
 `api/agent_registry.py` fills the card with `agent_effective_provider(name)` — the variant
 *without* tier, which resolves the declared preference order and knows nothing about any
 room. So the card names one provider while the effective one depends on where the agent is
@@ -1163,7 +1164,8 @@ working. This is almost certainly where the premise of the question comes from: 
 platform says a thing it does not do, which is the same class of defect as
 [#296](https://github.com/r-clodia/clodia-platform/issues/296).
 
-**3. The below-tier warning can name a provider that is not in use.**
+**3. The below-tier warning can name a provider that is not in use**
+([#307](https://github.com/r-clodia/clodia-platform/issues/307))**.**
 `_provider_below_tier_warning` builds its message from the same tier-less variant:
 
 ```python
