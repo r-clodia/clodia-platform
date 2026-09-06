@@ -191,25 +191,14 @@ A job declares a **tier**. If the agent's provider cannot carry it, the run **fa
 an error and a logged message — it does not degrade. Running a job declared for SEAL-3 data
 on a weaker provider would send that data where it must not go, and would report success.
 
-### 2.4 Portability
+### 2.4 REPEALED — Portability
 
-A topic may declare itself **portable**: its participating seeds and their spawns can reach
-its contents **from any other scope**. Portability is declared by the **topic**, not by the
-agent — an agent that adds a topic to its own list would be giving itself a channel, while a
-topic that declares itself portable is a decision of whoever owns the contents.
-
-Portability is the **named exception** to §3.2: it opens that topic and no other.
-
-**A carried topic travels only where the room can hold it.** If the portable topic is
-SEAL-3, its participants are necessarily SEAL-3 or above; but summoned into a SEAL-1 room
-they simply do not have its data there. The constraint is on the **room**, where the data
-would be read by that room's participants — not on the membership.
-
-This **refuses**, it does not gate: a gate would leave someone the power to approve exactly
-the transfer the rule prevents, and an owner's consent does not raise a room's tier. And the
-refusal is **spoken** — the agent says in chat that the topic is out of reach here, naming
-both levels and stating that this is not a missing permission. Silence would let an agent
-conclude the archive is empty rather than out of reach.
+A topic could declare itself **portable**: its participating seeds and their spawns could
+reach its contents from any other scope, as the named exception to §3.2. Repealed
+(decision-record #39): no topic bypasses the cross-topic gate by declaring itself anything.
+§3.2 has no exception left — every read from outside the room the spawn stands in gates,
+always. The number stays retired rather than reused, so a cross-reference written against
+this section (`decision-record.md`, `gap-analysis.md`) still finds what it pointed at.
 
 ### 2.5 The anatomy of a scope
 
