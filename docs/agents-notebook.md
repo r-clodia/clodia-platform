@@ -1177,3 +1177,68 @@ pid = agent_effective_provider(spec.name)
 is defined a few lines above and not used here. A warning about provider/tier mismatch
 that names the wrong provider, with the words «in uso», is worse than no warning: it sends
 whoever reads it to check a provider that this room never touched.
+
+---
+
+## A14 · The chat itself must say which provider a spawn is on
+
+Dictated 6 set 2026, closing the point #306 left open in its last comment («da
+verificare anche la vista Participants del canale, che ha il tier sotto mano e
+può mostrare il dato giusto senza ambiguità»):
+
+> «visto che il provider può cambiare ad ogni topic, è bene che nella chat sia
+> mostrato oltre il nome dello spawn anche il provider a cui è collegato»
+
+#306 fixed the *agent card* (`clodia-logic` 6.185.0, `clodia-web` 0.162.0):
+outside a room it now shows the preferred provider **per tier**
+(`provider_by_tier`). That answers «what would this agent use in a room of tier
+X», asked from the settings page. It does not answer the question asked
+*inside* a room — «what is this spawn using right now, in this room» — because
+the card has no topic to compute a tier-less answer against, and a room's
+`tier_real` never reaches it.
+
+### Measured, 6 set 2026 — the room-scoped function already exists, and is computed and thrown away
+
+`server/api/channels.py`:
+
+- `_topic_provider(spec, tier)` (line 1328) — already **is** «the provider
+  effective for this room»: `topic_runtime_override(spec.name, tier).get("provider")`.
+  Exactly the room-scoped answer A13 asked for, used today only inside
+  `_provider_seal_ok` (line 2169) to decide the ⚠️ flag.
+- `_eligibility(spec, tier)` (line 2180) computes that flag and returns
+  `{"eligible", "warn"}` — the provider it depended on to get there is
+  discarded before the dict is built.
+- `channel_eligibility()` (line 4760, `GET /clodia/channels/{tier}/{name}/eligibility`)
+  already has `tier_real` (line 4769, read from the topic's own meta) and
+  spreads `_eligibility()`'s dict into the per-agent payload the webui
+  consumes for the Participants list and the eligibility map.
+
+So nothing is missing on the calculation side — the fix is that `_eligibility`
+must keep the `pid` it already computes instead of dropping it, and the
+one endpoint the webui already polls carries it for free.
+
+On the frontend (`clodia-web`), the same eligibility map
+(`src/routes/topics/[tier]/[name]/+page.svelte`, `loadEligibility` around line
+493) feeds both the Participants list (`part-name`, ~line 2870) and, via
+`seedName(m.author)`, the author line of every message header (~line 2392) and
+the live-reply header (~line 2612). One new field on one existing payload
+reaches every place the spawn's name is shown. The chip style to reuse is
+`AgentCard.svelte`'s `.provider`/`.seal-chip` (added by 0.162.0 for the card),
+scaled down for an inline badge rather than duplicated as a new pattern.
+
+### What this is not
+
+Not a new provider-resolution mechanism — A13 built that, and #306 built the
+tier-aware display of it. This is the one place the resolution was computed
+and not shown: inside the room, next to the name it is already true of.
+
+### Open
+
+- Humans have no provider (`_eligibility` returns `eligible: true` unconditionally
+  for non-bot specs); the field should read `null` for them rather than absent,
+  so the frontend has one shape to check instead of two.
+- Whether the chip should also carry the SEAL of that provider (as the card
+  does) or only its id — the room's tier is already known from context, so the
+  SEAL may be redundant here in a way it is not on the card.
+
+---
