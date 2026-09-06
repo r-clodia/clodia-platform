@@ -2249,6 +2249,87 @@ including the reversed one), clodia-logic (9 tests pinning the third bit).
 
 ---
 
+## 39 · REPEALED — topic portability
+
+**Repealed (Davide, 6 Sep 2026).** «Ho un ripensamento sui topic 'shared' [il flag `portable` di
+un topic, che consente ai suoi seed di accedere ai suoi dati da qualunque altro topic]: preferisco
+rimuovere questa funzionalità.»
+
+Entry 28 replaced a proposed personal-agent-scope with «a topic with a portability attribute».
+Entry 29 built the compartment (access belongs to the spawn standing in a room, not to the seed's
+membership list) and named portability its **one exception** — `T ∈ carries → allowed`, alongside
+`T == here → allowed`. Both are repealed here. What entry 29 actually needs to survive is the
+compartment itself, not the exception carved into it.
+
+**The rule loses a line, and gains nothing back in its place.**
+
+```
+before   T == here                → allowed
+         T ∈ carries (portable)   → allowed   ← this line goes
+         agent ∈ participants(T)  → GATE
+         otherwise                → GATE
+
+after    T == here                → allowed
+         agent ∈ participants(T)  → GATE
+         otherwise                → GATE
+```
+
+No topic reaches another room's spawn without a gate, ever — not even one it declared about
+itself. A cross-topic read is now uniformly a **crossing** (entry 23), addressed to the owner of
+the scope whose data is at risk (entry 24). There is no third case left to reason about: not «is
+this topic portable», not «does the room hold its tier» (§2.4's own weakest-link clause, entry
+29's `_require_room_carries`) — only «are you standing here, or does someone approve the gate».
+
+**Why the repeal is clean rather than a narrowing.** Portability was already a *named* exception —
+never a general weakening of the compartment (entry 29 is explicit about that shape) — so removing
+it does not require re-deriving what stays safe: the default path (`here` from the signed `chat`
+claim, never an argument; gate otherwise) was never conditioned on portability existing, only
+bypassed by it. Taking the bypass out leaves the default exactly as entry 29 specified it.
+
+**What this was for, and why the gate is judged sufficient without it.** The case entry 28 was
+written for — `impiegato-tomato` carrying company information into every topic it works in without
+copying it — no longer gets a standing exception. It gets the same gate every other cross-topic
+read gets, addressed to the data's owner. Slower per read, and the point: nothing declared once
+grants silent reach forever, which is the failure mode `carries`-on-the-seed already showed on the
+other side of entry 28.
+
+### Measured, 6 Sep 2026 — what is actually built and has to come out
+
+**`clodia-tools` (the enforcement)**, `server/main.py`:
+- `_is_portable(meta, agent)` (line 2925) and `_require_room_carries(meta, tier, tname, qui)`
+  (line 2947) — the two functions `_cross_topic_gate_key` (line 3046) calls to skip the gate.
+- The verb `topic.set_portable` (declared line 739, dispatched line 4568, gated `GATE_WALLS` in
+  `gate.py:78`) and its listing among the gated/owner-only verbs (lines 4050, 4085).
+
+**`server/topics/service.py`**: `set_portable()` (line 1064) and the `meta["portable"]` field it
+reads back at line 336.
+
+**`server/topics_api.py`**: the `/internal/topics/{tier}/{name}/portable` route (line 782) and its
+handler (line 205).
+
+**`clodia-logic`** (the proxy the agent-facing API calls through): `topics_client.set_portable`
+(`server/api/topics_client.py:211`) and the `POST /api/topics/{tier}/{name}/portable` endpoint
+(`server/api/topics.py:751`).
+
+**`clodia-web`**: the `portable` field on the topic type (`src/lib/api/client.ts:670`),
+`setTopicPortable` (line 2450), and the toggle in the topic settings
+(`src/routes/topics/[tier]/[name]/+page.svelte:1300,1306`).
+
+**Existing data.** Topics with `meta.portable: true` today keep the field once the verb to set it
+is gone, inert — nobody reads it once `_is_portable` is removed. Whether it is worth a migration
+that clears the field, or left as a residue no code consults, is for the issue to decide.
+
+### Open
+
+- Whether `_require_room_carries`'s weakest-link idea (a room cannot hold data above its own tier)
+  needs to survive elsewhere now that nothing carries data in without a gate — the ordinary
+  cross-topic gate already names the owner who can refuse on exactly that basis, so it may be
+  fully subsumed rather than needing a replacement.
+- Whether to migrate existing `meta.portable: true` topics to `false`/absent, or leave the field as
+  a harmless residue until the schema is next touched.
+
+---
+
 ## Where the open questions went
 
 Both lists that used to live here — what was closed, and what was open — have moved to
