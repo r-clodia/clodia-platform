@@ -2330,6 +2330,60 @@ that clears the field, or left as a residue no code consults, is for the issue t
 
 ---
 
+## 40 · The Drive/git mount is retired; whitelist + scratch is the only path
+
+**Repealed (Davide, 7 Sep 2026).** «C'è un problema con il remote Drive. Navigare il Drive dalla
+webui, section file, non è davvero utile e causa lentezza. Quando voglio che un canale acceda ad una
+cartella Drive devo solo includerlo come ingress/egress autorizzato per il canale. Non serve avere
+il mount nel fs di canale.» Esteso in seguito a chiedere di rivedere anche git e Telegram.
+
+**Measured, not assumed.** A topic's Drive mount is a **live proxy**: every `list`/`read`/`write` in
+the webui file view calls the Drive API directly (`DriveStorage`, `server/topics/drive_fs.py`,
+5-second cache), no real sync. The code already documents the cost of this, inside `_open`'s own
+`list()`: measured 22 Aug 2026, across 98 topics, `list()` cost 4-7s and the webui answered 502
+intermittently on Drive latency — mitigated for the *list* view (`light=True` skips `recent_files`)
+but **opening a single Drive-mounted topic stays slow**, which is exactly what was reported.
+
+Entry 32 already put Drive folders behind a whitelist (`gdrive:folder/<id>`) before a mount could be
+linked. What entry 32 never questioned was the **layer above** the whitelist — that linking one still
+meant a live-browsable mount. This entry removes that layer: a Drive folder reachable by the whitelist
+is reached by an agent through `gdrive.list/search/download/upload` (already-existing verbs,
+independent of any mount) into its own scratch, worked, and re-uploaded — never a mount to navigate.
+Same shape entry 31 already gave git.
+
+**Git's mount turned out to be dead code, not a parallel path.** Entry 31 (7 Aug) already said «a
+topic has no git remote» and shipped `github.clone/pull/push/pull_request` as the real mechanism
+(`server/tools/github_repo.py`, its own credential handling, no import of anything in
+`server/topics/`). The mount-based `GitRemote`, `remote_add/commit/push/pull`, and the vault-scoped
+`git_credential`/`scope_credential_name` in `server/topics/service.py` survived entry 31 by accident:
+**measured zero references anywhere in `clodia-web`** — no UI ever created a git mount, and
+`github_repo.py` does not use any of the mount's credential machinery. Removing it deletes code
+nobody could reach, not a feature anyone used.
+
+**Telegram is a different animal, and the mount array never fit it.** A Telegram bind is pure
+metadata (`chat_id`, mode, mapped people) — never navigated in the file view: `_mount_names`/
+`data_mounts`, which feed that view, already excluded `type != "drive"`. Its own UI panel was already
+removed (issue #240); today binding happens only through `topic.telegram_bind`/`unbind`. It shared
+`meta["mounts"]` with Drive/git for schema reuse, stated as such in the code's own comment, not
+because anything required it. It moves to its own field, `meta["telegram_binds"]` — kept a **list**,
+not collapsed to one, so a future second bound group is a data question, not a schema change.
+
+**What stays.** Entry 32's whitelist mechanism is untouched — a Drive folder still has to be an
+approved `gdrive:folder/<id>` entry before any verb reaches it. Only the mount/browse layer built on
+top of that whitelist is retired.
+
+**Decided with Davide, 7 Sep 2026:**
+- **Direct removal**, no soft-deprecation window — nothing reaches these verbs from any UI today, so
+  there is no live caller to protect during a transition.
+- **Silent one-shot migration**: topics carrying a `drive`/`git` mount today are cleaned on next
+  `open()`, logged (count and names) — not left as an inert residue, unlike `portable` (entry 39),
+  because a mount entry actively asserts something that will no longer be true.
+- Telegram's new field stays a list, on the chance of more than one bound group per topic later.
+
+**Implementation:** `clodia-platform#318`.
+
+---
+
 ## Where the open questions went
 
 Both lists that used to live here — what was closed, and what was open — have moved to
