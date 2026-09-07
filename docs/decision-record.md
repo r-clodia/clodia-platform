@@ -2380,7 +2380,7 @@ top of that whitelist is retired.
   because a mount entry actively asserts something that will no longer be true.
 - Telegram's new field stays a list, on the chance of more than one bound group per topic later.
 
-**Implementation:** `clodia-platform#317`.
+**Implementation:** `clodia-platform#318`.
 
 ---
 
