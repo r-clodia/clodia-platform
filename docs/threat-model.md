@@ -150,6 +150,13 @@ is **labelled**.
   answer is the user. It is a *classification, not an authorisation*: reading
   stays free and taints the channel. A block would teach the user to answer
   "trusted" to get on with it, which is how the label becomes useless.
+- **A message that arrives from outside taints too**, and this is the second birth
+  point: a post with `kind: proxy` marks the channel where the message is written,
+  not where it was read. A proxy is a *pipe* repeating the bytes of a system nobody
+  answers for, so its seat in the room is not vetting — the perimeter rule stays on
+  mail. `telegram` is not marked here on purpose: that content enters through the
+  `telegram.*` verbs, already tainting at the source. Enforcement reaches **egress
+  only**: no path that reads a secret consults the flag (decision record 41).
 
 **No cross-channel propagation** — decided, and it holds *because* there is no
 cross-topic data path other than hooks. ⚠️ If one is ever reopened, that decision

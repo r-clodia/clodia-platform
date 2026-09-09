@@ -94,6 +94,7 @@ Three states, and the middle one is the dangerous one:
 | 5.2 | a Drive folder is a list entry | **built** | tools 1.52.0 |
 | 5.3 | membership of the perimeter is vetted | **built** | tools 1.51.0 |
 | 5.3 | an undeclared source taints | **built**, **inert** | `source_allow` is **empty** in production, so everything taints — which is the pre-#77 behaviour, not the intended one |
+| 5.3 | content that arrives from outside taints | **built**, **half-enforced** | `clodia-tools#266` (issue #262, point 2 of #248): a post with `kind: proxy` marks the channel in `TopicService.post_message`, the one point every writer passes through; the tier alias that split one room into two flags is canonicalised in `taint.channel_of`. Enforcement reaches **egress only** — no path that reads a secret consults `taint.status`, declared in the code as a `SHORTCUT:`. And by decision record 38 a censored destination is perimeter, so the flag bears on exits *outside* it |
 
 ## 6. Tiers
 

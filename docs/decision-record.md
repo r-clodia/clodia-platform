@@ -2384,6 +2384,98 @@ top of that whitelist is retired.
 
 ---
 
+## 41 · An external ingress taints, and a seat is not vetting
+
+    «La #248 chiedeva esplicitamente se il contenuto external in ingresso debba
+     insudiciare il canale, oppure che il requisito dichiari perché non lo fa.
+     Entrambe le risposte vanno bene; il silenzio no.»
+                                      — issue #262, opened 21 Aug 2026
+
+**The answer is: it taints.** Recorded here rather than left in the issue because the
+question was posed as a decision — either answer was admissible, the silence was the
+defect — and this entry is the answer plus the measurement, not a new ruling by the
+owner. It is open for his review in `clodia-tools#266`.
+
+**Why the label was not enough.** #248's point 1 looked like the whole job:
+`clodia-tools#222` made the authoritative label land where the message is born (`kind: proxy`, signed in the token), so the rules that rest on `kind`
+stopped treating a third-party system as a person. But a label is **soft mitigation** —
+the provenance note added by `clodia-logic#315` works only for as long as the model
+respects it, and the code says so itself. The enforcement is the taint. Without it a
+third-party system starts work inside the colony while the context gate that fires on
+reading a public issue does not fire at all. Today's exposure is bounded by there being
+**one proxy, run by the owner** — a property of this deployment, not of the design.
+
+**Where the mark goes, and why not at the door.** In `TopicService.post_message`, the
+point where a message is *born*: every writer passes through it — the webui via
+`/internal/topics`, the gateway's MCP verb, the scheduler. Marking at one of the two
+doors leaves the other mute, which is the exact shape of the defect already found on
+the SSE announcement (#219, «whoever posts announces»). It is marked **before** the
+write: the flag is the message's premise, not a notification about it, and marking
+afterwards would leave — on a failure in between — a third party's message sitting in
+the room with the flag off.
+
+**Only `proxy`.** `human` is the UI-authenticated user, trusted by the definition in
+§2 of #104; `ai`/`system` are the colony. `telegram` is deliberately *not* covered
+here: that content enters through the `telegram.*` verbs, which the gateway's tainting
+table already marks at the source. Marking it again on arrival adds a second place
+where one rule can diverge, not a defence.
+
+**A seat is not vetting, and this is the part worth keeping.** `egress.is_perimeter_source`
+declares trusted whoever is *in the room* — entry 38's rule read on the ingress side —
+and a proxy **is** among the participants: that is how `proxy_auth` admits it when there
+is no explicit grant. Applied naively, membership would therefore switch the taint off
+for the one source this entry exists to catch. It does not, because the proxy is not the
+source: it is a **pipe** repeating the bytes of a system nobody answers for. The
+perimeter rule stays where it is — on mail, where «whose message is this» has a sharp
+answer — and does not extend to `kind: proxy`.
+
+**One room had two flags.** Found while implementing the above, in the silent direction.
+Two vocabularies meet in the taint: sessions carry the tier as whoever minted the token
+wrote it — `proxy_auth.token_for` copies it verbatim from the signed assertion, so `p1`
+and `seal-1` arrive as they are inside `chan:<tier>:<topic>:<principal>` — while internal
+callers compose `f"{tier}/{name}"` from the route path, already canonical. Two names for
+one room are two flags: marked at one door, read at the other, nothing is seen. It is now
+canonicalised in one place (`taint.channel_of`), reusing `topics.service`'s tier
+vocabulary rather than copying the alias table, which would diverge at the first new
+alias. Only what *names a tier* is canonicalised: a DM, or an unrecognised form, stays
+itself — otherwise two different chats would land on one flag.
+
+**The five properties #262 asked for, and the half that is missing.** Turn-wide rather
+than per-message: yes, the flag is the channel's. Monotone: yes, pinned by a test — an
+internal message after the proxy's does not wash the channel. Inherited by spawns: by
+construction, since the flag is the channel's and not the spawn's. Clearable only by a
+human act: unchanged, `POST …/taint/clear` remains the only switch. **Limited to egress
+*and secrets*: only egress.** No path that reads a secret consults `taint.status`. That
+is declared in the code as a grep-able `SHORTCUT:` with its ceiling — it holds while the
+vault verbs stay off the agents' MCP surface (`/internal/vault` is an internal route
+today); when they arrive, the read belongs there and not in `post_message`.
+
+**What this does not change, and it must be read next to entry 38.** A tainted channel
+sending to an **already-censored** destination still produces no dialog: `_context_gate_for`
+returns before it reads the taint, by the 17 Aug ruling — a whitelisted destination is
+perimeter, and a tainted channel does not change where the data is going. So the flag
+lit by a proxy ingress bears on exits *outside* the perimeter. Revisiting that is a
+product decision, not a fix, and nothing here touches it.
+
+**Deliberately left additive.** `source_allow` is **not** consulted for proxy posts:
+today a proxy ingress always taints. Declaring one specific proxy trusted is an additive
+change later — one `mcp:<principal>` entry read before the mark — with no breaking
+change to what ships here. And #261 (the internal HTTP APIs that authorise on
+`agent ∈ CLODIA_PROVIDER_PRINCIPALS` without looking at `scoped_tools` or revocation)
+stays out of scope: #222 closed that door for proxies on `topics_api`, the general case
+is still there.
+
+**Measured, 9 Sep 2026** (clodia-tools at `ce6782a`): both tests **red before** their
+fix — 3 of 5 failing on the proxy ingress (the two that passed are the negative controls,
+`human`/`ai`/`system` must not taint) and 6 of 6 on the tier alias, including
+«marked from the route, invisible from the session». Whole suite after: **1370 green**
+(`make test`, dependencies as `requirements.txt` pins them, `mcp<2`) against 1364 on
+`main`. The repository declares no lint or type check, so none is claimed.
+
+**Implementation:** `clodia-tools#266`.
+
+---
+
 ## Where the open questions went
 
 Both lists that used to live here — what was closed, and what was open — have moved to
