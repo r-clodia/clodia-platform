@@ -23,7 +23,7 @@ sono diventate issue di remediation su `r-clodia/clodia-platform`.
 | A | issue | il divario, in una riga |
 |---|---|---|
 | A1 | [#192](https://github.com/r-clodia/clodia-platform/issues/192) | manca il quarto `kind` di convocazione, e il mandato che lo legge |
-| A2 | [#193](https://github.com/r-clodia/clodia-platform/issues/193) | messaggero legge e scrive il fs dello scope, e il mandato lo esclude |
+| A2 | [#193](https://github.com/r-clodia/clodia-platform/issues/193) | messaggero legge e scrive il fs dello scope, e il mandato lo esclude — *metà «scrive» superata il 9 set 2026, [#331](https://github.com/r-clodia/clodia-platform/issues/331)* |
 | A3 | [#194](https://github.com/r-clodia/clodia-platform/issues/194) | `super` resta nel vocabolario e decide ancora chi coordina |
 | A4 | [#195](https://github.com/r-clodia/clodia-platform/issues/195) | «all tier» è una conseguenza dello stack, non una proprietà dichiarata |
 | A5 | [#196](https://github.com/r-clodia/clodia-platform/issues/196) | il segretario non ha i due verbi per convocare |
@@ -132,6 +132,12 @@ belongs to exactly one seed so that the question «who can make a room speak?» 
 
 ### 2. It does not read or write the scope's filesystem, nor its remotes
 
+> **Half of this clause was superseded on 9 Sep 2026** by an owner decision: the write verbs
+> came back. The reading half stands. See *[Superseded in part, 9 Sep
+> 2026](#superseded-in-part-9-sep-2026--the-door-may-deposit)* at the end of A2 — the clause is
+> left here as dictated, because a notebook that edits the requirement loses the record of what
+> changed and when.
+
 The strongest clause, and the one that makes the position safe. A courier that could read the
 room's documents would be an exfiltration path with a delivery mechanism attached: it already
 holds the credentials to send outward, and the whole egress model assumes that what leaves is
@@ -193,16 +199,60 @@ Today the seed has `topic.put` and `topic.fetch`, which are the transfer primiti
 agent's scratch and the topic — so the machinery for (1) and (3) exists without any
 filesystem-wide verb.
 
+### Superseded in part, 9 Sep 2026 — the door may deposit
+
+Clause 2 held for four weeks as a single sentence — «non legge **né** scrive». On 9 Sep 2026
+Davide asked for `topic.write_file` and `topic.put` to be restored to messaggero, «di sistema e
+non temporanea». Recorded here as **reported, not verbatim**: the request reached the repository
+through sysadmin, in
+[#331](https://github.com/r-clodia/clodia-platform/issues/331), and the guillemets convention of
+this notebook is reserved for the owner's own words as he said them.
+
+The occasion was concrete. In `SEAL-2/intellijam-partnership` messaggero had to persist the full
+transcript of an email thread **into the channel as text** — not as an attachment — and had no
+verb for it. The attachment path (`email.topic_files`, `telegram.send_file`) does not cover the
+case: it materialises a file that already exists as an attachment, not a text the courier
+composes.
+
+**What fell, and what did not.** The clause splits cleanly in two, and only the write half
+went:
+
+| half | status after 9 Sep 2026 |
+|---|---|
+| «non **legge** il fs dello scope» | **stands** — `topic.files`, `topic.read_file`, `topic.read_document`, `topic.fetch` stay in `denied_tools` |
+| «né i **remote**» | **stands** — no `gdrive.*` |
+| «non **scrive** il fs dello scope» | **superseded** — `topic.write_file`, `topic.put` granted |
+
+They are separable, and the reason is the one that made clause 2 «the strongest» in the first
+place: the danger is *reading*. A courier that can read the room's documents is an exfiltration
+path with a delivery mechanism attached. Depositing a text it composed itself opens no such
+path — nothing it writes was unknown to it a moment earlier.
+
+**Measured**, on `clodia-logic@main`: the seed lives in
+`catalogs/packs/base-pack/agents/messaggero/agent.yaml` (**not** in comms-pack, as #331 states —
+that pack carries only `pack.yaml` and plugins), and the two verbs had to be *added*, not
+un-denied: the archseed floor is read-only plus `post_message`, so they were never inherited.
+Trifecta score unchanged — `catalogs/trifecta.yaml` deliberately files writes internal to Clodia
+under no side at all. Implemented in
+[clodia-logic#396](https://github.com/r-clodia/clodia-logic/pull/396).
+
+**A2 is therefore no longer «four clauses, three of them subtractions»**: it is three and a
+half. The gap-analysis row for A2 (#193) is closed and stays closed — this is not a regression
+of that remediation but a decision on top of it, and a future gap-analysis that flags the two
+write verbs as a deviation should be pointed here.
+
 ### Open
 
 - Which of the three attachment forms is meant.
 - Whether an inbound attachment lands in the topic's files or in a quarantine — the platform
   already labels provenance (`untrusted`) for files arriving from outside, and A2 does not say
-  whether messaggero's writes carry it.
+  whether messaggero's writes carry it. **Sharper since 9 Sep 2026**: messaggero now writes into
+  the scope on its own initiative, so the question is no longer hypothetical.
 - What a webhook trigger *is*, concretely: today there is no webhook ingress for a scope, only
   mail polling and Telegram listening.
-- Whether messaggero, having no fs access, can still be the agent that a job assigns (R11) —
-  a job whose mandated agent cannot read anything is a narrow job.
+- Whether messaggero, having no **read** access to the fs, can still be the agent that a job
+  assigns (R11) — a job whose mandated agent cannot read anything is a narrow job. The write
+  verbs of 9 Sep 2026 do not answer this: depositing is not reading.
 
 ---
 
