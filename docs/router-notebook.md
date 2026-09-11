@@ -1253,6 +1253,85 @@ produces nothing, or the channel would fill with notes about mentions that were 
 there. A `$` citation alone likewise: it does not open a turn inside the limit either, so
 past the limit there is nothing denied to declare.
 
+---
+
+## R17 · An agent may propose the scope's perimeter, only the owner may move it
+
+> «ogni agent dovrebbe poter aggiungere o togliere egress/ingress al topic/scope, ma
+> naturalmente questa azione deve essere gated dall'owner dello scope»
+>                                                     — Davide, 11 Sep 2026
+
+Read together with router-notebook R14 («add an agent to the scope» is an act the owner
+governs) and agents-notebook A5 (`topic.add_participant`, gated `walls`, decided by the
+owner): this is the same shape — *an agent may ask to move the wall of a scope, only the
+owner may actually move it* — applied to the scope's network perimeter instead of its
+membership.
+
+### Measured, 11 set 2026 — reported the same morning, from the opposite direction
+
+`Clodia` herself opened
+[clodia-platform#334](https://github.com/r-clodia/clodia-platform/issues/334) a few hours
+before this was dictated, from a real ops incident on `hedge-iot-new` (SEAL-1): Sysadmin,
+asked by Davide to whitelist a Drive source **for that channel**, had only
+`ingress.allow(uri)`/`egress.allow(uri)` — no scope parameter — so the only entry it could
+write was **global**, wider than the owner asked for. #334 names the missing parameter;
+today's dictation names the missing *authorization*, and the two close the same gap from
+different sides.
+
+**The data layer already exists and is already scope-shaped**, unused by any agent-facing
+verb:
+
+```
+clodia-tools/server/egress.py
+  scope_uris(direction, scope, cfg)     — read,  line 467
+  scope_allow(direction, scope, uri)    — write, line 954
+```
+
+storage keys `scope_egress_allow`/`scope_source_allow` in `clodia-tools-config.yaml`,
+keyed `"<tier>/<name>": [uri, ...]` — the same `<tier>/<name>` shape as every other scoped
+key in the gateway (`datastore-notebook.md` D1 uses the analogous `<pack>/<name>`).
+`scope_allow` is called today only from inside the platform's own code
+(`topics/service.py:799`, `gate_api.py:132`), never from a verb an agent can invoke. There
+is no `scope_revoke` at all — only the write half was ever built, and only for internal
+use.
+
+**The gate mechanism R17 asks for is not new either.** `clodia-tools/server/gate.py`
+already classifies verbs into gate classes (`GATE_WALLS`, `GATE_OUTWARD`, `_GATE_CLASS`
+dict) and `egress.allow`/`ingress.allow` — the *global* verbs — are already `OUTWARD`.
+`clodia-logic/server/api/gate.py::_is_scope_owner` is the exact check R14/A5 rely on:
+fail-closed comparison of the caller against the topic meta's `owner`. Nothing about the
+decision path (`agent invokes` → `pending` → `owner approves via /internal/gate/grant` →
+signed capability `ccap1`) is scope-perimeter-specific; it is the general mechanism every
+`walls`-classed verb already uses.
+
+### What is actually missing, named precisely
+
+Not a gate, not a data layer, not an authorization model — all three exist. Missing:
+
+1. two agent-facing verbs, e.g. `topic.egress_add` / `topic.egress_remove` (and the
+   `ingress` pair), each taking `{tier, name, uri}`, calling `egress.scope_allow` /
+   a `scope_revoke` that has to be written (it does not exist in any direction yet);
+2. their entry in `_GATE_CLASS` as `WALLS`, not `OUTWARD` — the distinction matters:
+   `OUTWARD` gates *global* egress (Davide decides once, for the whole instance);
+   `WALLS` gates *this room's* perimeter (the room's owner decides, same shape as
+   admitting a participant). Filing scope-scoped egress under the wrong class would let
+   any scope owner reach outward authority that belongs to the instance admin.
+
+### Open
+
+- Whether `scope_revoke` needs its own gate class or inherits `WALLS` from its `_add`
+  counterpart — asymmetric gating (add gated, remove not) would let an agent silently
+  widen a room's perimeter back out after an owner narrowed it.
+- Whether the *global* `egress.allow`/`ingress.allow` stay `OUTWARD`-only-instance-admin
+  once a scoped pair exists, or whether an owner should also be allowed to promote a
+  scope-local entry to global — the two lists are read together in the topic panel
+  (#334), so the UI already assumes a relationship between them that the verbs do not
+  yet have.
+- Which seeds get `topic.egress_add`/`_remove` in their profile at all — R14/A5's
+  precedent (`topic.add_participant`) is held narrowly (`clodia`, via `agents.*`
+  coordination duties); Sysadmin's #334 incident suggests it belongs on the
+  infrastructure seed too, not only the coordinator.
+
 **The number went from 2 to 4, and became configurable** (`CLODIA_MAX_DELEGATION_HOPS`).
 With a coordinator and an executor, 2 is exhausted by the first return exchange, which is
 the shape of nearly every session in a working channel; 4 allows two complete exchanges.
