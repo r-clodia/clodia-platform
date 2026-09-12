@@ -1387,3 +1387,103 @@ whatever you wrote — and a default that disagrees with itself across two repos
 defect wearing different clothes. The executable check therefore measures the *default*,
 not the constant: with no env var set, a delegation at `hop 14` must still start and at
 `hop 15` must produce the notice with the denied agent named.
+
+---
+
+## R18 · A derived seed keeps its parent's name, a namespace tells them apart
+
+> «la denominazione dei seed diventa molto tediosa e lunga. non si potrebbe avere una sorta
+> di longname = namespace.shortname, tipo tomato.fullstack-dev resta inteso che in caso di
+> conflitto va usato il long name ma nei casi di non ambiguità basta usare lo short»
+>                                                     — Davide, 12 set 2026
+
+Dictated the same day `business-pack` grew its first three derived seeds (`tomato-content-
+creator`, `tomato-marketer`, `tomato-fullstack-dev`, each `parents: [content-creator |
+sales-rep | fullstack-dev]`) — hyphenated, ad-hoc names that duplicated the parent's own
+name inside a longer string. The dictation replaces the hyphen scheme with a dot:
+`tomato.fullstack-dev`, where the part after the dot is **the parent's own name, verbatim**
+— confirmed explicitly, not a free choice (`tomato.marketer` would have been wrong; it
+derives from `sales-rep`, so it is `tomato.sales-rep`).
+
+### The first design that didn't survive contact with the code
+
+The obvious reading — a seed can be *addressed* by its short form when unambiguous, by the
+long form when not — turns out to need four separate comparison points to agree, because
+mention resolution isn't one function. Measured against `clodia-logic/server/api/
+channels.py`:
+
+1. **`_maybe_delegate`'s participant filter** (`_seed_name(t) in participants`) — decides
+   whether a tag counts as addressed to someone in the room at all.
+2. **`_is_self_tag`** — compares a tag's seed against the *author's* seed to stop an
+   instance re-summoning itself; needs the same namespace-awareness or a spawn of
+   `tomato.fullstack-dev` writing `@fullstack-dev` reads as addressed to a stranger.
+3. **`_pick_responder`** — the point where a resolved seed name actually becomes the agent a
+   turn starts for.
+4. **`_mention_context`/`_narrative_mention`** — search the *literal* reply text for `@tag`
+   to find the sentence that explains the mention. These must NOT resolve: they search for
+   what the author actually typed, and rewriting the tag before this point breaks the
+   search.
+
+Four points, one of which must stay untouched while the other three change consistently —
+in a file whose comments cite four prior incidents (#256, #332, #336, plus R3/R12) each
+caused by exactly this kind of partial fix. Measured, not guessed: this is a real cost, and
+it was about to be paid to make **bot-authored** mentions shorter.
+
+### The dictation that removed the need to pay it
+
+> «l'uso dello shortname possiamo limitarlo al solo utente in chat quando fa input, l'input
+> field risolve lo shortname e lo sostituisce immediatamente con il fullname, per tutti gli
+> altri usi tra bot viene sempre usato il fullname=namespace.shortname»
+
+This changes which side of the boundary the feature lives on. A bot never writes a bare
+shortname — every `@` a bot composes is already `namespace.shortname` (or a bare name, for
+a seed that has none). The four comparison points above see only full names, forever:
+**zero of them change.** The entire feature becomes a **human-input convenience** at the
+one keyboard where a bare name is typed by hand — the chat composer — resolved once,
+client-side, before the message is even sent.
+
+### Measured, 12 set 2026 — the composer already had the exact mechanism
+
+`clodia-web`'s topic page already ran a full `@`-autocomplete (`mentionQuery`,
+`mentionMatches`, arrow keys, `applyMention`) that matches typed text against
+`participants` by prefix and inserts the **matched participant's own full string** on
+Tab/Enter/click — not the typed text. This is precisely "resolve once, at input,
+substitute the full name": the mechanism existed, it filtered on the wrong string.
+
+Fix: `mentionMatches` now also matches a participant by its **shortname** (the part after
+its last dot, `tomato.fullstack-dev` → `fullstack-dev`) in addition to the existing prefix
+match on the full name — so typing `fullstack-dev` surfaces `tomato.fullstack-dev` in the
+dropdown, and selecting it inserts the full form, unchanged from how the widget always
+worked. Ambiguity (two participants sharing a shortname in the same room) needs no new
+mechanism either: both surface in the dropdown, and a human picking from a list *is* the
+disambiguation — the same answer R3 already gives for two genuine mention targets, arrived
+at for free because participants was always topic-scoped, never a platform-wide registry.
+
+### What actually had to change, and where it stops
+
+- `_AGENT_NAME_RE` (`clodia-logic/server/api/pack_import.py`): a name may now carry one
+  `.shortname` suffix. Still `[a-z0-9][a-z0-9_-]{0,30}` on each side — `a.b.c` (two dots)
+  is not a valid name, because the dictation never asked for nested namespaces.
+- `mentions.py::_NAME` — **both identical copies** (`clodia-tools/server/topics/
+  mentions.py`, `clodia-logic/server/api/mentions.py`; the file's own docstring requires
+  `diff` between them to stay empty) — gains the same one-dot allowance, so `@tomato.
+  fullstack-dev` parses as a single tag instead of `@tomato` followed by stray text.
+  `GOLDEN_CASES` (the shared test table both repos run against their own entry point)
+  gained three rows for the dotted form, ordinal and spawn-suffixed variants included.
+- The chat composer's mention matching and its live-query regex (`[a-z0-9_-]*` →
+  `[a-z0-9_.-]*`, so typing the long form doesn't lose the popup mid-word).
+- **Nothing in `_maybe_delegate`/`_is_self_tag`/`_pick_responder`/`_mention_context`
+  changed.** They already operate on whatever full string a bot writes; namespaced names
+  are just longer strings to them, not a new case.
+
+### Open
+
+- The expanded composer (`textarea` for long messages) never wired `updateMention()` at
+  all, before or after this — no popup, no shortname resolution, in either version. A
+  shortname typed there ships as literal text and simply fails to match any participant,
+  same as any other typo today. Not a regression, but worth closing if long messages start
+  carrying `@mentions` in practice.
+- Whether a human typing the *bare* form in a context with **no** dropdown interaction
+  (paste, or a client that doesn't run this widget) should get a server-side fallback
+  resolution on `post_message`. Not built: the dictation scoped the fix to "the input
+  field", and every human-facing surface measured so far is this one widget.
