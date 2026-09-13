@@ -1611,3 +1611,76 @@ gate or throw and block a legitimate action. Same reasoning for a malformed argu
   no reason-builder because nothing is dispatched through them yet.
 - The reason strings are Italian prose, matching every other gate message in the codebase
   today — no i18n question was raised and none is answered here.
+
+## R21 · Relevance routing answers a human, not a bot's own chatter
+
+> «un aspetto su cui modificare il modo in cui i bot interagiscono... perché ogni bot si
+> sente in dovere di rispondere ad un messaggio che appare in chat. Mettiamo la regola di
+> routing che un bot risponde solo se "è stato menzionato direttamente da un bot o umano OR
+> se il routing lo seleziona per rispondere a un messaggio senza menzione che viene da
+> umano"»
+>                                                     — Davide, 13 set 2026
+
+Measured on `tomato-blogging`: a bot posts "ok, resto in attesa" — no mention, nothing to
+do. Relevance routing (R6/R7) runs anyway, finds no strong match, falls through to the R10
+coordinator fallback, and *someone* answers — "anche io", "confermo resto in attesa". Direct
+mentions were already exclusive of relevance (R2/R3, confirmed unchanged by this measurement:
+`_pick_responder` returns on `tagged` before ever reaching the embedding branch). The gap was
+the OTHER path: nothing in `post_channel_message` or `run_topic_turn` looked at *who wrote
+the mention-less message* before deciding to route it by relevance at all.
+
+### The two places, and what already existed to answer the question
+
+`_from_human(msg)` (issue #221) already existed and already answers exactly this — `kind ==
+"human"` AND a registry-resolved human principal, fail-closed on anything ambiguous. It was
+built for a different purpose (telling a *reader* where a turn's text came from) and simply
+was never consulted as a *precondition* for entering the no-mention branch. Two call sites,
+one narrow gate each:
+
+- `post_channel_message` (`channels.py`, the "nessun tag → routing per rilevanza" branch):
+  gate on `_from_human({"kind": kind, "author": principal})` OR (`kind == "system"` AND
+  `trusted_internal`) — the second disjunct is deliberate, not an oversight (see below).
+- `run_topic_turn` (Telegram relay, internal trigger): same shape, using the already-computed
+  `trigger_kind or _inbound_kind(...)`, gated on `_tag is None and _kind_eff != "human"`.
+
+Failing the gate doesn't fall through to a rank/coordinator pick — it returns `{"responder":
+None}` / `(None, None)` directly. Silence is the correct answer to a bot's own idle chatter,
+not "whoever the fallback would have chosen."
+
+### The one exception, asked about rather than assumed
+
+The scheduler (`scheduler/scheduler.py::_fire_topic_trigger`) posts `kind="system"` — and
+when a job has no explicit `agent` configured, its prompt carries no `@mention` either,
+which would otherwise fall on the same side of the new gate as bot chatter. Asked directly:
+scheduled automation without an explicit agent is deliberate work, not spontaneous noise,
+and should keep routing by relevance as before. The gate's `system + trusted_internal`
+clause exists for exactly this one caller — `trusted_internal` (not just `kind == "system"`)
+because a claimed `kind` without the trusted-caller flag is exactly the shape of the thing
+#221 already taught this codebase not to trust on its own.
+
+### What this doesn't touch
+
+`_maybe_delegate` (a bot's own turn reacting to `@mentions` in its OWN reply) never ran
+relevance routing to begin with — it was already mention-only by construction, so it needed
+no change. This closes the ONE path where "someone talks, everyone half-answers" could still
+happen: a mention-less message re-entering routing from a channel/trigger entry point.
+
+### A test fixture that had to grow up with the rule
+
+Two existing test classes constructed messages as a human ("owner" posting, no mention) but
+never registered "owner" as a resolvable human principal in their mocked registry — nothing
+before this rule needed that resolution to succeed. `ChannelQueueTests` gained a
+`registry.get_by_name` patch that answers `"owner"` truthfully; `ExternalReachesThePromptTests`
+had one case (`external`, no mention) that exists specifically to prove `compose_routing_
+context` labels the trigger `[external @...]` when a turn *does* run — its trigger text
+gained an explicit `@clodia` so the turn still starts, which is what that test was actually
+measuring, R21 aside.
+
+### Open
+
+- No signal is posted anywhere when the gate silently drops a mention-less non-human
+  message — by design (R16 taught that a silent brake is worse than a visible one, but that
+  was about a limit an agent could legitimately hit and need to know about; here the
+  "brake" is working as intended on noise, not on a legitimate attempt, so nothing is owed).
+  If this turns out to hide a legitimate case that looks identical to noise, that's the
+  signal to revisit, not to add logging preemptively.
