@@ -1557,3 +1557,57 @@ or the fact that the file's permissions ceiling can't exceed the reader's own, c
   if a future need turns this into an actual confidentiality boundary rather than context
   hygiene, that is a different, larger change: filtering a raw file read by *who is
   asking* is not a thing any topic verb does today.
+
+## R20 · A gate card must say the effect, not just the verb
+
+> «quando si presenta un gate da approvare deve essere espresso esattamente quale effetto
+> ottiene ad esempio "content creator potrà leggere da storage R"»
+>                                                     — Davide, 13 set 2026
+
+Measured the same day: of the ~28 gated verbs, only `web.post`, `egress.allow`/
+`ingress.allow`, the four `topic.egress_*`/`topic.ingress_*` pairs, and the off-profile
+branch already said what approving does. Every other gated verb — `agents.grant_*`/
+`revoke_*`, `mcp.add`/`remove`, `packs.import_url`/`remove`/`install_pip`/`install_npm`,
+`providers.pause`/`resume`, `topic.add_participant`/`remove_participant`/`telegram_bind`/
+`telegram_unbind`/`drive_folder_add`/`drive_folder_remove`/`save_agents_md`, `github.push`/
+`pull_request`, `settings.backup_*` — fell through to `reason = ""`, and the card read
+«**agent** chiede di usare `verb`» with nothing else. An owner deciding whether to approve
+`agents.grant_scoped` had to already know what that verb does; the card itself didn't say.
+
+### The shape already in the codebase, generalized
+
+`egress.gate_reason()` already did this for one family (unlisted destinations): "vuole
+usare `email.send` verso mailto:X, che non è fra le destinazioni consentite. Approvando,
+l'invio procede E X viene aggiunto..." — a continuation of "chiede di usare `email.send`",
+not a restatement of it. The fix generalizes that shape to every other generic verb instead
+of inventing a new one: `_gate_effect_reason(name, arguments)` in `clodia-tools/server/
+main.py`, dispatched by verb name, reading the concrete arguments of that call (which agent,
+which tool/skill/rule, which scope, how many minutes, which packages, which repo/branch...)
+into one sentence naming the effect.
+
+### The phrasing trap
+
+The card's template is fixed: `**{agent}** chiede {di usare \`{verb}\`}{ — {reason}}`. A
+first draft of every branch opened with `@{agent} chiede di...` — which read as `chiede di
+usare \`X\` — @agent chiede di concedere...`, the subject stated twice. Caught before
+merging (not after): each branch was rewritten to continue the sentence the template
+already started (`concede a @worker il permesso...`, not `@sysadmin concede...`) — same
+correction the existing `egress.gate_reason()` had already made, just not yet recognized
+as the general rule.
+
+### What stays a gap by design, not by oversight
+
+An unmapped verb returns `""` — the card falls back to the bare `di usare \`X\`` it already
+had, not a crash. This is deliberate: a new gated verb the dispatch doesn't know about yet
+should read like the OLD default (visible as a gap to close), never silently swallow the
+gate or throw and block a legitimate action. Same reasoning for a malformed argument shape
+(e.g. `capabilities` arriving as something other than a list) — caught, logged, degrades to
+`""`, the gate still fires.
+
+### Open
+
+- `settings.` gates only `backup_*` today (no `pki.`/`ca.` tools registered as agent-
+  callable verbs yet) — covered as far as the surface exists; the two bare prefixes have
+  no reason-builder because nothing is dispatched through them yet.
+- The reason strings are Italian prose, matching every other gate message in the codebase
+  today — no i18n question was raised and none is answered here.
