@@ -1487,3 +1487,73 @@ at for free because participants was always topic-scoped, never a platform-wide 
   (paste, or a client that doesn't run this widget) should get a server-side fallback
   resolution on `post_message`. Not built: the dictation scoped the fix to "the input
   field", and every human-facing surface measured so far is this one widget.
+
+## R19 · A scope's AGENTS.md can address one participant without the others reading it
+
+> «sarebbe meglio che le regole di scope potessero anche prevedere delle sezioni dedicate a
+> specifici agenti, tali sezioni non devono essere iniettate nel contesto degli altri.
+> Ricapitolando, le regole sarebbero composte da sezioni generali (valgono per tutti) e poi
+> paragrafi che iniziano con la sintassi @agente testo testo e finiscono con \n che invece
+> vengono iniettati solo nel contesto dello specifico agente.»
+>                                                     — Davide, 13 set 2026
+
+Every participant in a topic reads the same `AGENTS.md` (`channels.py::_topic_agents_md`,
+injected by `_history_prompt`) — one control-plane document per scope, framed as
+authoritative or not depending on whether it came through the gated `topic.save_agents_md`
+verb or the legacy `files/AGENTS.md` free-for-all. Useful when the instruction is genuinely
+for everyone (*"non promettere sconti sopra il 10%"*); noise when it's for one seed only
+(*"@tomato.officer usa il tono formale con questo cliente"*) — every other agent in the
+scope reads a line that isn't theirs, every turn, forever.
+
+### What was asked, and what it isn't
+
+The dictation is explicit about scope: a line, not a block. `@nome testo... \n` — the
+directive ends at the newline. Not a fenced section, not a heading with a body underneath;
+one line, one addressee, plain prose either side of it. That reading matches how the file
+is actually written today (a flat list of operational notes), and it means the parser
+never has to decide where a multi-line block ends — the line boundary already answers it.
+
+The other boundary the dictation draws by omission: this is **context hygiene**, not a
+confidentiality wall. Nothing here is claimed to stop a participant from reading the raw
+`AGENTS.md` through `topic.read_file`/`topic.open` — the same access that lets it read the
+topic's other files. The feature only changes what the *constructed turn prompt* contains,
+the same trust boundary `_topic_agents_md` already draws between authoritative and legacy
+text. Asked directly, Davide confirmed this reading before implementation started — the
+alternative (filtering the raw read too) was on the table and not what was wanted.
+
+### What changed, and where it stops
+
+- `_AGENTS_MD_DIRECTIVE_RE` (`clodia-logic/server/api/channels.py`): `^@nome testo...$`,
+  one line. `nome` reuses `mentions._NAME` — the same shape as an `@mention`, dotted
+  namespace form (R18) included, so `@tomato.officer` in an `AGENTS.md` line and `@tomato.
+  officer` in a chat message parse identically.
+- `_filter_agents_md_for_agent(text, agent_name)`: general lines (no match, or an `@name`
+  that doesn't resolve to a known agent via `registry.get_by_name`) pass through unchanged
+  — a typo or an unrelated `@` doesn't erase the line for everyone. A line addressed to
+  `agent_name` keeps its text, minus the `@name ` prefix (it reads as an instruction, not
+  as a tag). A line addressed to anyone else is dropped.
+- `_topic_agents_md` gained an optional third argument, `agent_name` — `None` (the default)
+  skips filtering entirely, so the one caller in the test suite that didn't pass it keeps
+  its old behavior. The two real call sites in `channels.py` (both already hold the
+  responder's `AgentSpec` at that point — `spec.name` / `responder.name`) now pass it.
+- Filtering runs **before** `_AGENTS_MD_MAX_CHARS` truncation, not after: a long directive
+  meant for a different agent must not eat the character budget that the general text —
+  and any directive actually addressed to the reader — needs.
+
+### What didn't change
+
+`_history_prompt`'s two framings (authoritative vs. legacy-untrusted) are untouched — the
+filter runs on the text before either wrapping, so a directive line is still exactly as
+trusted (or not) as the document it came from. Nothing about `topic.save_agents_md`'s gate,
+or the fact that the file's permissions ceiling can't exceed the reader's own, changed.
+
+### Open
+
+- No server-side or webui affordance to *write* a directive line yet beyond typing
+  `@name text` by hand in the AGENTS.md editor — same as how a chat `@mention` had no
+  authoring aid before the composer's autocomplete (R18). Worth revisiting if this syntax
+  sees real use and a human keeps mistyping the agent name.
+- Raw reads of `AGENTS.md` (`topic.read_file`) are intentionally unfiltered (see above) —
+  if a future need turns this into an actual confidentiality boundary rather than context
+  hygiene, that is a different, larger change: filtering a raw file read by *who is
+  asking* is not a thing any topic verb does today.
