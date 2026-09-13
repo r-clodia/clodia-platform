@@ -1684,3 +1684,71 @@ measuring, R21 aside.
   "brake" is working as intended on noise, not on a legitimate attempt, so nothing is owed).
   If this turns out to hide a legitimate case that looks identical to noise, that's the
   signal to revisit, not to add logging preemptively.
+
+## R22 · A courtesy notification does not generate another courtesy notification
+
+> «Il meccanismo non è "quante volte", è che una notifica di cortesia non dovrebbe mai,
+> a sua volta, generare un'altra notifica di cortesia.»
+>                                                     — Davide, 13 set 2026 (approvando la
+>                                                       proposta dopo l'analisi del guasto)
+
+Measured on `tomato-blogging`, 17:02:55–17:10:12: ~70 turns in seven minutes, `clodia`,
+`fact-checker`, `sysadmin`, `tomato.content-creator` cycling "Nessuna novità. In attesa di
+$davide" at each other, until two of them hit their provider's session limit. Not R21 (no
+bare mention-less chatter here — every turn is a reaction to something) and not a fresh
+bug in the hop ceiling either: `_MAX_DELEGATION_HOPS` was doing exactly its job. It had
+just been raised from 5 to 15 that same day (a legitimate, asked-for fix for workflows that
+genuinely need more than 5 hops) — and this loop, having nothing to do with legitimate
+workflow length, got a free 3x extension on how long it could run before the ceiling caught
+it.
+
+### What `_report_back` actually does, and where the gap was
+
+`_report_back` (channels.py) fires unconditionally at the end of *every* turn: if the
+responder's turn was delegated by someone (`_caller_of` on `chat.origin`) and the reply
+didn't already explicitly re-tag that caller, it auto-starts a new turn for the caller —
+"[turno concluso] @X ha terminato il compito che gli avevi assegnato." This exists so a
+delegating agent is never left waiting on a completion it would otherwise have to notice by
+polling. It has never asked *whether the reply said anything new* — by design: a delegate's
+"done, nothing more to say" is still information the caller needed. The hop ceiling was the
+only brake on the chain this creates.
+
+The unmeasured case: the notification turn's OWN reply, when it finishes, is itself just
+another turn — and `_report_back` fires again for IT, notifying whoever originally delegated
+to the notified agent, forever, one hop at a time, until the ceiling. Two agents with nothing
+to tell each other kept telling each other exactly that.
+
+### The fix, and why it isn't a similarity check
+
+The tempting fix reads content: is this reply substantially the same as the last one? That
+needs an embedding call per turn-end (the same class of cost R6/R7 already pays for routing)
+and a threshold to tune. The fix that shipped instead is structural, free, and matches the
+platform's existing taste (R2/R3/R12/R21: a mention is a real trigger, everything else is
+just text a reader interprets) — a courtesy notification is a *kind* of turn, not a content
+pattern, and it's known at the moment it's started:
+
+- `_start_turn` gained `report_back: bool = False`, threaded through to
+  `_run_and_post_response`.
+- `_report_back`'s own call to `_start_turn` (the "[turno concluso]..." notification) passes
+  `report_back=True`.
+- `_run_and_post_response`'s two call sites of `_report_back` at turn-end now skip the call
+  entirely when `report_back=True` for the turn that's finishing.
+
+`_maybe_delegate` (a REAL delegation via explicit `@mention` inside the reply) is untouched
+at both call sites — if the agent reacting to a courtesy notification explicitly tags someone
+with a new task, that's a genuine new delegation and proceeds exactly as before. Only the
+automatic, content-blind echo is cut — at one hop, not fifteen.
+
+### What this doesn't fix
+
+The `_MAX_DELEGATION_HOPS` ceiling itself is unchanged (still 15) — it remains the backstop
+for genuine multi-agent chains that run long for real reasons. This fix removes one entire
+class of chain (courtesy-notification echoes) from ever needing that backstop at all, rather
+than making the backstop tighter for everyone.
+
+### Open
+
+- No test yet for the exact production shape (four distinct agents in a topic, real
+  `chat.origin` chains) — the two new tests in `test_channels.py` isolate the mechanism at
+  the `_run_and_post_response` boundary directly, which is where the fix actually lives, but
+  don't reproduce the full multi-agent topic to watch the chain die at hop 1 end-to-end.
