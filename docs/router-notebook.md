@@ -1752,3 +1752,66 @@ than making the backstop tighter for everyone.
   `chat.origin` chains) — the two new tests in `test_channels.py` isolate the mechanism at
   the `_run_and_post_response` boundary directly, which is where the fix actually lives, but
   don't reproduce the full multi-agent topic to watch the chain die at hop 1 end-to-end.
+
+## R23 · A bot's entry announcement states its runtime facts, deterministically
+
+> «quando un agent entra in un topic nel suo messaggio di saluto dovrebbe anche
+> citare a quale provider è collegato, il suo livello attuale di seal e quale modello
+> usa.» — poi, sulla forma: «deve essere deterministico, no random.»
+>                                                     — Davide, 14 set 2026
+
+Scoped by a direct question before writing anything: does this fire on the one-shot
+topic-bootstrap coordinator, on every new participant, or on every fresh spawn? Answer:
+**every time an agent is newly added to a topic** (`topic.add_participant`) — not the
+narrower bootstrap case, not the broader per-spawn case.
+
+### The pivot: no LLM turn, no directive, no guard logic
+
+The first design sketch routed this through an LLM turn — inject an instruction into the
+new participant's first prompt asking it to mention provider/model/SEAL in its own words.
+Davide's one-line correction ("deterministico, no random") discarded that whole branch:
+the platform states the fact itself, the same way it already states "`{agent}` è entrato
+nel topic come `{ruolo}`" — a `kind="system"` message written directly by `TopicService`,
+never touched by a model. This is simpler than the LLM-turn design in every dimension that
+matters: no eligibility-gate-before-speaking logic needed (a fact doesn't need permission
+to be true), no risk of the model paraphrasing away the substance, no new turn-orchestration
+path to test.
+
+### The one real gap: clodia-tools doesn't have these facts
+
+`TopicService.add_participant` lives in `clodia-tools`; provider/model/SEAL resolution
+(`_topic_provider`, `_topic_provider_model`, `provider_seal` — the exact functions behind
+the "provider · modello" chip in the webui, clodia-platform#310/#315) lives in
+`clodia-logic`. No existing cross-repo channel answers "what does this agent effectively
+run on, in this scope" — the nearest sibling, `announce/internal`, explicitly does the
+opposite ("nessun turno, nessuna scrittura", pure SSE painting of an already-written
+message). A new one was needed: `POST /clodia/channels/runtime-facts/internal`
+(`clodia-logic`), paired-gateway authenticated exactly like `announce/internal`, called
+from a new `tools.runtime.runtime_facts(tier, name, agent)` (`clodia-tools`) — same
+`_post(..., secret=True)` helper already used for `announce_message`.
+
+### The ineligible case is the one that matters most
+
+`_topic_runtime(spec, tier)` already encodes "no connected provider is eligible for this
+tier" as an empty dict — `agent_effective_provider_for_tier` only ever returns a provider
+that clears the tier, so an empty result isn't a transient hiccup, it's the answer. The
+endpoint surfaces this as `{"is_bot": true, "eligible": false}`, and the entry announcement
+says so explicitly — `"⚠️ nessun provider connesso regge questo tier"` — instead of staying
+silent (indistinguishable from a working bot that just hasn't spoken yet) or, worse, printing
+stale/wrong values that look valid.
+
+### What stays out of scope
+
+`is_bot: false` (human or proxy) short-circuits to an empty string — the plain "è entrato
+nel topic come X" is unchanged for anyone who isn't a bot, exactly as it was before this
+change existed. The call is best-effort at the call site (`_entry_runtime_note`, wrapped in
+try/except): an unreachable `clodia-logic` degrades to today's plain message, never blocks
+`add_participant` itself — the same failure posture already established for
+`announce_message` two lines below it in `post_message`.
+
+### Open
+
+- Only the `add_participant` path got this treatment. The topic-bootstrap coordinator
+  (`kind="topic-bootstrap"`) and per-spawn announcements were explicitly scoped out by
+  Davide's answer — if either surfaces the same need later, this is the pattern to repeat,
+  not to retrofit into.
