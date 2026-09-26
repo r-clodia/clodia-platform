@@ -447,8 +447,8 @@ a TTL. This is the mechanism for lending something to one spawn rather than to a
 
 **`copybrain`** (decision record 42) is the case where what is lent is **a whole trade**: a
 spawn of a seed that declares it takes on the resolved verbs of another seed of its choice.
-Consent is keyed on the signed spawn identity, decided as a `walls` gate by the owner of the
-room, never remembered, and lasts until the spawn ends. The borrowed verbs enter the one
+Consent is keyed on the signed spawn identity, decided as a `system` gate by an **admin**
+(not by the owner of the room), never remembered, and lasts until the spawn ends. The borrowed verbs enter the one
 resolver (`effective_tools`) for that caller and that spawn only, so every reader agrees and
 every control on the borrowed verb still applies.
 

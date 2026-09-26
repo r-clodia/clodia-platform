@@ -2495,8 +2495,11 @@ of another seed; `copybrain.call(verb, arguments)` runs one of them; `copybrain.
 gives them back. The owner chose:
 - **duration:** until the spawn ends;
 - **target:** any seed except the caller's own;
-- **decider:** the user in context, i.e. a `walls` gate decided by the owner of the room,
-  or an admin outside a room.
+- **decider:** an **admin**, as a `system` gate. The first cut had it as a `walls` gate
+  decided by the owner of the room; the owner corrected it the same day: lending a whole
+  trade changes who can do what on the machine, not how wide one scope is, the same
+  reason `agents.grant_tool` is `system`. The agent-server refuses a non-admin approval
+  of `copybrain:*` regardless of the class the request carries.
 
 **Why it is admissible.** It is §3.4 applied to a whole trade: a signed spawn identity, a
 human approval, a bounded lifetime.
