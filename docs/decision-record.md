@@ -2476,6 +2476,48 @@ fix — 3 of 5 failing on the proxy ingress (the two that passed are the negativ
 
 ---
 
+## 42 · Clodia borrows a trade, she does not hold it
+
+    «clodia non dovrebbe avere i seguenti verbi: contabilita.*, leads.*,
+     normattiva.*, sedia.*, ma dovrebbe averne uno speciale copybrain che le
+     permette, previo gate, di assumere i verbi di un altro seed a sua scelta
+     per uno spawn che sta utilizzando.»
+                                      — owner, 26 Sep 2026 (clodia-platform#393)
+
+**What was wrong.** Clodia's seed did not declare those four namespaces. The gateway
+granted them anyway: every MCP mount appended `<slug>.*` to Clodia's `allowed_tools`, a
+leftover from when she was a super-agent. A declaration nobody wrote was authority
+nonetheless, which is the defect §3.5 exists to prevent. The automatic grant is removed:
+a mounted backend is granted to nobody, and a seed has it only if it declares it.
+
+**What replaces it.** `copybrain.assume(seed, reason)` lends the spawn the resolved verbs
+of another seed; `copybrain.call(verb, arguments)` runs one of them; `copybrain.release`
+gives them back. The owner chose:
+- **duration:** until the spawn ends;
+- **target:** any seed except the caller's own;
+- **decider:** the user in context, i.e. a `walls` gate decided by the owner of the room,
+  or an admin outside a room.
+
+**Why it is admissible.** It is §3.4 applied to a whole trade: a signed spawn identity, a
+human approval, a bounded lifetime.
+- **No second path:** the loan enters `effective_tools` for that caller and that spawn only,
+  and `copybrain.call` re-enters the normal dispatch, so deny, the verb's own gate, taint
+  and egress all still apply.
+- **No chaining:** a loan takes the target's declared matrix, never its loans.
+- **Never remembered:** a remembered consent would cover every future spawn, that is the
+  seed.
+- **Lifetime:** the agent-server revokes the loans when the spawn's workspace is cleaned
+  up; the capability ceiling (24 h, for this capability only) is the net if that
+  revocation does not arrive.
+
+**Why a `call` verb.** Claude Code reads the MCP tool list when the session starts, and
+the gateway does not emit `tools/list_changed`: a verb granted mid-session would never be
+offered to the model.
+
+**What it changes in the July gate model.** "A gate supervises, it never grants a new
+verb" stops being absolute. It remains the rule for every gate except this one, and this
+one is bounded by the spawn.
+
 ## Where the open questions went
 
 Both lists that used to live here — what was closed, and what was open — have moved to
