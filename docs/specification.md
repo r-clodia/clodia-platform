@@ -445,6 +445,13 @@ A human is link zero. A `denied` beats a wildcard anywhere in the chain.
 A spawn can be given verbs **for its scope only, temporarily**: a signed claim, an approval,
 a TTL. This is the mechanism for lending something to one spawn rather than to a seed.
 
+**`copybrain`** (decision record 42) is the case where what is lent is **a whole trade**: a
+spawn of a seed that declares it takes on the resolved verbs of another seed of its choice.
+Consent is keyed on the signed spawn identity, decided as a `walls` gate by the owner of the
+room, never remembered, and lasts until the spawn ends. The borrowed verbs enter the one
+resolver (`effective_tools`) for that caller and that spawn only, so every reader agrees and
+every control on the borrowed verb still applies.
+
 Revoking a scoped override **need not** reach a live spawn: today the spawn must die first,
 so a withdrawn model or provider stays in use until then. Accepted cost, written down so it
 is known rather than discovered.
