@@ -4,3 +4,6 @@ clodia-data/
 gateway-state/
 *.bak
 .DS_Store
+
+# Python bytecode of the egress proxy suite (#463)
+__pycache__/

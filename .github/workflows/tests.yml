@@ -41,3 +41,25 @@ jobs:
       # esattamente ciò che si vuole sapere.
       - name: ogni voce dei notebook è citata da un test
         run: make test-coverage
+
+  # The egress proxy is code of THIS repository (#463), so its suite runs here.
+  # The last class of it joins the proxy to the real gateway route: it needs
+  # clodia-tools with its dependencies, and skips itself on a clodia-tools that
+  # does not have the route yet.
+  egress-proxy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: r-clodia/clodia-tools
+          path: repos/clodia-tools
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: gateway dependencies, for the join test
+        run: pip install -r repos/clodia-tools/requirements.txt
+      - name: egress proxy suite
+        env:
+          AGENT_SERVER_URL: http://127.0.0.1:9
+        run: make test-egress

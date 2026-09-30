@@ -202,6 +202,9 @@ services:
       #   off     escape hatch, no check at all.
       # An unknown value falls back to `gate`, never to `off`.
       CLODIA_EGRESS_ENFORCE: ${CLODIA_EGRESS_ENFORCE:-gate}
+      # Authenticates the egress proxy's reports (#463). Gateway and proxy only:
+      # never in the shared block, never in the agent container.
+      CLODIA_EGRESS_PROXY_SECRET: ${CLODIA_EGRESS_PROXY_SECRET:-}
     volumes:
       - ${CLODIA_DATA}:/datadir
       # Stato DECISIONALE del gateway (whitelist per-agente, consensi del gate,
@@ -242,11 +245,18 @@ services:
   # ── Egress proxy for the agent container (#104 phase 1) ────────────────────
   # Not published on the host: reachable only from the internal network. It adds
   # host granularity on top of the network rule; it is not what stops a process
-  # that ignores the proxy variables — that is the firewall rule in
-  # docker/egress/confine-agents.sh. See docker/egress/README.md.
+  # that ignores the proxy variables — that is the `internal: true` network
+  # below. See docker/egress/README.md.
   egress-proxy:
     build: { context: ./docker/egress, dockerfile: Dockerfile }
     image: clodia-egress-proxy
+    environment:
+      # Every request is reported to the gateway, which joins it to the turn of
+      # the spawn that made it and answers with the trace id (#463). The secret
+      # is the proxy's own — NOT the orchestrator secret, which mints
+      # identities. Empty = the proxy still filters and logs, without the join.
+      CLODIA_EGRESS_PROXY_SECRET: ${CLODIA_EGRESS_PROXY_SECRET:-}
+      CLODIA_EGRESS_REPORT_URL: http://clodia-tools:7849/internal/egress/record
     networks: [clodia-int, clodia-pub]
     restart: unless-stopped
 
