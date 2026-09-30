@@ -84,7 +84,7 @@ def load_allowlist(path: str) -> list[re.Pattern]:
     A pattern must match the WHOLE host (`fullmatch`): the patterns are
     anchored in the file anyway, and `fullmatch` also closes the gap `$` leaves
     open under `search` — `$` matches before a trailing newline, so
-    `^api\.anthropic\.com$` would accept `"api.anthropic.com\n"`.
+    `^api\\.anthropic\\.com$` would accept `"api.anthropic.com\\n"`.
     A line that does not compile is a deployment error: refuse to start."""
     out = []
     with open(path, encoding="utf-8") as fh:
