@@ -120,6 +120,12 @@ services:
       # Drops the two Datadog telemetry hosts at the source rather than
       # allow-listing them: shorter allow-list, less data leaving.
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+      # Optional OpenTelemetry export of the turns (#463): OFF unless both are
+      # set. Content capture is off by construction. The collector must be on
+      # clodia-int and in CLODIA_NO_PROXY_EXTRA, or the runtimes' exporters go
+      # to the egress proxy.
+      CLODIA_OTEL_EXPORT: ${CLODIA_OTEL_EXPORT:-}
+      CLODIA_OTEL_ENDPOINT: ${CLODIA_OTEL_ENDPOINT:-}
     volumes:
       - ./entrypoint.sh:/entrypoint.sh:ro
       - ${CLODIA_DATA}:/datadir
