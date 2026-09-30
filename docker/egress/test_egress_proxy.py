@@ -59,6 +59,16 @@ class AllowlistTests(unittest.TestCase):
         self.assertEqual(ep.decide("CONNECT", "example.com", 443, self.patterns),
                          (False, "filtered"))
 
+    def test_a_trailing_newline_or_a_control_char_never_matches(self) -> None:
+        # `$` under `search` matches before a final "\n": the whole host must match.
+        for host in ("api.anthropic.com\n", "api.anthropic.com\r", "api.anthropic.com ",
+                     " api.anthropic.com", "api.anthropic.com\x00", "api.anthropic\t.com"):
+            self.assertFalse(ep.host_allowed(host, self.patterns), repr(host))
+        with self.assertRaises(ep.BadRequest):
+            ep.split_target(_head(target="api.anthropic.com\n:443"))
+        with self.assertRaises(ep.BadRequest):
+            ep.split_target(_head("GET", "http://api.anthropic.com%0a/"))
+
     def test_a_broken_line_refuses_to_start(self) -> None:
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as fh:
             fh.write("^ok$\n^(broken$\n")
@@ -101,6 +111,90 @@ class ParsingTests(unittest.TestCase):
         self.assertNotIn("Proxy-", out)
         self.assertNotIn(TAG, out)
         self.assertIn("Connection: close", out)
+
+
+    def test_plain_http_host_is_the_one_of_the_uri(self) -> None:
+        h = _head("GET", "http://github.com/x")
+        h.headers[:] = [("Host", "evil.example"), ("Accept", "*/*")]
+        with self.assertRaises(ep.BadRequest):
+            ep.check_host_header(h, "github.com", 80)
+        # even if it got that far, upstream sees the URI's host, never the client's
+        out = ep.upstream_head(h, "github.com", 80, "/x").decode()
+        self.assertIn("\r\nHost: github.com\r\n", out)
+        self.assertNotIn("evil", out)
+        self.assertIn("Accept: */*", out)
+        # the same host, in any case and with an explicit default port, is fine
+        for ok in ("github.com", "GitHub.com", "github.com:80"):
+            h.headers[0] = ("Host", ok)
+            ep.check_host_header(h, "github.com", 80)
+        h.headers[0] = ("Host", "github.com:8080")
+        with self.assertRaises(ep.BadRequest):
+            ep.check_host_header(h, "github.com", 80)
+        h.headers[:] = [("Host", "github.com"), ("Host", "evil.example")]
+        with self.assertRaises(ep.BadRequest):
+            ep.check_host_header(h, "github.com", 80)
+        h.headers[:] = []
+        ep.check_host_header(h, "github.com", 80)
+        self.assertIn("\r\nHost: github.com\r\n", ep.upstream_head(h, "github.com", 80, "/").decode())
+        self.assertIn("\r\nHost: [::1]:8080\r\n", ep.upstream_head(h, "::1", 8080, "/").decode())
+
+
+class AddressTests(unittest.TestCase):
+    """The allow-list judges the name; the resolved address is judged too."""
+
+    INTERNAL = ep.internal_networks({})
+
+    def refused(self, host: str, addr: str) -> bool:
+        return ep.address_refusal(host, addr, self.INTERNAL) is not None
+
+    def test_never_loopback_link_local_or_the_stack(self) -> None:
+        for addr in ("127.0.0.1", "127.8.9.1", "::1", "169.254.169.254", "fe80::1",
+                     "0.0.0.0", "::", "224.0.0.1", "::ffff:127.0.0.1",
+                     "172.31.7.3", "172.31.8.9", "240.0.0.1"):
+            self.assertTrue(self.refused("api.anthropic.com", addr), addr)
+            self.assertTrue(self.refused(addr, addr), addr)   # not even as a literal
+
+    def test_private_only_as_an_allow_listed_literal(self) -> None:
+        for addr in ("192.168.1.45", "10.0.0.8", "172.16.0.1", "100.64.0.1", "fd00::1"):
+            self.assertTrue(self.refused("api.anthropic.com", addr), addr)
+            self.assertFalse(self.refused(addr, addr), addr)
+        self.assertTrue(self.refused("192.168.1.45", "192.168.1.46"))
+        self.assertFalse(self.refused("::ffff:192.168.1.45", "192.168.1.45"))
+
+    def test_public_addresses_pass(self) -> None:
+        for addr in ("160.79.104.10", "140.82.121.4", "2606:4700::6810:84e5"):
+            self.assertFalse(self.refused("api.anthropic.com", addr), addr)
+
+    def test_the_subnets_follow_the_environment(self) -> None:
+        nets = ep.internal_networks({"CLODIA_INT_SUBNET": "10.9.0.0/16",
+                                     "CLODIA_EXT_SUBNET": "10.10.0.0/16"})
+        self.assertIsNotNone(ep.address_refusal("10.9.1.1", "10.9.1.1", nets))
+        self.assertIsNone(ep.address_refusal("172.31.7.3", "172.31.7.3", nets))
+        with self.assertRaises(SystemExit):
+            ep.internal_networks({"CLODIA_INT_SUBNET": "nonsense"})
+
+    def test_vet_with_a_stubbed_resolver(self) -> None:
+        patterns = ep.load_allowlist(str(HERE / "allowlist"))
+        answers = {"api.anthropic.com": ["127.0.0.1"],
+                   "github.com": ["10.0.0.5", "140.82.121.4"],
+                   "pypi.org": ["151.101.0.223"],
+                   "192.168.1.45": ["192.168.1.45"]}
+
+        async def resolver(host, port):
+            if host not in answers:
+                raise OSError("NXDOMAIN")
+            return answers[host]
+
+        proxy = ep.Proxy(patterns, ep.Log(), lambda b: None, resolver=resolver)
+
+        async def run():
+            return {h: await proxy.vet(h, 443) for h in (*answers, "nx.example")}
+        got = asyncio.run(run())
+        self.assertEqual(got["api.anthropic.com"], ([], "address"))
+        self.assertEqual(got["github.com"], (["140.82.121.4"], None))  # only the public one
+        self.assertEqual(got["pypi.org"], (["151.101.0.223"], None))
+        self.assertEqual(got["192.168.1.45"], (["192.168.1.45"], None))  # the RAG entry
+        self.assertEqual(got["nx.example"], ([], None))                 # a 502, as before
 
 
 class RecordTests(unittest.TestCase):
@@ -163,7 +257,10 @@ class ServerTests(unittest.IsolatedAsyncioTestCase):
             return {"recorded": True, "event_id": "ev", "trace_id": TRACE, "span_id": SPAN,
                     "attribution": "verified"}
         import re
-        self.proxy = ep.Proxy([re.compile(r"^127\.0\.0\.1$")], log, rep)
+        # The upstream here IS loopback: the address check is exercised by
+        # AddressTests and by the refusal test below, not by the tunnel tests.
+        self.proxy = ep.Proxy([re.compile(r"^127\.0\.0\.1$"), re.compile(r"^good\.example$")],
+                              log, rep, address_check=lambda host, addr: None)
         self.server = await asyncio.start_server(self.proxy.handle, "127.0.0.1", 0,
                                                  limit=ep.MAX_HEAD)
         self.port = self.server.sockets[0].getsockname()[1]
@@ -213,6 +310,87 @@ class ServerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((self.lines[0]["allowed"], self.lines[0]["reason"],
                           self.lines[0]["spawn"]), (False, "filtered", None))
         self.assertFalse(any(x.get("event") == "close" for x in self.lines))
+
+    async def _status(self, raw: bytes) -> bytes:
+        r, w = await asyncio.open_connection("127.0.0.1", self.port)
+        w.write(raw)
+        await w.drain()
+        status = await r.readuntil(b"\r\n\r\n")
+        w.close()
+        return status
+
+    async def test_a_newline_in_the_connect_host_is_a_400(self) -> None:
+        status = await self._status(f"CONNECT 127.0.0.1\n:{self.up_port} HTTP/1.1\r\n\r\n".encode())
+        self.assertTrue(status.startswith(b"HTTP/1.1 400"), status)
+        self.assertEqual(self.reports, [])
+
+    async def test_a_host_header_that_disagrees_is_a_400_and_never_dialled(self) -> None:
+        seen = []
+
+        async def origin(r, w):
+            seen.append(await r.readuntil(b"\r\n\r\n"))
+            w.write(b"HTTP/1.1 204 No Content\r\n\r\n")
+            await w.drain()
+            w.close()
+        srv = await asyncio.start_server(origin, "127.0.0.1", 0)
+        self.addAsyncCleanup(self._close, srv)
+        port = srv.sockets[0].getsockname()[1]
+        with patch.object(ep, "ALLOWED_PORTS", frozenset({port})):
+            bad = await self._status(f"GET http://127.0.0.1:{port}/ HTTP/1.1\r\n"
+                                     f"Host: evil.example\r\n\r\n".encode())
+            self.assertTrue(bad.startswith(b"HTTP/1.1 400"), bad)
+            self.assertEqual((seen, self.reports), ([], []))
+            ok = await self._status(f"GET http://127.0.0.1:{port}/p HTTP/1.1\r\n"
+                                    f"Host: 127.0.0.1:{port}\r\n\r\n".encode())
+            self.assertTrue(ok.startswith(b"HTTP/1.1 204"), ok)
+        self.assertIn(f"\r\nHost: 127.0.0.1:{port}\r\n".encode(), seen[0])
+
+    @staticmethod
+    async def _close(srv) -> None:
+        srv.close()
+
+    async def test_a_name_that_resolves_to_an_internal_address_is_refused(self) -> None:
+        dialled = []
+
+        async def resolver(host, port):
+            return ["172.31.7.4"]          # e.g. clodia-tools, behind a public name
+        self.proxy.resolver = resolver
+        self.proxy.address_check = lambda h, a: ep.address_refusal(
+            h, a, ep.internal_networks({}))
+        with patch.object(ep, "_dial", lambda *a: dialled.append(a)):
+            status = await self._status(f"CONNECT good.example:{self.up_port} HTTP/1.1\r\n\r\n"
+                                        .encode())
+        self.assertTrue(status.startswith(b"HTTP/1.1 403"), status)
+        self.assertEqual(dialled, [])
+        self.assertEqual((self.lines[0]["allowed"], self.lines[0]["reason"]), (False, "address"))
+        self.assertEqual((self.reports[0]["allowed"], self.reports[0]["reason"]),
+                         (False, "address"))
+
+    async def test_a_client_that_stops_reading_loses_its_slot(self) -> None:
+        async def flood(r, w):
+            try:
+                while True:
+                    w.write(b"x" * 65536)
+                    await w.drain()
+            except (ConnectionError, OSError):
+                pass
+        srv = await asyncio.start_server(flood, "127.0.0.1", 0)
+        self.addAsyncCleanup(self._close, srv)
+        port = srv.sockets[0].getsockname()[1]
+        with patch.object(ep, "ALLOWED_PORTS", frozenset({port})), \
+                patch.object(ep, "WRITE_TIMEOUT_S", 0.3):
+            r, w = await self._connect(f"127.0.0.1:{port}", None)
+            self.assertTrue((await r.readuntil(b"\r\n\r\n")).startswith(b"HTTP/1.1 200"))
+            # ... and never reads again.
+            for _ in range(500):
+                if any(x.get("event") == "close" for x in self.lines):
+                    break
+                await asyncio.sleep(0.02)
+        close = next(x for x in self.lines if x.get("event") == "close")
+        self.assertEqual(close["error"], "peer_stalled")
+        self.assertFalse(self.proxy.slots.locked())
+        self.assertEqual(self.proxy.slots._value, ep.MAX_CLIENTS)
+        w.close()
 
     async def test_garbage_is_a_400(self) -> None:
         r, w = await asyncio.open_connection("127.0.0.1", self.port)

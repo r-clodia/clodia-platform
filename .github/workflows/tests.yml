@@ -48,13 +48,14 @@ jobs:
   # does not have the route yet.
   egress-proxy:
     runs-on: ubuntu-latest
+    # Actions pinned by commit SHA: a moved tag cannot change what runs here.
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: r-clodia/clodia-tools
           path: repos/clodia-tools
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
       - name: gateway dependencies, for the join test
@@ -63,3 +64,20 @@ jobs:
         env:
           AGENT_SERVER_URL: http://127.0.0.1:9
         run: make test-egress
+      # The image under the same confinement docker-compose.yml gives it
+      # (read-only root, no capabilities, no-new-privileges, memory and pids
+      # limits): it must still start as `nobody` and serve on 8888.
+      - name: the hardened container starts and serves
+        run: |
+          docker build -q -t clodia-egress-proxy docker/egress
+          docker run -d --name egress --read-only --tmpfs /tmp --cap-drop ALL \
+            --security-opt no-new-privileges:true --memory 128m --pids-limit 64 \
+            -p 127.0.0.1:8888:8888 clodia-egress-proxy
+          for i in $(seq 1 20); do
+            docker logs egress 2>&1 | grep -q '"event":"start"' && break; sleep 0.5
+          done
+          docker logs egress
+          test "$(docker exec egress id -un)" = nobody
+          printf 'CONNECT example.com:443 HTTP/1.1\r\n\r\n' | timeout 5 nc 127.0.0.1 8888 \
+            | head -1 | grep -q '403'
+          docker rm -f egress

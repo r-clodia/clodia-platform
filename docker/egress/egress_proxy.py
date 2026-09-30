@@ -37,10 +37,12 @@ from __future__ import annotations
 import asyncio
 import base64
 import binascii
+import ipaddress
 import itertools
 import json
 import os
 import re
+import socket
 import sys
 import time
 import urllib.error
@@ -54,12 +56,20 @@ MAX_HEAD = 32 * 1024
 HEAD_TIMEOUT_S = 30.0
 IDLE_TIMEOUT_S = float(os.environ.get("EGRESS_IDLE_TIMEOUT", "600"))
 CONNECT_TIMEOUT_S = 30.0
+#: How long a write may wait for the peer to read. A client (or an upstream)
+#: that stops reading would otherwise pin its slot until the idle timeout —
+#: or forever, since the idle timer only runs on reads.
+WRITE_TIMEOUT_S = float(os.environ.get("EGRESS_WRITE_TIMEOUT", "60"))
 REPORT_TIMEOUT_S = float(os.environ.get("EGRESS_REPORT_TIMEOUT", "1.0"))
 MAX_CLIENTS = int(os.environ.get("EGRESS_MAX_CLIENTS", "60"))
 
 #: The spawn label and tag, as `audit.trace` in clodia-tools defines them.
 _SPAWN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$")
 _TAG = re.compile(r"^[0-9a-f]{32}$")
+#: What a destination host may be made of: a DNS name or an IP literal (IPv6
+#: without its brackets). No whitespace, no control characters — a trailing
+#: "\n" must not reach the allow-list, nor the resolver.
+_HOST_CHARS = re.compile(r"[A-Za-z0-9._:-]{1,253}")
 #: Hop-by-hop headers that never go upstream on a plain HTTP request.
 _HOP = frozenset({"proxy-authorization", "proxy-connection", "connection",
                   "keep-alive", "te", "trailer", "upgrade", "proxy-authenticate"})
@@ -71,8 +81,10 @@ _CONN_IDS = itertools.count(1)
 def load_allowlist(path: str) -> list[re.Pattern]:
     """Host patterns, one per line; `#` comments and blank lines ignored.
 
-    Matched with `search`, like tinyproxy's `regexec`: the patterns are
-    anchored in the file, and an unanchored one would match inside a name.
+    A pattern must match the WHOLE host (`fullmatch`): the patterns are
+    anchored in the file anyway, and `fullmatch` also closes the gap `$` leaves
+    open under `search` — `$` matches before a trailing newline, so
+    `^api\.anthropic\.com$` would accept `"api.anthropic.com\n"`.
     A line that does not compile is a deployment error: refuse to start."""
     out = []
     with open(path, encoding="utf-8") as fh:
@@ -87,8 +99,12 @@ def load_allowlist(path: str) -> list[re.Pattern]:
     return out
 
 
+def valid_host(host: str) -> bool:
+    return bool(_HOST_CHARS.fullmatch(host))
+
+
 def host_allowed(host: str, patterns: list[re.Pattern]) -> bool:
-    return any(p.search(host) for p in patterns)
+    return valid_host(host) and any(p.fullmatch(host) for p in patterns)
 
 
 def decide(method: str, host: str, port: int, patterns: list[re.Pattern]) -> tuple[bool, str | None]:
@@ -97,6 +113,67 @@ def decide(method: str, host: str, port: int, patterns: list[re.Pattern]) -> tup
     if not host_allowed(host, patterns):
         return False, "filtered"
     return True, None
+
+
+# ── resolved addresses ──────────────────────────────────────────────────────
+#: Private ranges an allow-listed IP LITERAL may point into (the RAG service on
+#: the LAN, `^192\.168\.1\.45$`). A NAME never may: a public name that
+#: resolves into the LAN is a rebinding, not a destination.
+_PRIVATE = tuple(ipaddress.ip_network(n) for n in (
+    "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "fc00::/7"))
+
+
+def internal_networks(env=os.environ) -> tuple:
+    """The stack's own subnets: never a destination, not even as a literal."""
+    out = []
+    for var, default in (("CLODIA_INT_SUBNET", "172.31.7.0/24"),
+                         ("CLODIA_EXT_SUBNET", "172.31.8.0/24")):
+        raw = (env.get(var) or default).strip()
+        try:
+            out.append(ipaddress.ip_network(raw, strict=False))
+        except ValueError:
+            raise SystemExit(f"{var}={raw!r} is not a network") from None
+    return tuple(out)
+
+
+def address_refusal(host: str, addr: str, internal: tuple) -> str | None:
+    """Why the proxy must not connect to `addr` (resolved from `host`), or None.
+
+    Always refused: loopback, link-local, unspecified, multicast, reserved and
+    the stack's internal subnets. Private ranges (RFC 1918, CGNAT, ULA): only
+    when the request named that IP literally, i.e. the allow-list entry that
+    let it through is itself the IP literal."""
+    try:
+        ip = ipaddress.ip_address(addr.split("%", 1)[0])
+    except ValueError:
+        return "address"
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+        ip = ip.ipv4_mapped
+    if (ip.is_loopback or ip.is_link_local or ip.is_unspecified or ip.is_multicast
+            or ip.is_reserved or any(ip in n for n in internal)):
+        return "address"
+    if any(ip in n for n in _PRIVATE):
+        try:
+            literal = ipaddress.ip_address(host)
+        except ValueError:
+            return "address"
+        if isinstance(literal, ipaddress.IPv6Address) and literal.ipv4_mapped:
+            literal = literal.ipv4_mapped
+        return None if literal == ip else "address"
+    if not ip.is_global:
+        return "address"
+    return None
+
+
+async def resolve(host: str, port: int) -> list[str]:
+    """The addresses of `host`, in resolver order, without duplicates."""
+    loop = asyncio.get_running_loop()
+    infos = await loop.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    out: list[str] = []
+    for *_, sockaddr in infos:
+        if sockaddr[0] not in out:
+            out.append(sockaddr[0])
+    return out
 
 
 # ── parsing ───────────────────────────────────────────────────────────────────
@@ -146,7 +223,10 @@ def split_target(head: Head) -> tuple[str, int, str]:
         if not sep or not host or not port.isdigit():
             raise BadRequest("CONNECT needs host:port")
         host = host[1:-1] if host.startswith("[") and host.endswith("]") else host
-        return host.lower(), int(port), ""
+        host = host.lower()
+        if not valid_host(host):
+            raise BadRequest("bad host")
+        return host, int(port), ""
     u = urlsplit(head.target)
     if u.scheme.lower() != "http" or not u.hostname:
         raise BadRequest("only absolute http:// URLs are proxied")
@@ -154,10 +234,39 @@ def split_target(head: Head) -> tuple[str, int, str]:
         port = u.port or 80
     except ValueError:
         raise BadRequest("bad port") from None
+    host = u.hostname.lower()
+    if not valid_host(host):
+        raise BadRequest("bad host")
     path = u.path or "/"
     if u.query:
         path += "?" + u.query
-    return u.hostname.lower(), port, path
+    return host, port, path
+
+
+def _authority(host: str, port: int) -> str:
+    h = f"[{host}]" if ":" in host else host
+    return h if port == 80 else f"{h}:{port}"
+
+
+def check_host_header(head: Head, host: str, port: int) -> None:
+    """A plain HTTP request's `Host` must name the destination of its absolute
+    URI — the one the allow-list judged. The origin reads `Host`, so a request
+    that says `GET http://github.com/` with `Host: evil.example` would reach a
+    virtual host nobody allowed. Missing is fine (it is written from the URI);
+    different, or more than one, is a 400."""
+    if head.method == "CONNECT":
+        return
+    values = [v for k, v in head.headers if k.lower() == "host"]
+    if not values:
+        return
+    if len(values) > 1:
+        raise BadRequest("more than one Host header")
+    got = values[0].strip().lower()
+    expected = {_authority(host, port)}
+    if port == 80:
+        expected.add(_authority(host, port) + ":80")
+    if got not in expected:
+        raise BadRequest("Host header does not match the request URI")
 
 
 def credentials(head: Head) -> tuple[str | None, str | None]:
@@ -181,17 +290,14 @@ def credentials(head: Head) -> tuple[str | None, str | None]:
 
 def upstream_head(head: Head, host: str, port: int, path: str) -> bytes:
     """The plain HTTP request as the origin receives it: origin-form, no
-    proxy credentials, one request per connection."""
-    lines = [f"{head.method} {path} {head.version}"]
-    has_host = False
+    proxy credentials, one request per connection, and `Host` written from
+    the absolute URI (like tinyproxy) — never the client's."""
+    lines = [f"{head.method} {path} {head.version}", f"Host: {_authority(host, port)}"]
     for k, v in head.headers:
         lk = k.lower()
-        if lk in _HOP:
+        if lk in _HOP or lk == "host":
             continue
-        has_host = has_host or lk == "host"
         lines.append(f"{k}: {v}")
-    if not has_host:
-        lines.append(f"Host: {host}" + ("" if port == 80 else f":{port}"))
     lines.append("Connection: close")
     return ("\r\n".join(lines) + "\r\n\r\n").encode("latin-1")
 
@@ -240,11 +346,14 @@ def record(conn: int, client: str, method: str, host: str, port: int,
 
 
 def decide_and_record(head: Head, client: str, patterns: list[re.Pattern], conn: int,
-                      reporter=report) -> tuple[dict, str, int, str]:
+                      reporter=report, verdict: tuple[bool, str | None] | None = None,
+                      ) -> tuple[dict, str, int, str]:
     """The pure part of a request: decision, report, log line. Returns
-    `(line, host, port, path)`. Used as is by the server and by the tests."""
+    `(line, host, port, path)`. Used as is by the server and by the tests.
+    `verdict` is the server's final decision when it knows more than the
+    allow-list (a resolved address it refuses)."""
     host, port, path = split_target(head)
-    allowed, reason = decide(head.method, host, port, patterns)
+    allowed, reason = verdict or decide(head.method, host, port, patterns)
     spawn, tag = credentials(head)
     body = {"spawn": spawn, "tag": tag, "host": host, "port": port,
             "method": head.method, "allowed": allowed, "reason": reason}
@@ -264,7 +373,20 @@ class Log:
 
 
 # ── server ────────────────────────────────────────────────────────────────────
+class Stalled(Exception):
+    """The peer of a write stopped reading for longer than WRITE_TIMEOUT_S."""
+
+
+async def _drain(w: asyncio.StreamWriter) -> None:
+    try:
+        await asyncio.wait_for(w.drain(), WRITE_TIMEOUT_S)
+    except asyncio.TimeoutError:
+        raise Stalled() from None
+
+
 async def _pipe(src: asyncio.StreamReader, dst: asyncio.StreamWriter, count: list) -> None:
+    """Copy `src` into `dst` until EOF or idle. Raises `Stalled` when `dst`
+    stops reading: the caller then tears down BOTH directions."""
     try:
         while True:
             chunk = await asyncio.wait_for(src.read(65536), IDLE_TIMEOUT_S)
@@ -272,7 +394,7 @@ async def _pipe(src: asyncio.StreamReader, dst: asyncio.StreamWriter, count: lis
                 break
             count[0] += len(chunk)
             dst.write(chunk)
-            await dst.drain()
+            await _drain(dst)
     except (asyncio.TimeoutError, ConnectionError, OSError):
         pass
     finally:
@@ -283,11 +405,16 @@ async def _pipe(src: asyncio.StreamReader, dst: asyncio.StreamWriter, count: lis
             pass
 
 
-async def _dial(host: str, port: int):
-    try:
-        return await asyncio.wait_for(asyncio.open_connection(host, port), CONNECT_TIMEOUT_S)
-    except (OSError, asyncio.TimeoutError):
-        return None, None
+async def _dial(addrs: list[str], port: int):
+    """Connect to the first reachable of the vetted addresses — by address, so
+    what is connected is what was checked (no second resolution)."""
+    for addr in addrs:
+        try:
+            return await asyncio.wait_for(asyncio.open_connection(addr, port),
+                                          CONNECT_TIMEOUT_S)
+        except (OSError, asyncio.TimeoutError):
+            continue
+    return None, None
 
 
 async def _reply(writer: asyncio.StreamWriter, status: str) -> None:
@@ -295,15 +422,32 @@ async def _reply(writer: asyncio.StreamWriter, status: str) -> None:
     writer.write(f"HTTP/1.1 {status}\r\nContent-Type: text/plain\r\n"
                  f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n".encode() + body)
     try:
-        await writer.drain()
-    except (ConnectionError, OSError):
+        await _drain(writer)
+    except (ConnectionError, OSError, Stalled):
         pass
 
 
 class Proxy:
-    def __init__(self, patterns: list[re.Pattern], log: Log, reporter=report):
+    def __init__(self, patterns: list[re.Pattern], log: Log, reporter=report,
+                 resolver=resolve, address_check=None):
         self.patterns, self.log, self.reporter = patterns, log, reporter
+        self.resolver = resolver
+        internal = internal_networks()
+        self.address_check = address_check or (
+            lambda host, addr: address_refusal(host, addr, internal))
         self.slots = asyncio.Semaphore(MAX_CLIENTS)
+
+    async def vet(self, host: str, port: int) -> tuple[list[str], str | None]:
+        """`(addresses the proxy may connect to, refusal reason)`. An empty
+        list without a reason is a resolution failure (a 502, as before)."""
+        try:
+            addrs = await asyncio.wait_for(self.resolver(host, port), CONNECT_TIMEOUT_S)
+        except (OSError, asyncio.TimeoutError, UnicodeError):
+            return [], None
+        ok = [a for a in addrs if self.address_check(host, a) is None]
+        if addrs and not ok:
+            return [], "address"
+        return ok, None
 
     async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         conn = next(_CONN_IDS)
@@ -320,6 +464,7 @@ class Proxy:
         t0 = time.monotonic()
         up_reader = up_writer = None
         sent, received = [0], [0]
+        stalled = abort = False
         try:
             try:
                 raw = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), HEAD_TIMEOUT_S)
@@ -330,17 +475,26 @@ class Proxy:
                 return
             try:
                 host, port, path = split_target(head)
+                check_host_header(head, host, port)
             except BadRequest:
                 await _reply(writer, "400 Bad Request")
                 return
+            allowed, reason = decide(head.method, host, port, self.patterns)
+            addrs: list[str] = []
+            if allowed:
+                # The allow-list judged the NAME; what is connected is an
+                # address. Resolve once, refuse the internal ones, dial those.
+                addrs, refusal = await self.vet(host, port)
+                if refusal:
+                    allowed, reason = False, refusal
             decided = asyncio.to_thread(decide_and_record, head, client, self.patterns,
-                                        conn, self.reporter)
-            if decide(head.method, host, port, self.patterns)[0]:
+                                        conn, self.reporter, (allowed, reason))
+            if allowed:
                 # Allowed: dial and report at the same time, so the report costs
                 # no latency beyond the slower of the two. A refused destination
                 # is never dialled.
                 (line, *_), (up_reader, up_writer) = await asyncio.gather(
-                    decided, _dial(host, port))
+                    decided, _dial(addrs, port))
             else:
                 line, *_ = await decided
             self.log.write(line)
@@ -354,23 +508,45 @@ class Proxy:
                 return
             if head.method == "CONNECT":
                 writer.write(b"HTTP/1.1 200 Connection established\r\n\r\n")
-                await writer.drain()
+                await _drain(writer)
             else:
                 up_writer.write(upstream_head(head, host, port, path))
-                await up_writer.drain()
-            await asyncio.gather(_pipe(reader, up_writer, sent),
-                                 _pipe(up_reader, writer, received))
+                await _drain(up_writer)
+            pipes = [asyncio.ensure_future(_pipe(reader, up_writer, sent)),
+                     asyncio.ensure_future(_pipe(up_reader, writer, received))]
+            try:
+                done, pending = await asyncio.wait(pipes,
+                                                   return_when=asyncio.FIRST_EXCEPTION)
+            finally:
+                for p in pipes:
+                    if not p.done():
+                        p.cancel()
+            stalled = any(p.done() and not p.cancelled() and isinstance(p.exception(), Stalled)
+                          for p in pipes)
+            if stalled:
+                abort = True
+                return
+            await asyncio.gather(*pending, return_exceptions=True)
+        except Stalled:
+            stalled = abort = True
+        except (ConnectionError, OSError):
+            abort = True
         finally:
             for w in (up_writer, writer):
                 if w is not None:
                     try:
-                        w.close()
+                        # A stalled peer will never take the buffered bytes:
+                        # abort, so the socket goes now and not at its leisure.
+                        (w.transport.abort if abort else w.close)()
                     except (OSError, RuntimeError):
                         pass
             if up_writer is not None:
-                self.log.write({"ts": _now(), "event": "close", "conn": conn,
-                                "bytes_up": sent[0], "bytes_down": received[0],
-                                "duration_ms": int((time.monotonic() - t0) * 1000)})
+                line = {"ts": _now(), "event": "close", "conn": conn,
+                        "bytes_up": sent[0], "bytes_down": received[0],
+                        "duration_ms": int((time.monotonic() - t0) * 1000)}
+                if stalled:
+                    line["error"] = "peer_stalled"
+                self.log.write(line)
 
 
 async def main() -> None:

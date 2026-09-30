@@ -122,6 +122,25 @@ its label: the per-spawn uid of the sandbox is what prevents it.
 the gateway and the proxy only — deliberately not the orchestrator secret,
 which mints identities. Empty = the proxy filters and logs without the join.
 
+## What the proxy checks beyond the allow-list
+
+- **The whole host matches.** Patterns are applied with `fullmatch`, and a host
+  with whitespace or control characters is a `400` before any pattern sees it
+  (under `search`, `$` also matches before a trailing newline).
+- **The address, not only the name.** After resolution the proxy refuses
+  loopback, link-local, multicast/reserved and the stack's own subnets
+  (`CLODIA_INT_SUBNET`, `CLODIA_EXT_SUBNET`), and connects to the address it
+  checked. Private ranges (RFC 1918, CGNAT, ULA) are reachable only when the
+  request names the IP literally — i.e. the allow-list entry is that IP, like
+  `^192\.168\.1\.45$`. A refusal is `403` with reason `address`.
+- **Plain HTTP `Host`.** It is rewritten from the absolute URI; a client `Host`
+  that names something else (or a second one) is a `400`.
+- **Slow readers.** A write that waits more than `EGRESS_WRITE_TIMEOUT` seconds
+  (default 60) for its peer closes the connection and frees the slot.
+
+The container runs as `nobody` on 8888 with a read-only root, no capabilities,
+`no-new-privileges` and memory/pids limits (`docker-compose.yml`).
+
 ## The allow-list, and what is deliberately absent
 
 Inference providers actually connected on the instance, GitHub (shell `git push`

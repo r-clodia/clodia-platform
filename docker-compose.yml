@@ -263,7 +263,18 @@ services:
       # identities. Empty = the proxy still filters and logs, without the join.
       CLODIA_EGRESS_PROXY_SECRET: ${CLODIA_EGRESS_PROXY_SECRET:-}
       CLODIA_EGRESS_REPORT_URL: http://clodia-tools:7849/internal/egress/record
+      # The stack's own subnets: never a destination, whatever a name resolves to.
+      CLODIA_INT_SUBNET: ${CLODIA_INT_SUBNET:-172.31.7.0/24}
+      CLODIA_EXT_SUBNET: ${CLODIA_EXT_SUBNET:-172.31.8.0/24}
     networks: [clodia-int, clodia-pub]
+    # Runs as `nobody` on 8888 (> 1024): no capability is needed to bind it.
+    # Nothing is written to disk (the log is stdout); /tmp is there for Python.
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    pids_limit: 64
     restart: unless-stopped
 
   # ── draw.io MCP server (it-pack) ───────────────────────────────────────────
