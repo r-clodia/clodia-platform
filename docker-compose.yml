@@ -250,6 +250,29 @@ services:
     networks: [clodia-int, clodia-pub]
     restart: unless-stopped
 
+  # ── draw.io MCP server (it-pack) ───────────────────────────────────────────
+  # Official JGraph MCP App server (Apache-2.0), mounted by it-pack as the
+  # gateway backend `drawio` at http://drawio-mcp:3001/mcp. Self-hosted so the
+  # content of a diagram — often an architecture, sometimes a client's — never
+  # leaves the instance: it sits on clodia-int ONLY, which has no route to the
+  # outside, and the icon-service supplement of search_shapes is switched off.
+  # The startup HEAD to the viewer CDN simply fails and the server falls back.
+  # Pinned by digest (1.0.6): an upgrade is a reviewed change, not a pull.
+  drawio-mcp:
+    image: jgraph/drawio-mcp@sha256:4ad6be7215bec6d266337fe7037cfdaa250a01db11c9783708b885b395350828
+    networks: [clodia-int]
+    environment:
+      LISTEN: "0.0.0.0"
+      PORT: "3001"
+      ALLOWED_HOSTS: "drawio-mcp"
+      DRAWIO_ICON_SERVICE_URL: "off"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    restart: unless-stopped
+
   webui:
     build: { context: ./repos/clodia-web, dockerfile: Dockerfile }
     image: clodia-webui
