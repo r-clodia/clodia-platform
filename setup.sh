@@ -42,6 +42,20 @@ if [ -z "${CLODIA_ORCHESTRATOR_SECRET:-}" ]; then
   export CLODIA_ORCHESTRATOR_SECRET="$_clodia_orchestrator_secret"
   echo "    generato CLODIA_ORCHESTRATOR_SECRET"
 fi
+# Egress proxy → gateway (#463): the proxy's reports, joined to the turn. Its
+# own secret, so the proxy container never holds the orchestrator's. A `.env`
+# older than the line gets it appended.
+if [ -z "${CLODIA_EGRESS_PROXY_SECRET:-}" ]; then
+  _clodia_egress_secret="$(openssl rand -hex 32)"
+  if grep -q '^CLODIA_EGRESS_PROXY_SECRET=' "$ROOT/.env"; then
+    sed -i.bak "s/^CLODIA_EGRESS_PROXY_SECRET=.*/CLODIA_EGRESS_PROXY_SECRET=${_clodia_egress_secret}/" "$ROOT/.env"
+    rm -f "$ROOT/.env.bak"
+  else
+    printf '\nCLODIA_EGRESS_PROXY_SECRET=%s\n' "$_clodia_egress_secret" >> "$ROOT/.env"
+  fi
+  export CLODIA_EGRESS_PROXY_SECRET="$_clodia_egress_secret"
+  echo "    generato CLODIA_EGRESS_PROXY_SECRET"
+fi
 mkdir -p "${CLODIA_DATA:-$ROOT/clodia-data}"
 # Stato decisionale del gateway (whitelist/gate/deleghe): directory a parte,
 # montata dal SOLO container clodia-tools. Se stesse nella datadir la

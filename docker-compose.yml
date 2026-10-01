@@ -120,6 +120,12 @@ services:
       # Drops the two Datadog telemetry hosts at the source rather than
       # allow-listing them: shorter allow-list, less data leaving.
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+      # Optional OpenTelemetry export of the turns (#463): OFF unless both are
+      # set. Content capture is off by construction. The collector must be on
+      # clodia-int and in CLODIA_NO_PROXY_EXTRA, or the runtimes' exporters go
+      # to the egress proxy.
+      CLODIA_OTEL_EXPORT: ${CLODIA_OTEL_EXPORT:-}
+      CLODIA_OTEL_ENDPOINT: ${CLODIA_OTEL_ENDPOINT:-}
     volumes:
       - ./entrypoint.sh:/entrypoint.sh:ro
       - ${CLODIA_DATA}:/datadir
@@ -202,6 +208,9 @@ services:
       #   off     escape hatch, no check at all.
       # An unknown value falls back to `gate`, never to `off`.
       CLODIA_EGRESS_ENFORCE: ${CLODIA_EGRESS_ENFORCE:-gate}
+      # Authenticates the egress proxy's reports (#463). Gateway and proxy only:
+      # never in the shared block, never in the agent container.
+      CLODIA_EGRESS_PROXY_SECRET: ${CLODIA_EGRESS_PROXY_SECRET:-}
     volumes:
       - ${CLODIA_DATA}:/datadir
       # Stato DECISIONALE del gateway (whitelist per-agente, consensi del gate,
@@ -242,12 +251,30 @@ services:
   # ── Egress proxy for the agent container (#104 phase 1) ────────────────────
   # Not published on the host: reachable only from the internal network. It adds
   # host granularity on top of the network rule; it is not what stops a process
-  # that ignores the proxy variables — that is the firewall rule in
-  # docker/egress/confine-agents.sh. See docker/egress/README.md.
+  # that ignores the proxy variables — that is the `internal: true` network
+  # below. See docker/egress/README.md.
   egress-proxy:
     build: { context: ./docker/egress, dockerfile: Dockerfile }
     image: clodia-egress-proxy
+    environment:
+      # Every request is reported to the gateway, which joins it to the turn of
+      # the spawn that made it and answers with the trace id (#463). The secret
+      # is the proxy's own — NOT the orchestrator secret, which mints
+      # identities. Empty = the proxy still filters and logs, without the join.
+      CLODIA_EGRESS_PROXY_SECRET: ${CLODIA_EGRESS_PROXY_SECRET:-}
+      CLODIA_EGRESS_REPORT_URL: http://clodia-tools:7849/internal/egress/record
+      # The stack's own subnets: never a destination, whatever a name resolves to.
+      CLODIA_INT_SUBNET: ${CLODIA_INT_SUBNET:-172.31.7.0/24}
+      CLODIA_EXT_SUBNET: ${CLODIA_EXT_SUBNET:-172.31.8.0/24}
     networks: [clodia-int, clodia-pub]
+    # Runs as `nobody` on 8888 (> 1024): no capability is needed to bind it.
+    # Nothing is written to disk (the log is stdout); /tmp is there for Python.
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    pids_limit: 64
     restart: unless-stopped
 
   # ── draw.io MCP server (it-pack) ───────────────────────────────────────────
