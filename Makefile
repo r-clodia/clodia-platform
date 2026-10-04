@@ -1,7 +1,7 @@
 # Comandi di verifica della piattaforma. `make test` esegue le suite dei
 # componenti clonati sotto `repos/`, poi controlla che ogni voce dei notebook
 # sia citata da un test (decision record 34).
-.PHONY: test test-components test-coverage test-egress help
+.PHONY: test test-components test-coverage test-egress test-pins help
 
 REPOS ?= repos
 
@@ -10,8 +10,9 @@ help:
 	@echo "make test-components   solo le suite sotto $(REPOS)/"
 	@echo "make test-coverage     solo: ogni voce dei notebook ha un test che la cita"
 	@echo "make test-egress       egress proxy suite (docker/egress, #463)"
+	@echo "make test-pins         le due copie di base.Dockerfile pinnano uguale"
 
-test: test-components test-egress test-coverage
+test: test-components test-egress test-pins test-coverage
 
 # Ogni componente porta il proprio Makefile: qui non si duplica il comando, si
 # chiede a chi lo conosce. Un componente non clonato viene saltato con un avviso
@@ -35,3 +36,9 @@ test-coverage:
 test-egress:
 	@echo "── egress proxy"
 	@CLODIA_TOOLS_SRC=$(REPOS)/clodia-tools python3 -m unittest discover -s docker/egress -p "test_*.py"
+
+# Il pin dei runtime agentici esiste in due copie (#493): questa istanza e il
+# template del builder. Niente build qui — si confrontano i valori degli ARG.
+test-pins:
+	@echo "── pin dei runtime (base.Dockerfile ×2)"
+	@python3 scripts/check-codex-pin.py
