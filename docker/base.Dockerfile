@@ -15,9 +15,34 @@ FROM python:3.12-slim
 # the real CODEX_HOME: `gpt-5.6-sol` and `gpt-5.5` complete a turn, no 400, no
 # refresh error, and `auth.json` is left untouched by the migration.
 #
+# Bumped to 0.160.0 for `gpt-6-astra` (clodia-platform#493, 4 Oct 2026). The
+# contract above is not a figure of speech: the catalog the CLI itself ships
+# (`codex-rs/models-manager/models.json` at tag rust-v0.160.0) declares
+#   gpt-6-astra  minimal_client_version 0.153.0   (ophelia, from this release)
+#   gpt-6-sol    minimal_client_version 0.155.0   (the successor OpenAI points
+#                                                  gpt-5.6-sol users to)
+#   gpt-5.6-sol  minimal_client_version 0.144.0   (fullstack-dev, unchanged)
+# — which is exactly why 0.149.0 answered 400 "requires a newer version of
+# Codex" on Astra. 0.160.0 is the latest STABLE (1 Oct 2026); above it there are
+# only 0.161/0.162 alphas. Astra declares the same reasoning levels as Sol
+# (low|medium|high|xhigh), so the 0.137.0 deserialization failure above cannot
+# come back through the model — only through a CLI left behind again.
+#
+# Checked, not assumed, before bumping: the `exec --json` event schema
+# (`codex-rs/exec/src/exec_events.rs`) is identical between rust-v0.149.0 and
+# rust-v0.160.0 except one additive optional field (`results` on `web_search`),
+# and every config key the agent-server writes or passes with `-c` still exists
+# in `codex-rs/config/src/config_toml.rs` at 0.160.0.
+#
 # Still pinned, for the reason below: it must be bumped deliberately, together
 # with a check that the slugs in the agents' stacks are served at that version.
-ARG OPENAI_CODEX_NPM_VERSION=0.149.0
+# `scripts/check-codex-pin.py` only guarantees the two copies of this file agree.
+#
+# NOTE: `@anthropic-ai/claude-code` below is installed UNPINNED, so a rebuild
+# also takes whatever claude-code npm serves that day. Deliberately left as is
+# here (#493): pinning it needs the version the running agent-server is on,
+# which is not readable from a build file.
+ARG OPENAI_CODEX_NPM_VERSION=0.160.0
 # OpenCode: runtime degli agent `agent_sdk=opencode` (modelli aperti su provider
 # sovrani — gpt-oss, glm, gemma). NON era installato qui: su un'istanza esistente
 # c'era perché aggiunto a mano il 25 luglio, quindi ogni ricostruzione lo perdeva
