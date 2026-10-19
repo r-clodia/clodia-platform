@@ -39,6 +39,9 @@ the model — actors, scopes, authority, gates, perimeter, tiers.
 [`docs/decision-record.md`](docs/decision-record.md) is how that model was
 arrived at, with the measurements that settled each question.
 
+**To extend it:** [`docs/pack-connectors.md`](docs/pack-connectors.md) is the
+guide for writing a connector in a pack — its card, its topic button and its verbs.
+
 Known defects are tracked **publicly and in the open**. Their absence from this
 README does not mean they do not exist — it means you have to look in the
 tracker. Weigh every open issue against *your* risk model before putting the
