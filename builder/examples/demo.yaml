@@ -20,7 +20,6 @@ packs:
   - source: ./demo-pack
     pack: demo-pack
 providers: [anthropic-api]
-pwa: false
 helpdesk:
   enabled: false      # niente popup: l'edizione non imbarca wainston
 integrations:

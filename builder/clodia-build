@@ -44,10 +44,9 @@ NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,30}$")
 RUNTIME_REPOS = {
     "clodia-tools": "https://github.com/r-clodia/clodia-tools",
     "clodia-web": "https://github.com/r-clodia/clodia-web",
-    "clodia-pwa": "https://github.com/r-clodia/clodia-pwa",
 }
 NATIVE_SEEDS_KNOWN = {"clodia", "ophelia", "mercuria", "wainston"}
-DEFAULT_PORTS = {"agent_server": 8842, "tools": 8849, "webui": 8843, "pwa": 8873}
+DEFAULT_PORTS = {"agent_server": 8842, "tools": 8849, "webui": 8843}
 
 
 def die(msg: str) -> None:
@@ -82,6 +81,10 @@ def validate(bp: dict) -> None:
             die("topic_storage obbligatorio quando topics != off (§4b.7); default: local-fs")
         if storage != "local-fs":
             die(f"topic_storage '{storage}' non ancora supportato dal builder (solo local-fs)")
+    if bp.get("pwa"):
+        # The PWA is retired (clodia-platform#657): there is nothing to build.
+        # Refused rather than ignored, so a blueprint asking for it finds out.
+        die("pwa: the PWA is retired (clodia-platform#657); remove the key, use the WebUI")
     for s in bp.get("native_seeds") or []:
         if s not in NATIVE_SEEDS_KNOWN:
             die(f"native_seed sconosciuto: '{s}' (noti: {sorted(NATIVE_SEEDS_KNOWN)})")
@@ -102,11 +105,10 @@ def build_profile(bp: dict) -> dict:
     """profile.yaml dell'istanza dal blueprint (runtime contract)."""
     prof = dict(bp.get("profile") or {})
     prof.setdefault("edition", bp["name"])
-    # Provider e PWA dell'edizione (difetti demo 6 lug): il runtime filtra
-    # /api/providers e la sezione PWA di Settings dal profilo.
+    # Provider dell'edizione (difetti demo 6 lug): il runtime filtra
+    # /api/providers dal profilo.
     prof["providers"] = list(bp.get("providers") or [])
     prof.setdefault("features", {})
-    prof["features"]["pwa"] = bool(bp.get("pwa"))
     if bp.get("topics_defaults"):
         prof["topics_defaults"] = dict(bp["topics_defaults"])
     if bp.get("vocabulary"):
@@ -143,7 +145,6 @@ def cmd_up(bp_path: Path, target_dir: Path | None, start: bool) -> None:
     target = target_dir or Path.home() / project
     datadir = Path(str(bp.get("datadir") or (Path.home() / f"{project}-data")))
     ports = {**DEFAULT_PORTS, **(bp.get("ports") or {})}
-    pwa = bool(bp.get("pwa"))
 
     print(f"▸ terraformazione '{name}' → {target} (datadir {datadir})")
     target.mkdir(parents=True, exist_ok=True)
@@ -159,9 +160,6 @@ def cmd_up(bp_path: Path, target_dir: Path | None, start: bool) -> None:
         pass
 
     compose = (TEMPLATES / "docker-compose.yml.tpl").read_text(encoding="utf-8")
-    if pwa:
-        compose = compose.rstrip() + "\n" + (
-            TEMPLATES / "pwa-service.yml.fragment").read_text(encoding="utf-8")
     (target / "docker-compose.yml").write_text(compose, encoding="utf-8")
     shutil.copy2(TEMPLATES / "entrypoint.sh", target / "entrypoint.sh")
     if (target / "docker").exists():
@@ -175,13 +173,12 @@ def cmd_up(bp_path: Path, target_dir: Path | None, start: bool) -> None:
         f"AGENT_SERVER_PORT={ports['agent_server']}",
         f"TOOLS_PORT={ports['tools']}",
         f"WEBUI_PORT={ports['webui']}",
-        f"PWA_PORT={ports['pwa']}",
     ]
     (target / ".env").write_text("\n".join(env) + "\n", encoding="utf-8")
 
     repos = target / "repos"
     repos.mkdir(exist_ok=True)
-    wanted = ["clodia-tools", "clodia-web"] + (["clodia-pwa"] if pwa else [])
+    wanted = ["clodia-tools", "clodia-web"]
     for r in wanted:
         dst = repos / r
         if (dst / ".git").exists():
@@ -210,7 +207,7 @@ def cmd_up(bp_path: Path, target_dir: Path | None, start: bool) -> None:
     if not start:
         print("▸ --no-start: progetto generato, stack non avviato")
         return
-    services = ["agent-server", "clodia-tools", "webui"] + (["pwa"] if pwa else [])
+    services = ["agent-server", "clodia-tools", "webui"]
     print(f"▸ build+avvio: {' '.join(services)} (può richiedere minuti)")
     # catena immagini: base → bundle → app (host vergine: nessuna preesiste).
     # Build SEQUENZIALE: compose v2 builda in parallelo e bundle fallirebbe

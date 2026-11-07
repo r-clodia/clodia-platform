@@ -31,8 +31,7 @@ decision rather than something inherited.
 the same RAM. Measured on 8 GB with only the VM running (5 GB assigned): macOS
 was left with 0.1 GB free plus 3.5 GB inactive and reclaimable, swap at zero.
 Inside the VM, 4.4 GB available — which is the instance's **total** budget, the
-agents' subprocesses included. On 8 GB: a reduced topology (the `pwa` can be left
-out) and `multi_spawn` off from the start.
+agents' subprocesses included. On 8 GB: `multi_spawn` off from the start.
 
 ## Two details that cost time if you find them afterwards
 

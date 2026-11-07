@@ -16,7 +16,6 @@ native_seeds: [clodia]          # UN solo seed nativo (spec v0.3 §4b.1)
 skill_packs: []                 # nessun pack esterno: solo base-pack (§4b.2)
 packs: []                       # verticali del cliente (import al finalize)
 providers: [anthropic-api]      # ≥1 obbligatorio (§4b.5)
-pwa: false                      # PWA opzionale (§4b.6)
 topic_storage: local-fs         # obbligatorio con topics attivi (§4b.7)
 rag:
   collection: pilot-kb

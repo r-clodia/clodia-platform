@@ -9,7 +9,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Repo che si buildano da sorgente (clodia-logic viene clonato a runtime
 # dall'agent-server, quindi non serve qui).
-REPOS=(clodia-tools clodia-web clodia-pwa)
+REPOS=(clodia-tools clodia-web)
 
 echo "==> Clono i repo sorgente da github.com/${ORG} (branch ${BRANCH})"
 mkdir -p "$ROOT/repos"
