@@ -19,7 +19,6 @@ packs:
 providers:
 - aws-region-eu
 - anthropic-api
-pwa: false
 helpdesk:
   enabled: false
 topic_storage: local-fs

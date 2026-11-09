@@ -97,7 +97,6 @@ On macOS, see [`docs/install-macos.md`](docs/install-macos.md).
 | **agent-server** | the agent runtime, the API, the colony PKI | `clodia-logic` (cloned at runtime) |
 | **clodia-tools** | the MCP gateway — the reference monitor: it decides every call, and holds the vault | `clodia-tools` |
 | **webui** | the web interface — chats, topics, agents, administration | `clodia-web` |
-| **pwa** | the mobile app — topics and direct messages | `clodia-pwa` |
 
 All of an instance's state lives in a separate **datadir** (`CLODIA_DATA`):
 secrets, topics, databases, the PKI, agent definitions. The Docker images carry

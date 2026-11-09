@@ -5,7 +5,7 @@
 All issues for the Clodia project are centralized in
 [`r-clodia/clodia-platform`](https://github.com/r-clodia/clodia-platform/issues).
 Use this tracker for every component, including `clodia-cli`, `clodia-logic`,
-`clodia-pwa`, `clodia-tools`, and `clodia-web`.
+`clodia-tools`, and `clodia-web` (`clodia-pwa` is retired, clodia-platform#657).
 
 When implementing an issue, make changes in the repository that owns the
 affected code, but keep the issue, discussion, status, and cross-repository

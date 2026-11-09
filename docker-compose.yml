@@ -116,7 +116,7 @@ services:
       # ONE hostname. Deployed with spaces, `POST clodia-tools:7849/internal/mint`
       # went through the proxy and was refused as a filtered domain — token
       # minting broken. Found in the proxy log within a minute of phase B.
-      NO_PROXY: "localhost,127.0.0.1,clodia-tools,webui,pwa,agent-server,egress-proxy${CLODIA_NO_PROXY_EXTRA:-}"
+      NO_PROXY: "localhost,127.0.0.1,clodia-tools,webui,agent-server,egress-proxy${CLODIA_NO_PROXY_EXTRA:-}"
       # Drops the two Datadog telemetry hosts at the source rather than
       # allow-listing them: shorter allow-list, less data leaving.
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
@@ -308,19 +308,6 @@ services:
     # int to reach the agent API, pub because it publishes a host port
     # (an internal network disables publishing).
     networks: [clodia-int, clodia-pub]
-    restart: unless-stopped
-
-  pwa:
-    build: { context: ./repos/clodia-pwa, dockerfile: Dockerfile }
-    image: clodia-pwa
-    ports:
-      - "${CLODIA_BIND_HOST:-127.0.0.1}:${PWA_PORT:-5173}:5173"
-    # int to reach the agent API, pub because it publishes a host port
-    # (an internal network disables publishing).
-    networks: [clodia-int, clodia-pub]
-    environment:
-      PORT: "5173"
-      API_TARGET: "http://agent-server:7842"
     restart: unless-stopped
 
 volumes:

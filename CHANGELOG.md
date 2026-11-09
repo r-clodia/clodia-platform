@@ -5,11 +5,36 @@ The central changelog of the **Clodia platform**: one modular product made of fo
 - **`clodia-logic`** — backend / agent-server (agents, jobs, topics and channels, routing, auth/PKI, API)
 - **`clodia-tools`** — gateway (MCP verbs, vault and credentials, connectors, inference providers)
 - **`clodia-web`** — web UI (SvelteKit)
-- **`clodia-pwa`** — installable app (PWA)
+- **`clodia-pwa`** — installable app (PWA) — retired (#657), to be archived read-only
 
 Format inspired by [Keep a Changelog](https://keepachangelog.com/); SemVer at the platform level. ⚠️ = breaking / migration required.
 
 ---
+
+## [Unreleased]
+
+### Removed
+
+- ⚠️ **The PWA companion and the Settings pairing section** (#657, epic #655).
+  The `pwa` service leaves `docker-compose.yml`, `PWA_PORT` leaves
+  `.env.example`, `setup.sh` no longer clones `clodia-pwa`, and the builder drops
+  the `pwa-service.yml.fragment` template and the `pwa:` key of its examples — a
+  blueprint that still asks for `pwa: true` is refused with a message. The
+  `features.pwa` profile flag is gone from clodia-logic, clodia-tools and
+  clodia-web; a `profile.yaml` that still sets it keeps loading (the key is
+  ignored). `clodia-pwa` is deprecated and will be archived read-only.
+  **Migration:** a deployment that keeps a local copy of the compose file must
+  remove the `pwa` service by hand (and `pwa` from `NO_PROXY`).
+  Not affected: connector device pairing (`/tools/connectors/<id>/pairing`,
+  #639/#641).
+- **Existing pairing tokens stop working on the day clodia-logic 6.341.0 and
+  clodia-tools 2.160.0 are deployed.** A pairing token was a browser-signed
+  `ckt1` session token with the WebUI's own claims and a 30-day lifetime; no
+  WebUI session lives longer than 12 h. Both verifiers (`verify_session_token`)
+  now refuse a token with exactly the browser's claims, an empty
+  `execution_id` and `exp - iat` over 24 h. Outer bound, whatever the deploy
+  order: no pairing token minted before the deploy date remains valid 30 days
+  after it.
 
 ## [9.1] — 2026-08-12
 

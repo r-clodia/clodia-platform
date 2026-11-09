@@ -1,6 +1,6 @@
 # Edizione "acme-min" (design review 6 lug 2026):
 # Agents=[clodia] · Jobs=on · packs=[base, demo] · integrations=[caselle
-# email, demo-tool] · provider=[aws-bedrock EU] · pwa=off · topics=off.
+# email, demo-tool] · provider=[aws-bedrock EU] · topics=off.
 name: acme-min
 profile:
   edition: acme-min
@@ -19,7 +19,6 @@ packs:
   - source: ./demo-pack          # path locale relativo al blueprint (gap-2)
     pack: demo-pack
 providers: [aws-region-eu]       # AWS Bedrock EU
-pwa: false
 integrations:
   allowed: [demo-tool]           # MCP in whitelist
   connectors: [mailboxes]        # solo Caselle email fra i connettori nativi
