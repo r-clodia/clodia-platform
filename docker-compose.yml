@@ -211,6 +211,14 @@ services:
       # Authenticates the egress proxy's reports (#463). Gateway and proxy only:
       # never in the shared block, never in the agent container.
       CLODIA_EGRESS_PROXY_SECRET: ${CLODIA_EGRESS_PROXY_SECRET:-}
+      # Pack stdio MCP servers run as an unprivileged uid of their own, not as
+      # the gateway (#577): they cannot read the vault, the secrets nor
+      # /proc/<gateway>/environ. `auto` (default) = on whenever the gateway is
+      # root, as here; `on` = refuse to start a backend that cannot be
+      # dropped; `off` = run them as the gateway (the pre-#577 behaviour, an
+      # escape hatch). Declared here so that the .env value reaches the
+      # container: a switch that is not declared cannot be turned.
+      CLODIA_MCP_SANDBOX: ${CLODIA_MCP_SANDBOX:-auto}
     volumes:
       - ${CLODIA_DATA}:/datadir
       # Stato DECISIONALE del gateway (whitelist per-agente, consensi del gate,
