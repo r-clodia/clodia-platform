@@ -1,0 +1,23 @@
+# Opt-in: the datadir as a BIND of a host folder instead of the named volume
+# `clodia-data` (clodia-platform#554). For Linux hosts only, where a bind is the
+# host's own filesystem and enforces permission bits like a volume does.
+#
+# NEVER on macOS (or Windows): there a host folder reaches the VM through
+# virtiofs/9p/FUSE, which ignore permission bits, and every spawn uid reads
+# every agent's transcripts. The gateway logs an ERROR naming #554 when it
+# finds /datadir on such a filesystem.
+#
+# Enable it in `.env`, so that every `docker compose` command picks it up:
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.datadir-bind.yml
+#   CLODIA_DATA=/srv/clodia-data
+#
+# Compose merges `volumes:` entries by their container path, so these lines
+# REPLACE `clodia-data:/datadir` in both services; the other mounts stay.
+services:
+  agent-server:
+    volumes:
+      - ${CLODIA_DATA:?docker-compose.datadir-bind.yml needs CLODIA_DATA (absolute host path)}:/datadir
+  clodia-tools:
+    volumes:
+      - ${CLODIA_DATA:?docker-compose.datadir-bind.yml needs CLODIA_DATA (absolute host path)}:/datadir

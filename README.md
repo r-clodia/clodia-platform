@@ -76,8 +76,8 @@ Claude account to connect over OAuth from the UI.
 ```bash
 git clone https://github.com/r-clodia/clodia-platform.git
 cd clodia-platform
-./setup.sh                       # clone the source repos, prepare the datadir and .env
-nano .env                        # ANTHROPIC_API_KEY, CLODIA_DATA, CLODIA_BASE_EMAIL
+./setup.sh                       # clone the source repos, create the datadir volume and .env
+nano .env                        # ANTHROPIC_API_KEY, CLODIA_BASE_EMAIL
 docker compose --profile build-only build base bundle
 docker compose up -d --build
 ```
@@ -98,9 +98,62 @@ On macOS, see [`docs/install-macos.md`](docs/install-macos.md).
 | **clodia-tools** | the MCP gateway — the reference monitor: it decides every call, and holds the vault | `clodia-tools` |
 | **webui** | the web interface — chats, topics, agents, administration | `clodia-web` |
 
-All of an instance's state lives in a separate **datadir** (`CLODIA_DATA`):
-secrets, topics, databases, the PKI, agent definitions. The Docker images carry
-no data — they are clonable and disposable.
+All of an instance's state lives in a separate **datadir**: secrets, topics,
+databases, the PKI, agent definitions, transcripts, audit. The Docker images
+carry no data — they are clonable and disposable.
+
+### The datadir
+
+The datadir is the **named Docker volume** `clodia-data` (`CLODIA_DATA_VOLUME`
+in `.env`), mounted at `/datadir` in agent-server and clodia-tools. A volume
+and not a host folder because the agents' isolation rests on file modes — every
+spawn runs under its own uid against `700/600 root` stores — and a host folder
+shared into a VM (macOS, Windows: virtiofs, 9p, FUSE) ignores them
+([#554](https://github.com/r-clodia/clodia-platform/issues/554)). The volume is
+declared `external`: `setup.sh` creates it, and `docker compose up` refuses to
+start without it rather than initialise an empty instance.
+
+To browse it or copy something out:
+
+```bash
+scripts/datadir-shell.sh                         # read-only shell, /datadir
+scripts/datadir-export.sh audit ./audit-copy     # copy a file/folder to the host
+```
+
+Both mount the volume read-only. The shell runs as root and sees everything,
+vault included; an exported copy is protected only by the host's permissions.
+
+**Bind of a host folder (Linux hosts only).** On a Linux host a bind is the
+host's own filesystem and enforces modes like a volume. To keep one, add to
+`.env`:
+
+```
+COMPOSE_FILE=docker-compose.yml:docker-compose.datadir-bind.yml
+CLODIA_DATA=/srv/clodia-data
+```
+
+Never on macOS: the gateway logs `ERROR DATADIR NOT ISOLATED` (#554) when it
+finds `/datadir` on virtiofs/9p/FUSE.
+
+### Migrating an existing datadir
+
+Installs from before the volume mounted `${CLODIA_DATA}:/datadir`. After
+pulling this version, `docker compose up` stops with *external volume
+"clodia-data" not found* — on purpose. Either keep the bind (Linux only, the
+two lines above) or migrate:
+
+```bash
+# 1. no turn in flight (check the webui), then:
+docker compose stop agent-server clodia-tools
+# 2. copy the bind into the volume; refuses if the volume is not empty,
+#    compares entries and bytes, never touches the bind
+scripts/migrate-datadir-to-volume.sh /path/to/old/datadir   # default: CLODIA_DATA from .env
+# 3. restart and check the logs (no "DATADIR NOT ISOLATED"; boundary self-test denied)
+docker compose up -d agent-server clodia-tools
+```
+
+The old folder stays where it was as the rollback; delete it yourself once the
+instance has run cleanly.
 
 ## Security and data
 
