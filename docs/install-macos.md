@@ -44,18 +44,42 @@ inside the VM:  drwx------ root root   → a spawn's uid is denied by the kernel
 from the host:  -rw-r--r-- <user>      → `cat` reads the content              ✗
 ```
 
-The instance's vault — providers, tokens, keys — would then be readable by
-anyone with a shell on the Mac. Use a path **inside the VM**:
+And on OrbStack it is worse than asymmetric: on terra (macOS + OrbStack) until
+19 November 2026 the bind `${CLODIA_DATA}:/datadir` let a spawn's uid **inside
+the container** read other agents' transcripts and spawns, `audit/`, `topics/`,
+`data/` and the state of pack services — all `700/600 root` on paper
+([#554](https://github.com/r-clodia/clodia-platform/issues/554)).
+
+That is why the compose file mounts the datadir from a **named Docker volume**,
+`clodia-data`, which lives on the VM's own disk where the modes are enforced.
+Nothing to configure: `setup.sh` creates the volume, and the
+`docker-compose.datadir-bind.yml` override (a bind of a host folder) is for
+Linux hosts only — **never select it on a Mac**. If it ever ends up on one, the
+gateway logs `ERROR DATADIR NOT ISOLATED … (clodia-platform#554)` at startup.
+
+The gateway's decision state is still a bind (`CLODIA_GATEWAY_STATE`); keep it
+inside the VM as well:
 
 ```
-CLODIA_DATA=/var/clodia-data
 CLODIA_GATEWAY_STATE=/var/clodia-gateway-state
 ```
 
-Colima mounts only the user's home, so `/var/...` lives on the VM's disk and does
-not exist from macOS at all. The consequence to accept: your backup becomes the
-VM's disk rather than a browsable folder — the `restic` job runs inside the
-container either way, so nothing substantial changes.
+The consequence to accept: the datadir is no longer a browsable folder of the
+Mac. To look inside or take something out:
+
+```bash
+scripts/datadir-shell.sh                                  # read-only shell on the volume
+scripts/datadir-export.sh topics/SEAL-1/acme ~/Desktop    # copy a file/folder out
+```
+
+The shell runs as root and shows everything, vault included; an exported copy
+is protected only by the Mac's permissions. The `restic` backup job runs inside
+the gateway container either way, so the backup does not change.
+
+**An instance installed before the volume** (datadir in a Mac folder, or in
+`/var/clodia-data` inside a Colima VM): migrate it — see
+[Migrating an existing datadir](../README.md#migrating-an-existing-datadir) in
+the README.
 
 ### 2. Remote login: macOS keeps a separate list
 

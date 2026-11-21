@@ -25,10 +25,10 @@ done
 
 echo "==> Preparo la datadir"
 # La datadir contiene TUTTI i dati dell'istanza (secrets, topics, db, pki…).
-# Vive fuori dal repo: di default ./clodia-data, override con CLODIA_DATA in .env.
+# Di default e' il volume Docker nominato CLODIA_DATA_VOLUME (clodia-data), #554.
 if [ ! -f "$ROOT/.env" ]; then
   cp "$ROOT/.env.example" "$ROOT/.env"
-  echo "    creato .env da .env.example — EDITALO prima di avviare (ANTHROPIC_API_KEY, CLODIA_DATA, CLODIA_BASE_EMAIL)"
+  echo "    creato .env da .env.example — EDITALO prima di avviare (ANTHROPIC_API_KEY, CLODIA_BASE_EMAIL)"
 fi
 # shellcheck disable=SC1090
 set -a; . "$ROOT/.env"; set +a
@@ -56,7 +56,33 @@ if [ -z "${CLODIA_EGRESS_PROXY_SECRET:-}" ]; then
   export CLODIA_EGRESS_PROXY_SECRET="$_clodia_egress_secret"
   echo "    generato CLODIA_EGRESS_PROXY_SECRET"
 fi
-mkdir -p "${CLODIA_DATA:-$ROOT/clodia-data}"
+# La datadir e' un volume Docker nominato (#554); il bind di una cartella
+# dell'host e' un opt-in per host Linux (docker-compose.datadir-bind.yml).
+case ":${COMPOSE_FILE:-}:" in
+  *docker-compose.datadir-bind.yml*)
+    mkdir -p "${CLODIA_DATA:?docker-compose.datadir-bind.yml selezionato ma CLODIA_DATA vuota}"
+    echo "    datadir: bind ${CLODIA_DATA} (opt-in, solo host Linux)"
+    ;;
+  *)
+    _vol="${CLODIA_DATA_VOLUME:-clodia-data}"
+    if docker volume inspect "$_vol" >/dev/null 2>&1; then
+      echo "    datadir: volume ${_vol} gia' presente"
+    elif docker volume create "$_vol" >/dev/null 2>&1; then
+      echo "    datadir: creato il volume ${_vol}"
+    else
+      echo "    ATTENZIONE: volume ${_vol} non creato (docker non raggiungibile?)."
+      echo "    Crealo prima di avviare:  docker volume create ${_vol}"
+    fi
+    # Un'installazione che aveva il vecchio bind non deve ripartire VUOTA.
+    _old="${CLODIA_DATA:-$ROOT/clodia-data}"
+    case "$_old" in /*) ;; *) _old="$ROOT/${_old#./}" ;; esac
+    if [ -d "$_old" ] && [ -n "$(ls -A "$_old" 2>/dev/null)" ]; then
+      echo "    ATTENZIONE: c'e' una datadir su bind in ${_old}, che il compose NON monta piu'."
+      echo "    Migrala:   scripts/migrate-datadir-to-volume.sh ${_old}"
+      echo "    oppure (solo Linux) tieni il bind: vedi docker-compose.datadir-bind.yml"
+    fi
+    ;;
+esac
 # Stato decisionale del gateway (whitelist/gate/deleghe): directory a parte,
 # montata dal SOLO container clodia-tools. Se stesse nella datadir la
 # vedrebbe anche l'agent-server, dove girano gli agenti (issue #80).
@@ -82,5 +108,7 @@ echo "     volta sola. Le porte sono su 127.0.0.1 per default: da remoto serve u
 echo "     proxy esplicito (es. 'tailscale serve'), o CLODIA_BIND_HOST."
 echo "  5) Collega i provider/credenziali dalla sezione Tools (OAuth o paste-key)"
 echo ""
+echo "La datadir e' il volume Docker ${CLODIA_DATA_VOLUME:-clodia-data}: per guardarci dentro"
+echo "scripts/datadir-shell.sh (sola lettura), per copiare fuori scripts/datadir-export.sh."
 echo "Su macOS: vedi docs/install-macos.md (runtime container, e perche la datadir"
 echo "NON va in una cartella del Mac)."

@@ -13,6 +13,37 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/); SemVer at th
 
 ## [Unreleased]
 
+### Changed
+
+- ⚠️ **The datadir is a named Docker volume by default** (#554). agent-server
+  and clodia-tools mount `clodia-data:/datadir` instead of the host bind
+  `${CLODIA_DATA}:/datadir`. On macOS runtimes a host folder reaches the VM
+  through virtiofs/9p/FUSE, which ignore permission bits: on terra (OrbStack)
+  a spawn uid could read other agents' transcripts and spawns, `audit/`,
+  `topics/`, `data/` and pack-service state until the instance moved to a
+  volume on 19 Nov 2026. The volume is `external` (name from
+  `CLODIA_DATA_VOLUME`, default `clodia-data`) and `setup.sh` creates it, so
+  an install still on the bind **fails loudly** on `up` instead of booting an
+  empty instance. **Migration:** stop agent-server and clodia-tools (no turn
+  in flight), run `scripts/migrate-datadir-to-volume.sh [BIND_PATH]` — it
+  refuses a non-empty volume, copies with `cp -a` from a read-only mount,
+  compares entries and bytes, never touches the bind — then `up`. Linux hosts
+  that want to keep the bind set
+  `COMPOSE_FILE=docker-compose.yml:docker-compose.datadir-bind.yml` with
+  `CLODIA_DATA` in `.env` (never on macOS). A deployment with a local copy of
+  the compose file applies the volume change by hand.
+
+### Added
+
+- **Owner access to the datadir volume** (#554): `scripts/datadir-shell.sh`
+  opens a read-only throwaway shell on it, `scripts/datadir-export.sh <path>
+  <dest>` copies a file or folder out to the host (owned by the caller,
+  never overwriting). Documented in the README and `docs/install-macos.md`.
+- **The gateway names a permissionless datadir** (clodia-tools 2.185.0,
+  #554): at startup it reads `/proc/self/mountinfo` and logs
+  `ERROR DATADIR NOT ISOLATED` when `/datadir` is on virtiofs, 9p, fakeowner or
+  FUSE. Never blocks the start; runs even with `CLODIA_ISOLATION_SELFCHECK=off`.
+
 ### Removed
 
 - ⚠️ **The PWA companion and the Settings pairing section** (#657, epic #655).
