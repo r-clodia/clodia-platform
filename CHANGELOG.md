@@ -13,6 +13,20 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/); SemVer at th
 
 ## [Unreleased]
 
+### Changed
+
+- **`@anthropic-ai/claude-code` is pinned in the base image** (#535), at
+  `2.1.197` — the version the production agent-server was running on
+  21 Nov 2026. New `ARG ANTHROPIC_CLAUDE_CODE_NPM_VERSION` in both
+  `docker/base.Dockerfile` and `builder/templates/docker/base.Dockerfile`, and
+  in the `PINS` checked by `scripts/check-codex-pin.py` (`make test-pins`), so
+  the two copies cannot drift. Until now every rebuild took whatever npm served
+  that day. **Bumping:** a PR that changes both copies, after a test turn of an
+  `agent_sdk: claude` agent on an image built with the new version — same
+  procedure as the Codex pin. Note: the agent-server's Claude runtime spawns the
+  CLI bundled with the Python `claude-agent-sdk`, whose version follows that
+  package (still `>=0.1.0` in clodia-logic's `requirements.txt`), not this pin.
+
 ### Removed
 
 - ⚠️ **The PWA companion and the Settings pairing section** (#657, epic #655).

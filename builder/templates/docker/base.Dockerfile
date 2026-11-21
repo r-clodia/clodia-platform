@@ -8,6 +8,11 @@ FROM python:3.12-slim
 # Must stay equal to `docker/base.Dockerfile` — `scripts/check-codex-pin.py`.
 ARG OPENAI_CODEX_NPM_VERSION=0.160.0
 ARG OPENCODE_NPM_VERSION=1.15.13
+# Claude Code is pinned too (clodia-platform#535): 2.1.197 is the version the
+# production agent-server was running when the pin was introduced (21 Nov 2026).
+# Bump it like codex: a PR changing both copies, after a test turn of an
+# `agent_sdk: claude` agent on the new version. See `docker/base.Dockerfile`.
+ARG ANTHROPIC_CLAUDE_CODE_NPM_VERSION=2.1.197
 
 # Node.js 20 LTS
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -17,9 +22,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # CLI agentici spawnabili dai bot Node e dai tool Python.
-# Codex e' pinnato: gli agent `agent_sdk=codex` girano dentro il worker
-# agent-server e devono trovare un binario stabile a build-time.
-RUN npm install -g @anthropic-ai/claude-code @openai/codex@${OPENAI_CODEX_NPM_VERSION} \
+# All three are pinned: the agents run inside the agent-server worker and must
+# find a binary that does not change under them between rebuilds.
+RUN npm install -g @anthropic-ai/claude-code@${ANTHROPIC_CLAUDE_CODE_NPM_VERSION} \
+    @openai/codex@${OPENAI_CODEX_NPM_VERSION} \
     opencode-ai@${OPENCODE_NPM_VERSION}
 
 # Verifica installazione
