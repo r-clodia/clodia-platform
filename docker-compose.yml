@@ -321,7 +321,7 @@ services:
     environment:
       POSTGRES_DB: eu_corpus
       POSTGRES_USER: clodia
-      POSTGRES_PASSWORD: ${EU_RAG_PG_PASSWORD:?run setup.sh to generate it}
+      POSTGRES_PASSWORD: ${CLODIA_RAG_PG_PASSWORD:?run setup.sh to generate CLODIA_RAG_PG_PASSWORD}
     volumes:
       - clodia-rag-pg:/var/lib/postgresql/data
       # Applied by the image on the FIRST start only (empty volume). Idempotent.
@@ -342,11 +342,10 @@ services:
       EU_RAG_PG_PORT: "5432"
       EU_RAG_PG_DB: eu_corpus
       EU_RAG_PG_USER: clodia
-      EU_RAG_PG_PASSWORD: ${EU_RAG_PG_PASSWORD:?run setup.sh to generate it}
-      # Same value as /gateway-state/eu-rag-ingest-token (setup.sh writes both).
-      # Empty = writes and topic collections refused (fail-closed), reads of the
-      # EU corpus still served.
-      EU_RAG_INGEST_TOKEN: ${EU_RAG_INGEST_TOKEN:-}
+      EU_RAG_PG_PASSWORD: ${CLODIA_RAG_PG_PASSWORD:?run setup.sh to generate CLODIA_RAG_PG_PASSWORD}
+      # Same value as /gateway-state/eu-rag-ingest-token (setup.sh writes both
+      # from CLODIA_RAG_TOKEN in .env).
+      EU_RAG_INGEST_TOKEN: ${CLODIA_RAG_TOKEN:?run setup.sh to generate CLODIA_RAG_TOKEN}
     networks: [clodia-int]
     depends_on:
       rag-pg: { condition: service_healthy }

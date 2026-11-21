@@ -27,9 +27,10 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/); SemVer at th
   `/embed_route` by the responder routing no longer leaves the host. Code
   defaults follow: clodia-logic and clodia-tools now default to
   `http://rag-search:7900` instead of a LAN address.
-  **Migration:** re-run `setup.sh` — it generates `EU_RAG_PG_PASSWORD` and
-  `EU_RAG_INGEST_TOKEN` in `.env` and writes the gateway's token file; the
-  compose refuses to start without the password. The new database is empty:
+  **Migration:** re-run `setup.sh` — it generates `CLODIA_RAG_PG_PASSWORD` and
+  `CLODIA_RAG_TOKEN` in `.env` (mapped to `POSTGRES_PASSWORD` /
+  `EU_RAG_PG_PASSWORD` and `EU_RAG_INGEST_TOKEN` inside the containers) and
+  writes the gateway's token file; the compose refuses to start without them. The new database is empty:
   topic indexes are rebuilt, an existing corpus is restored with `pg_dump` /
   `pg_restore` into `rag-pg`. A deployment that keeps a local copy of the
   compose file adds the two services, the variable and the `NO_PROXY` entry by
