@@ -116,8 +116,8 @@ def decide(method: str, host: str, port: int, patterns: list[re.Pattern]) -> tup
 
 
 # ── resolved addresses ──────────────────────────────────────────────────────
-#: Private ranges an allow-listed IP LITERAL may point into (the RAG service on
-#: the LAN, `^192\.168\.1\.45$`). A NAME never may: a public name that
+#: Private ranges an allow-listed IP LITERAL may point into (a service on the
+#: LAN, e.g. `^192\.168\.1\.45$`). A NAME never may: a public name that
 #: resolves into the LAN is a rebinding, not a destination.
 _PRIVATE = tuple(ipaddress.ip_network(n) for n in (
     "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "fc00::/7"))

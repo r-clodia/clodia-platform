@@ -56,6 +56,21 @@ if [ -z "${CLODIA_EGRESS_PROXY_SECRET:-}" ]; then
   export CLODIA_EGRESS_PROXY_SECRET="$_clodia_egress_secret"
   echo "    generato CLODIA_EGRESS_PROXY_SECRET"
 fi
+# RAG (#603): the password of the rag-pg database and the write token of
+# rag-search. Generated once; a `.env` older than the lines gets them appended.
+for _var in CLODIA_RAG_PG_PASSWORD CLODIA_RAG_TOKEN; do
+  if [ -z "${!_var:-}" ]; then
+    _val="$(openssl rand -hex 32)"
+    if grep -q "^${_var}=" "$ROOT/.env"; then
+      sed -i.bak "s/^${_var}=.*/${_var}=${_val}/" "$ROOT/.env"
+      rm -f "$ROOT/.env.bak"
+    else
+      printf '\n%s=%s\n' "$_var" "$_val" >> "$ROOT/.env"
+    fi
+    export "$_var=$_val"
+    echo "    generato $_var"
+  fi
+done
 mkdir -p "${CLODIA_DATA:-$ROOT/clodia-data}"
 # Stato decisionale del gateway (whitelist/gate/deleghe): directory a parte,
 # montata dal SOLO container clodia-tools. Se stesse nella datadir la
@@ -63,6 +78,10 @@ mkdir -p "${CLODIA_DATA:-$ROOT/clodia-data}"
 _gw_state="${CLODIA_GATEWAY_STATE:-$ROOT/gateway-state}"
 mkdir -p "$_gw_state"
 chmod 700 "$_gw_state" 2>/dev/null || true
+# The gateway reads the rag-search token from its own state directory, never
+# from the datadir the agent-server also mounts (#603). Rewritten from `.env`
+# on every run, so the two copies cannot drift.
+( umask 077; printf '%s' "$CLODIA_RAG_TOKEN" > "$_gw_state/eu-rag-ingest-token" )
 
 echo ""
 echo "Setup completato. Prossimi passi:"

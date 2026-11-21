@@ -45,7 +45,6 @@
 ^models\.dev$
 # GitHub release assets (downloads referenced by releases).
 ^release-assets\.githubusercontent\.com$
-# The RAG service runs on the HOST and containers reach it by LAN IP. With an
-# internal network there is no direct route, so it has to come through here.
-# An IP, not a name: the filter matches the CONNECT host verbatim.
-^192\.168\.1\.45$
+# The RAG service is no longer a LAN host: it is the `rag-search` container on
+# clodia-int (#603), reached directly (it is in NO_PROXY). Its LAN entry, the
+# IP literal of the machine it used to run on, is gone.
