@@ -13,7 +13,33 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/); SemVer at th
 
 ## [Unreleased]
 
+### Added
+
+- ⚠️ **The RAG service runs with the instance** (#603). `docker-compose.yml`
+  gains `rag-pg` (`pgvector/pgvector:pg16`, named volume `clodia-rag-pg`, schema
+  from `repos/clodia-tools/services/rag-search/schema.sql` on first start) and
+  `rag-search` (built from `repos/clodia-tools/services/rag-search`, models baked
+  in), both on `clodia-int` only, with healthchecks and no published port.
+  `EU_RAG_SEARCH_URL=http://rag-search:7900` reaches the gateway and the
+  agent-server, `rag-search` joins the agent-server's `NO_PROXY`, and the gateway
+  reads the write token from `/gateway-state/eu-rag-ingest-token`
+  (`EU_RAG_INGEST_TOKEN_FILE`). The text of every channel message sent to
+  `/embed_route` by the responder routing no longer leaves the host. Code
+  defaults follow: clodia-logic and clodia-tools now default to
+  `http://rag-search:7900` instead of a LAN address.
+  **Migration:** re-run `setup.sh` — it generates `EU_RAG_PG_PASSWORD` and
+  `EU_RAG_INGEST_TOKEN` in `.env` and writes the gateway's token file; the
+  compose refuses to start without the password. The new database is empty:
+  topic indexes are rebuilt, an existing corpus is restored with `pg_dump` /
+  `pg_restore` into `rag-pg`. A deployment that keeps a local copy of the
+  compose file adds the two services, the variable and the `NO_PROXY` entry by
+  hand.
+
 ### Removed
+
+- **The `^192\.168\.1\.45$` entry of the egress allow-list** (#603). It let
+  the agent container reach the RAG service on a LAN host; that service is now
+  the `rag-search` container on the internal network.
 
 - ⚠️ **The PWA companion and the Settings pairing section** (#657, epic #655).
   The `pwa` service leaves `docker-compose.yml`, `PWA_PORT` leaves

@@ -132,7 +132,7 @@ which mints identities. Empty = the proxy filters and logs without the join.
   (`CLODIA_INT_SUBNET`, `CLODIA_EXT_SUBNET`), and connects to the address it
   checked. Private ranges (RFC 1918, CGNAT, ULA) are reachable only when the
   request names the IP literally — i.e. the allow-list entry is that IP, like
-  `^192\.168\.1\.45$`. A refusal is `403` with reason `address`.
+  `^192\.168\.1\.45$` (the shipped allow-list has none since #603). A refusal is `403` with reason `address`.
 - **Plain HTTP `Host`.** It is rewritten from the absolute URI; a client `Host`
   that names something else (or a second one) is a `400`.
 - **Slow readers.** A write that waits more than `EGRESS_WRITE_TIMEOUT` seconds

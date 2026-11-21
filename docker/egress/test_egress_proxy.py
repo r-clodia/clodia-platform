@@ -15,6 +15,7 @@ import asyncio
 import base64
 import json
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -52,6 +53,8 @@ class AllowlistTests(unittest.TestCase):
         self.assertFalse(ep.host_allowed("api.anthropic.com.attacker.tld", self.patterns))
         self.assertFalse(ep.host_allowed("evil-api.anthropic.com", self.patterns))
         self.assertFalse(ep.host_allowed("api.telegram.org", self.patterns))
+        # The RAG service is a container of the stack now (#603), not a LAN host.
+        self.assertFalse(ep.host_allowed("192.168.1.45", self.patterns))
 
     def test_ports(self) -> None:
         self.assertEqual(ep.decide("CONNECT", "github.com", 443, self.patterns), (True, None))
@@ -174,7 +177,8 @@ class AddressTests(unittest.TestCase):
             ep.internal_networks({"CLODIA_INT_SUBNET": "nonsense"})
 
     def test_vet_with_a_stubbed_resolver(self) -> None:
-        patterns = ep.load_allowlist(str(HERE / "allowlist"))
+        # A LAN IP literal on top of the shipped list (which has none since #603).
+        patterns = ep.load_allowlist(str(HERE / "allowlist")) + [re.compile(r"^192\.168\.1\.45$")]
         answers = {"api.anthropic.com": ["127.0.0.1"],
                    "github.com": ["10.0.0.5", "140.82.121.4"],
                    "pypi.org": ["151.101.0.223"],
@@ -193,7 +197,7 @@ class AddressTests(unittest.TestCase):
         self.assertEqual(got["api.anthropic.com"], ([], "address"))
         self.assertEqual(got["github.com"], (["140.82.121.4"], None))  # only the public one
         self.assertEqual(got["pypi.org"], (["151.101.0.223"], None))
-        self.assertEqual(got["192.168.1.45"], (["192.168.1.45"], None))  # the RAG entry
+        self.assertEqual(got["192.168.1.45"], (["192.168.1.45"], None))  # the LAN literal
         self.assertEqual(got["nx.example"], ([], None))                 # a 502, as before
 
 

@@ -70,6 +70,12 @@ x-common-env: &common-env
     # Watchdog del turno: secondi di silenzio SDK dopo i quali il subprocess
     # viene chiuso. Anche questa viveva solo in una copia locale.
     CLODIA_TURN_WATCHDOG_SILENCE: ${CLODIA_TURN_WATCHDOG_SILENCE:-180}
+    # The RAG service of THIS instance (#603): the gateway's `rag.*` and
+    # `eu_corpus.*` verbs, and the responder routing of the agent-server, which
+    # sends the text of every channel message to `/embed_route`. It runs next to
+    # the other containers, on the internal network, so that text never leaves
+    # the host.
+    EU_RAG_SEARCH_URL: http://rag-search:7900
     # NB: `CLODIA_BIND_HOST` non va qui — non è una variabile del container ma
     # l'indirizzo su cui l'host pubblica le porte (vedi `ports:` sotto).
 
@@ -116,7 +122,7 @@ services:
       # ONE hostname. Deployed with spaces, `POST clodia-tools:7849/internal/mint`
       # went through the proxy and was refused as a filtered domain — token
       # minting broken. Found in the proxy log within a minute of phase B.
-      NO_PROXY: "localhost,127.0.0.1,clodia-tools,webui,agent-server,egress-proxy${CLODIA_NO_PROXY_EXTRA:-}"
+      NO_PROXY: "localhost,127.0.0.1,clodia-tools,webui,agent-server,egress-proxy,rag-search${CLODIA_NO_PROXY_EXTRA:-}"
       # Drops the two Datadog telemetry hosts at the source rather than
       # allow-listing them: shorter allow-list, less data leaving.
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
@@ -211,6 +217,11 @@ services:
       # Authenticates the egress proxy's reports (#463). Gateway and proxy only:
       # never in the shared block, never in the agent container.
       CLODIA_EGRESS_PROXY_SECRET: ${CLODIA_EGRESS_PROXY_SECRET:-}
+      # The write token of rag-search (#603), written by setup.sh into the
+      # gateway's OWN state directory. Not in ${CLODIA_DATA}: the agent-server
+      # mounts that too, and the token is what opens the topic collections and
+      # the write routes. The code default (/datadir/...) would put it there.
+      EU_RAG_INGEST_TOKEN_FILE: /gateway-state/eu-rag-ingest-token
     volumes:
       - ${CLODIA_DATA}:/datadir
       # Stato DECISIONALE del gateway (whitelist per-agente, consensi del gate,
@@ -300,6 +311,53 @@ services:
     mem_limit: 512m
     restart: unless-stopped
 
+  # ── RAG: pgvector + rag-search (#603) ───────────────────────────────────────
+  # The index of every topic and the EU corpus live HERE, with the instance, not
+  # on another machine of the LAN. Both sit on clodia-int ONLY: no published
+  # port, no route out. Embeddings are computed inside rag-search with models
+  # baked into the image at build time, so it needs no internet at run time.
+  rag-pg:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: eu_corpus
+      POSTGRES_USER: clodia
+      POSTGRES_PASSWORD: ${EU_RAG_PG_PASSWORD:?run setup.sh to generate it}
+    volumes:
+      - clodia-rag-pg:/var/lib/postgresql/data
+      # Applied by the image on the FIRST start only (empty volume). Idempotent.
+      - ./repos/clodia-tools/services/rag-search/schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+    networks: [clodia-int]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clodia -d eu_corpus"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rag-search:
+    build: { context: ./repos/clodia-tools/services/rag-search, dockerfile: Dockerfile }
+    image: clodia-rag-search
+    environment:
+      EU_RAG_PG_HOST: rag-pg
+      EU_RAG_PG_PORT: "5432"
+      EU_RAG_PG_DB: eu_corpus
+      EU_RAG_PG_USER: clodia
+      EU_RAG_PG_PASSWORD: ${EU_RAG_PG_PASSWORD:?run setup.sh to generate it}
+      # Same value as /gateway-state/eu-rag-ingest-token (setup.sh writes both).
+      # Empty = writes and topic collections refused (fail-closed), reads of the
+      # EU corpus still served.
+      EU_RAG_INGEST_TOKEN: ${EU_RAG_INGEST_TOKEN:-}
+    networks: [clodia-int]
+    depends_on:
+      rag-pg: { condition: service_healthy }
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:7900/health',timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 120s
+      retries: 5
+
   webui:
     build: { context: ./repos/clodia-web, dockerfile: Dockerfile }
     image: clodia-webui
@@ -317,6 +375,8 @@ volumes:
   # Unico canale byte fra agent-server e gateway. Contiene esclusivamente
   # envelope cifrati effimeri e la chiave PUBBLICA transfer del gateway.
   clodia-transfer:
+  # The RAG database (#603): topic indexes and the EU corpus.
+  clodia-rag-pg:
 
 networks:
   # Fixed subnets on purpose: the confinement rule in
