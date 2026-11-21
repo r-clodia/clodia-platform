@@ -13,6 +13,21 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/); SemVer at th
 
 ## [Unreleased]
 
+### Security
+
+- **Pack stdio MCP servers no longer run as root** (#577, clodia-tools 2.186.0).
+  Every stdio backend (image-captions, sedia, contabilita, normattiva, leads, …)
+  starts under a uid of its own (pool 61000+), with a private HOME/TMPDIR under
+  `<datadir>/mcp-sandbox/<backend>/`, no gateway groups and `no_new_privs`. It can
+  no longer read the vault, the secrets or `/proc/<gateway pid>/environ`. A
+  datastore instance bound to the call (#686) is the only instance file it can
+  open; a legacy `path:` datastore is shared with its own plugin only. New
+  switch `CLODIA_MCP_SANDBOX` (`auto` default, `on`, `off`), declared in
+  `docker-compose.yml`. **Migration:** a deployment with a local copy of the
+  compose file adds the variable by hand (optional: `auto` is the default
+  anyway). A pack tool that reads arbitrary paths (e.g. `contabilita.ingest_*`
+  on a directory) now reads only what an unprivileged uid can read.
+
 ### Removed
 
 - ⚠️ **The PWA companion and the Settings pairing section** (#657, epic #655).
