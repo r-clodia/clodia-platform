@@ -26,7 +26,8 @@ ROOT = Path(__file__).resolve().parent.parent
 COPIES = ("docker/base.Dockerfile", "builder/templates/docker/base.Dockerfile")
 #: Pins that must agree. Only the agentic CLIs: the Python/Node base images are
 #: already a single `FROM` line each and drift there is visible at build time.
-PINS = ("OPENAI_CODEX_NPM_VERSION", "OPENCODE_NPM_VERSION")
+PINS = ("OPENAI_CODEX_NPM_VERSION", "OPENCODE_NPM_VERSION",
+        "ANTHROPIC_CLAUDE_CODE_NPM_VERSION")  # claude-code: #535
 
 _ARG = re.compile(r"^\s*ARG\s+(\w+)\s*=\s*(\S+)\s*$", re.MULTILINE)
 
